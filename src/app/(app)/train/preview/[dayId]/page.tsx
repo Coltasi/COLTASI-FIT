@@ -87,9 +87,10 @@ export default async function TrainPreviewPage({
           if (!ex) return null;
           const last = lastByExercise.get(ex.id);
           return (
-            <div
+            <Link
               key={ex.id}
-              className="border-border bg-surface rounded-[14px] border px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_4px_12px_rgba(0,0,0,0.03)]"
+              href={`/train/exercise/${ex.id}`}
+              className="border-border bg-surface block rounded-[14px] border px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.03),0_4px_12px_rgba(0,0,0,0.03)]"
             >
               <p className="text-[16px] font-semibold">{ex.name}</p>
               <p className="text-muted text-[13px]">
@@ -98,7 +99,7 @@ export default async function TrainPreviewPage({
                   ? ` · last ${last.weight} kg (${formatShortDate(last.date)})`
                   : ""}
               </p>
-            </div>
+            </Link>
           );
         })}
       </div>

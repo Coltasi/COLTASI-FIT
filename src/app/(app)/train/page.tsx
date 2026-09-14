@@ -91,22 +91,27 @@ export default async function TrainPage() {
 
   return (
     <div className="px-5 pt-[30px]">
-      <div className="flex items-center gap-2.5">
-        <Link href="/">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Link href="/">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M15 5l-7 7 7 7" />
+            </svg>
+          </Link>
+          <span className="text-muted text-[15px]">Train</span>
+        </div>
+        <Link href="/train/history" className="text-blue text-[13px] font-semibold">
+          History →
         </Link>
-        <span className="text-muted text-[15px]">Train</span>
       </div>
       <h1 className="font-display mb-4.5 mt-1 text-2xl font-extrabold tracking-tight">
         Choose today&apos;s session
