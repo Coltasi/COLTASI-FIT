@@ -24,7 +24,9 @@ export default async function OverviewPage() {
   if (!user) return null; // proxy.ts already redirects unauthenticated requests
 
   const today = todayIso();
-  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const weekAgoDate = new Date();
+  weekAgoDate.setDate(weekAgoDate.getDate() - 6);
+  const weekAgo = weekAgoDate.toISOString().slice(0, 10);
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
@@ -224,7 +226,7 @@ export default async function OverviewPage() {
           <p className="text-muted text-[13px]">No sleep logged yet.</p>
         )}
         <div className="mt-2.5 text-right">
-          <Link href="/log" className="text-blue text-[13px] font-semibold">
+          <Link href="/log/sleep" className="text-blue text-[13px] font-semibold">
             Log sleep →
           </Link>
         </div>
