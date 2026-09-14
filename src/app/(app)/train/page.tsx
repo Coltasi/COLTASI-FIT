@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { StartCustomButton } from "./start-custom-button";
 
 function formatShortDate(iso: string) {
   return new Intl.DateTimeFormat("en-US", {
@@ -139,12 +140,7 @@ export default async function TrainPage() {
         Custom
       </p>
       <div className="flex flex-col gap-3 pb-6">
-        <div className="border-muted-2 rounded-[14px] border border-dashed bg-surface px-4 py-3.5 opacity-70">
-          <p className="text-[16px] font-semibold">Custom Workout</p>
-          <p className="text-muted text-[13px]">
-            Build-it-as-you-go sessions aren&apos;t built yet.
-          </p>
-        </div>
+        <StartCustomButton />
       </div>
     </div>
   );

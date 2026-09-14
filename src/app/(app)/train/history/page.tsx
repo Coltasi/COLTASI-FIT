@@ -31,30 +31,36 @@ export default async function TrainHistoryPage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [{ data: sessions }, { data: days }] = await Promise.all([
-    supabase
-      .from("workout_sessions")
-      .select("id, session_date, session_type, split_day, completed_at")
-      .eq("user_id", user.id)
-      .order("session_date", { ascending: false })
-      .order("started_at", { ascending: false })
-      .limit(50),
-    supabase.from("program_days").select("name, program_exercises(count)"),
-  ]);
-
-  const totalExercisesByDay = new Map<string, number>();
-  for (const d of days ?? []) {
-    const count = (d.program_exercises as unknown as { count: number }[] | null)?.[0]?.count ?? 0;
-    totalExercisesByDay.set(d.name, count);
-  }
+  const { data: sessions } = await supabase
+    .from("workout_sessions")
+    .select("id, session_date, session_type, split_day, completed_at")
+    .eq("user_id", user.id)
+    .order("session_date", { ascending: false })
+    .order("started_at", { ascending: false })
+    .limit(50);
 
   const sessionIds = (sessions ?? []).map((s) => s.id);
-  const { data: sets } = sessionIds.length
-    ? await supabase
-        .from("workout_sets")
-        .select("session_id, exercise_id, completed")
-        .in("session_id", sessionIds)
-    : { data: [] };
+  const [{ data: sets }, { data: sessionExercises }] = await Promise.all([
+    sessionIds.length
+      ? supabase
+          .from("workout_sets")
+          .select("session_id, exercise_id, completed")
+          .in("session_id", sessionIds)
+      : Promise.resolve({ data: [] }),
+    sessionIds.length
+      ? supabase.from("session_exercises").select("session_id").in("session_id", sessionIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  // Exercise count actually in each session (its own editable list), not the
+  // program template's fixed count — this stays right even after edits.
+  const totalExercisesBySession = new Map<string, number>();
+  for (const se of sessionExercises ?? []) {
+    totalExercisesBySession.set(
+      se.session_id,
+      (totalExercisesBySession.get(se.session_id) ?? 0) + 1,
+    );
+  }
 
   const bySession = new Map<string, Map<string, { total: number; completed: number }>>();
   for (const s of sets ?? []) {
@@ -116,7 +122,7 @@ export default async function TrainHistoryPage() {
                 : s.completed_at
                   ? TAGS.completed
                   : TAGS.inProgress;
-            const total = s.split_day ? (totalExercisesByDay.get(s.split_day) ?? 0) : 0;
+            const total = totalExercisesBySession.get(s.id) ?? 0;
             const done = completedExerciseCount(s.id);
 
             return (
@@ -127,7 +133,7 @@ export default async function TrainHistoryPage() {
               >
                 <div>
                   <p className="text-[16px] font-semibold">
-                    {s.split_day ?? "Workout"}
+                    {s.split_day ?? (s.session_type === "custom" ? "Custom Workout" : "Workout")}
                   </p>
                   <p className="text-muted text-[13px]">
                     {formatShortDate(s.session_date)}
