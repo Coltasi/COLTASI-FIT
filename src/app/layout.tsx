@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { RegisterServiceWorker } from "@/components/register-sw";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/archivo";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-bg text-text">
+        <RegisterServiceWorker />
         {children}
       </body>
     </html>
