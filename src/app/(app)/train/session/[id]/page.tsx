@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { ExerciseRow } from "./exercise-row";
+import { ExerciseRow, type SessionSet } from "./exercise-row";
 import { FlagRow } from "./flag-row";
 import { FinishButton } from "./finish-button";
 
@@ -47,11 +47,15 @@ export default async function TrainSessionPage({
     .filter((eid): eid is string => !!eid);
 
   const [{ data: sets }, { data: history }] = await Promise.all([
-    supabase.from("workout_sets").select("*").eq("session_id", id),
+    supabase
+      .from("workout_sets")
+      .select("*")
+      .eq("session_id", id)
+      .order("set_number"),
     exerciseIds.length
       ? supabase
           .from("workout_sets")
-          .select("exercise_id, weight_kg, reps, workout_sessions(session_date)")
+          .select("exercise_id, set_number, weight_kg, reps, workout_sessions(session_date)")
           .neq("session_id", id)
           .in("exercise_id", exerciseIds)
           .eq("completed", true)
@@ -60,22 +64,22 @@ export default async function TrainSessionPage({
       : Promise.resolve({ data: [] }),
   ]);
 
-  const setsByExercise = new Map<string, { weight_kg: number | null; reps: number | null; completed: boolean }[]>();
+  const setsByExercise = new Map<string, { set_number: number; weight_kg: number | null; reps: number | null; completed: boolean }[]>();
   for (const s of sets ?? []) {
     const arr = setsByExercise.get(s.exercise_id) ?? [];
     arr.push(s);
     setsByExercise.set(s.exercise_id, arr);
   }
 
-  const lastByExercise = new Map<string, { weight: number; reps: number; date: string }>();
+  // Per-(exercise, set number) history, not just per-exercise — RPT days use a
+  // different weight on each set, so "last time" needs to match the same set
+  // number, not just the same exercise.
+  const lastBySet = new Map<string, { weight: number; reps: number; date: string }>();
   for (const h of history ?? []) {
+    const key = `${h.exercise_id}:${h.set_number}`;
     const s = h.workout_sessions as unknown as { session_date: string } | null;
-    if (!lastByExercise.has(h.exercise_id) && s) {
-      lastByExercise.set(h.exercise_id, {
-        weight: h.weight_kg!,
-        reps: h.reps!,
-        date: s.session_date,
-      });
+    if (!lastBySet.has(key) && s) {
+      lastBySet.set(key, { weight: h.weight_kg!, reps: h.reps!, date: s.session_date });
     }
   }
 
@@ -92,10 +96,10 @@ export default async function TrainSessionPage({
         {!isDone && (
           <Link
             href={`/train/session/${session.id}/edit`}
-            className="text-blue flex items-center gap-1.5 text-[14px] font-semibold"
+            className="text-blue flex items-center gap-1.5 rounded-full border border-[#D7E7EF] bg-[#E7F1F7] px-3 py-1.5 text-[13px] font-semibold"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
-            Edit
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+            Edit workout
           </Link>
         )}
       </div>
@@ -117,19 +121,27 @@ export default async function TrainSessionPage({
         {(sessionExercises ?? []).map((se) => {
           const ex = se.exercises as unknown as { id: string; name: string } | null;
           if (!ex) return null;
-          const exSets = setsByExercise.get(ex.id) ?? [];
-          const completed = exSets.length > 0 && exSets.every((s) => s.completed);
-          const last = lastByExercise.get(ex.id);
+          const rawSets = setsByExercise.get(ex.id) ?? [];
           const targetLabel = se.target_rep_range
             ? `${se.target_sets} × ${se.target_rep_range}`
             : `${se.target_sets} sets`;
-          const lastLabel = last
-            ? `last time ${last.weight} kg (${formatShortDate(last.date)})`
+
+          const sessionSets: SessionSet[] = rawSets.map((s) => {
+            const last = lastBySet.get(`${ex.id}:${s.set_number}`);
+            return {
+              setNumber: s.set_number,
+              weightKg: s.weight_kg,
+              reps: s.reps,
+              completed: s.completed,
+              lastWeight: last?.weight ?? null,
+              lastReps: last?.reps ?? null,
+            };
+          });
+
+          const set1Last = lastBySet.get(`${ex.id}:1`);
+          const lastLabel = set1Last
+            ? `last time ${set1Last.weight} kg (${formatShortDate(set1Last.date)})`
             : null;
-          const loggedLabel =
-            completed && exSets[0]?.weight_kg != null
-              ? `${targetLabel} · ${exSets[0].weight_kg} kg × ${exSets[0].reps}`
-              : null;
 
           return (
             <ExerciseRow
@@ -138,11 +150,8 @@ export default async function TrainSessionPage({
               exerciseId={ex.id}
               name={ex.name}
               targetLabel={targetLabel}
-              completed={completed}
-              loggedLabel={loggedLabel}
+              sets={sessionSets}
               lastLabel={lastLabel}
-              defaultWeight={exSets[0]?.weight_kg ?? last?.weight ?? null}
-              defaultReps={exSets[0]?.reps ?? last?.reps ?? null}
             />
           );
         })}
@@ -179,8 +188,7 @@ export default async function TrainSessionPage({
       </div>
 
       <p className="text-muted mt-3.5 text-center text-[13px]">
-        Checkmarks here are just for marking sets done — tap a row to log
-        weight and reps.
+        Enter weight and reps per set, tap ✓ to log it.
       </p>
 
       {!isDone && (

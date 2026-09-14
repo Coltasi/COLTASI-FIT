@@ -105,9 +105,14 @@ export async function startCustomSession() {
   redirect(`/train/session/${session.id}/edit?new=1`);
 }
 
-export async function logExercise(
+// Per-set logging: BWS-style tracking where each set gets its own weight/reps
+// (RPT days in particular use a different weight per set, so "log the whole
+// exercise at once with one value" was never going to be right).
+
+export async function logSet(
   sessionId: string,
   exerciseId: string,
+  setNumber: number,
   weightKg: number,
   reps: number,
 ) {
@@ -116,17 +121,23 @@ export async function logExercise(
     .from("workout_sets")
     .update({ weight_kg: weightKg, reps, completed: true })
     .eq("session_id", sessionId)
-    .eq("exercise_id", exerciseId);
+    .eq("exercise_id", exerciseId)
+    .eq("set_number", setNumber);
   revalidatePath(`/train/session/${sessionId}`);
 }
 
-export async function reopenExercise(sessionId: string, exerciseId: string) {
+export async function reopenSet(
+  sessionId: string,
+  exerciseId: string,
+  setNumber: number,
+) {
   const supabase = await createClient();
   await supabase
     .from("workout_sets")
     .update({ completed: false })
     .eq("session_id", sessionId)
-    .eq("exercise_id", exerciseId);
+    .eq("exercise_id", exerciseId)
+    .eq("set_number", setNumber);
   revalidatePath(`/train/session/${sessionId}`);
 }
 
