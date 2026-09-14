@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/actions/auth";
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -259,11 +258,6 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      <form action={signOut} className="mt-8 pb-4 text-center">
-        <button type="submit" className="text-danger text-[13px] font-semibold">
-          Sign out
-        </button>
-      </form>
     </div>
   );
 }
