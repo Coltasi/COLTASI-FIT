@@ -1,18 +1,32 @@
 # Coltasi Fit
 
-Workout tracking, nutrition logging, and body composition progress, built
-around the Built With Science program. Next.js (App Router) + Supabase
-(Postgres, Auth, Storage).
+Personal training app: The Split (Upper, Lower, Push, Pull, Legs) plus a kettlebell day,
+per-set logging with last-time weights, weekly weigh-ins, Tanita scans, sleep, and a Coach
+that writes a read after every session and Monday weigh-in.
 
-Separate, from-scratch build — no code or data crossover with the old
-`bws-shred-app` repo.
+Design source of truth: the Claude Design canvas "Coltasi Fit: App design v3".
+Brand: Coltasa brand kit v1.1 (Deep Navy, Kingfisher, Lagoon, Ember, Rust, Cream, Slate,
+Stone, Mist; Montserrat). Light mode only for now.
 
 ## Stack
 
-- Next.js 16 (App Router, TypeScript, Turbopack)
-- Tailwind CSS v4, design tokens ported from the wireframe canvas
-  (Archivo + Inter, self-hosted via Fontsource — no external font requests)
-- Supabase: Postgres + Row Level Security, Auth, Storage (scan/meal photos)
+- Next.js 16 (App Router, server actions, Turbopack), TypeScript
+- Supabase: Postgres with row level security, Auth, Storage (`scan-photos`)
+- Montserrat self-hosted via `@fontsource/montserrat`
+- Installable PWA (`public/manifest.json`, `public/sw.js`)
+
+## Environment
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+ANTHROPIC_API_KEY=        # optional: Coach uses Claude Haiku when set, simple rules otherwise
+```
+
+## Database
+
+`supabase/migrations/` holds the schema. `20261001140000_fresh_schema_v3.sql` creates
+everything from scratch, including the program seed.
 
 ## Local development
 
@@ -20,18 +34,3 @@ Separate, from-scratch build — no code or data crossover with the old
 npm install
 npm run dev
 ```
-
-Requires `.env.local` (gitignored) with:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
-
-## Status
-
-Scaffolded with real Supabase Auth (email/password, household invite codes)
-and an initial schema (profiles, households, body comp scans + photos,
-workouts, meals, sleep, nutrition targets), all RLS-protected per-user.
-Actual app screens (workout tracking, nutrition logging, progress, coach)
-are still to be built — this is the foundation.
