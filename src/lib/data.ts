@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Units } from "@/lib/units";
@@ -14,19 +15,28 @@ export type Profile = {
   notify_weigh_in: boolean; weigh_in_time: string; notify_workout: boolean; workout_time: string;
 };
 
-export async function getContext() {
+/**
+ * Per-request context. getClaims() verifies the session JWT locally (no round trip to
+ * Supabase Auth when the project uses asymmetric signing keys); cache() dedupes it within
+ * one render.
+ */
+export const getContext = cache(async () => {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  const tz = await getTz();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) redirect("/login");
+  const user = { id: claims.sub as string, email: (claims.email as string | undefined) ?? null };
+  const [{ data: profile }, tz] = await Promise.all([
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    getTz(),
+  ]);
   const today = todayIn(tz);
   return {
     supabase, user, tz, today,
     profile: (profile ?? { id: user.id, units: "metric" }) as Profile,
     units: ((profile?.units as Units) ?? "metric") as Units,
   };
-}
+});
 
 export type ProgramDay = {
   id: string; program: "split" | "kettlebell"; name: string; day_order: number;
@@ -85,24 +95,19 @@ export type WeekState = {
 };
 
 /** Which split days are done this week, and which one is up next. */
-export async function getWeekState(supabase: Supa, today: string, program: ProgramDay[]): Promise<WeekState> {
+export async function getWeekState(supabase: Supa, today: string, program: ProgramDay[] | Promise<ProgramDay[]>): Promise<WeekState> {
   const monday = mondayOf(today);
-  const split = program.filter((d) => d.program === "split");
-  const { data } = await supabase
-    .from("sessions")
-    .select("id, title, day_id, session_date, status, kind")
-    .gte("session_date", monday)
-    .order("started_at", { ascending: false });
+  const [{ data }, { data: open }, prog] = await Promise.all([
+    supabase.from("sessions").select("id, title, day_id, session_date, status, kind").gte("session_date", monday).eq("status", "done"),
+    supabase.from("sessions").select("id, title").eq("status", "in_progress").order("started_at", { ascending: false }).limit(1),
+    Promise.resolve(program),
+  ]);
   const done = new Map<string, string>();
-  let inProgress: WeekState["inProgress"] = null;
-  for (const s of (data ?? []) as any[]) {
-    if (s.status === "done" && s.kind === "split" && s.day_id && !done.has(s.day_id)) done.set(s.day_id, s.session_date);
-    if (s.status === "in_progress" && !inProgress) inProgress = { id: s.id, title: s.title };
+  for (const s of ((data ?? []) as any[]).sort((a, b) => (a.session_date < b.session_date ? 1 : -1))) {
+    if (s.kind === "split" && s.day_id && !done.has(s.day_id)) done.set(s.day_id, s.session_date);
   }
-  if (!inProgress) {
-    const { data: open } = await supabase.from("sessions").select("id, title").eq("status", "in_progress").order("started_at", { ascending: false }).limit(1);
-    if (open?.length) inProgress = { id: open[0].id, title: open[0].title };
-  }
+  const inProgress = open?.length ? { id: open[0].id as string, title: open[0].title as string } : null;
+  const split = prog.filter((d) => d.program === "split");
   const nextDay = split.find((d) => !done.has(d.id)) ?? split[0] ?? null;
   return { monday, done, nextDay, inProgress };
 }

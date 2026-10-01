@@ -9,9 +9,11 @@ import { LineChart } from "../../parts";
 export default async function ExercisePage({ params }: PageProps<"/progress/exercise/[id]">) {
   const { id } = await params;
   const { supabase, units } = await getContext();
-  const { data: ex } = await supabase.from("exercises").select("id, name, modality").eq("id", id).single();
+  const [{ data: ex }, [hist]] = await Promise.all([
+    supabase.from("exercises").select("id, name, modality").eq("id", id).single(),
+    getLiftHistory(supabase, id),
+  ]);
   if (!ex) notFound();
-  const [hist] = await getLiftHistory(supabase, id);
   const sessions = hist?.sessions ?? [];
   const tops = sessions.filter((s) => s.top != null) as { date: string; top: number; sets: any[] }[];
   const best = tops.length ? Math.max(...tops.map((s) => s.top)) : null;

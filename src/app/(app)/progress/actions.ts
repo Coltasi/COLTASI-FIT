@@ -1,17 +1,19 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
 import { writeCoachRead } from "@/lib/coach";
+import { currentUser } from "@/lib/supabase/user";
 
 export type FormState = { error: string | null; ok?: boolean };
 
 async function ctx() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser(supabase);
   if (!user) redirect("/login");
   return { supabase, user };
 }
@@ -27,11 +29,13 @@ export async function logWeighIn(_prev: FormState, fd: FormData): Promise<FormSt
     .select("id")
     .single();
   if (error) return { error: error.message };
-  try {
-    await writeCoachRead(supabase, { kind: "weigh_in", sourceId: data?.id });
-  } catch (e) {
-    console.error("Coach read failed", e);
-  }
+  after(async () => {
+    try {
+      await writeCoachRead(supabase, { kind: "weigh_in", sourceId: data?.id });
+    } catch (e) {
+      console.error("Coach read failed", e);
+    }
+  });
   revalidatePath("/", "layout");
   return { error: null, ok: true };
 }

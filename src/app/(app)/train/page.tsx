@@ -8,16 +8,17 @@ import { StartForm } from "./start-form";
 export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const sp = await searchParams;
   const { supabase, today, units } = await getContext();
-  const program = await getProgram(supabase);
-  const week = await getWeekState(supabase, today, program);
+  const programP = getProgram(supabase);
+  const [program, week] = await Promise.all([programP, getWeekState(supabase, today, programP)]);
   const split = program.filter((d) => d.program === "split");
   const chosenId = typeof sp.day === "string" ? sp.day : undefined;
   const day = program.find((d) => d.id === chosenId) ?? week.nextDay;
-  const last = await getLastTimes(supabase, day ? day.exercises.map((e) => e.exercise_id) : []);
-
-  const { data: lastOfDay } = day
-    ? await supabase.from("sessions").select("session_date").eq("day_id", day.id).eq("status", "done").order("session_date", { ascending: false }).limit(1)
-    : { data: null };
+  const [last, { data: lastOfDay }] = await Promise.all([
+    getLastTimes(supabase, day ? day.exercises.map((e) => e.exercise_id) : []),
+    day
+      ? supabase.from("sessions").select("session_date").eq("day_id", day.id).eq("status", "done").order("session_date", { ascending: false }).limit(1)
+      : Promise.resolve({ data: null }),
+  ]);
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const doneCount = split.filter((d) => week.done.has(d.id)).length;
 
@@ -33,7 +34,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         <Link href="/coach" className="card cream" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", color: "var(--navy)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/brand/coltasi-bird.svg" alt="" width={26} height={26} />
-          <span className="ln" style={{ flexGrow: 1 }}>Session saved. Your Coach read is ready.</span>
+          <span className="ln" style={{ flexGrow: 1 }}>Session saved. Coach is writing your read.</span>
         </Link>
       ) : null}
 

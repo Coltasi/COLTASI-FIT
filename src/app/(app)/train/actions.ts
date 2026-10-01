@@ -1,15 +1,17 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
 import { writeCoachRead } from "@/lib/coach";
+import { currentUser } from "@/lib/supabase/user";
 
 async function ctx() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser(supabase);
   if (!user) redirect("/login");
   return { supabase, user };
 }
@@ -158,11 +160,14 @@ export async function finishSession(sessionId: string) {
   const { supabase } = await ctx();
   // Unticked sets stay in the session but never count as logged (only done sets feed history).
   await supabase.from("sessions").update({ status: "done", finished_at: new Date().toISOString() }).eq("id", sessionId);
-  try {
-    await writeCoachRead(supabase, { kind: "session", sourceId: sessionId });
-  } catch (e) {
-    console.error("Coach read failed", e);
-  }
+  // Write the Coach read after the response so finishing feels instant.
+  after(async () => {
+    try {
+      await writeCoachRead(supabase, { kind: "session", sourceId: sessionId });
+    } catch (e) {
+      console.error("Coach read failed", e);
+    }
+  });
   revalidatePath("/", "layout");
   redirect("/train?finished=1");
 }

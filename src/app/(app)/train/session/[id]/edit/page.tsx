@@ -8,14 +8,16 @@ import { AddExerciseRow } from "./add-row";
 export default async function EditSessionPage({ params }: PageProps<"/train/session/[id]/edit">) {
   const { id } = await params;
   const { supabase } = await getContext();
-  const { data: s } = await supabase
-    .from("sessions")
-    .select("id, title, status, session_exercises(id, position, target_sets, rep_range, exercises(name), session_sets(done))")
-    .eq("id", id)
-    .single();
+  const [{ data: s }, { data: allEx }] = await Promise.all([
+    supabase
+      .from("sessions")
+      .select("id, title, status, session_exercises(id, position, target_sets, rep_range, exercises(name), session_sets(done))")
+      .eq("id", id)
+      .single(),
+    supabase.from("exercises").select("name").order("name"),
+  ]);
   if (!s) notFound();
   const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
-  const { data: allEx } = await supabase.from("exercises").select("name").order("name");
 
   return (
     <main className="screen">

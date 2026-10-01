@@ -16,13 +16,14 @@ function ago(iso: string) {
 
 export default async function CoachPage() {
   const { supabase, today, units, profile, tz } = await getContext();
-  const [program, { data: reads }, { data: wis }, { data: sleeps }] = await Promise.all([
-    getProgram(supabase),
+  const programP = getProgram(supabase);
+  const [program, week, { data: reads }, { data: wis }, { data: sleeps }] = await Promise.all([
+    programP,
+    getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("*").order("created_at", { ascending: false }).limit(12),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(4),
     supabase.from("sleep_logs").select("hours").gte("night_of", addDays(today, -7)),
   ]);
-  const week = await getWeekState(supabase, today, program);
   const split = program.filter((d) => d.program === "split");
   const rate = weeklyRate(((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })));
   const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);

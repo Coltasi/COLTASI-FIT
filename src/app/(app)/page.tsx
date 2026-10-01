@@ -9,9 +9,10 @@ const FEEL: Record<string, string> = { energetic: "woke energetic", rested: "wok
 
 export default async function OverviewPage() {
   const { supabase, today, profile } = await getContext();
-  const program = await getProgram(supabase);
-  const [week, { data: read }, { data: sleeps }] = await Promise.all([
-    getWeekState(supabase, today, program),
+  const programP = getProgram(supabase);
+  const [program, week, { data: read }, { data: sleeps }] = await Promise.all([
+    programP,
+    getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, lifting, weight, recovery").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling").gte("night_of", addDays(today, -7)).order("night_of"),
   ]);

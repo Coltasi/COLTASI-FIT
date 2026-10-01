@@ -27,9 +27,8 @@ export async function updateSession(request: NextRequest) {
 
   // Refreshes the auth token if needed. Do not add logic between
   // createServerClient and this call — it can break session refresh.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ? data.claims : null;
 
   const publicPaths = ["/login", "/signup", "/auth"];
   const isPublicPath = publicPaths.some((path) =>

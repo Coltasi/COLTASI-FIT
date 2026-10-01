@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { currentUser } from "@/lib/supabase/user";
 
 const FEELINGS = ["energetic", "rested", "groggy", "tired", "exhausted"];
 const FLAGS = ["interrupted", "woke_early", "restless", "nightmares", "good_dreams", "slept_through"];
 
 export async function saveSleep(_prev: { error: string | null }, fd: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser(supabase);
   if (!user) redirect("/login");
   const hours = Number(fd.get("hours"));
   if (!(hours >= 0 && hours <= 24)) return { error: "Hours should be between 0 and 24." };

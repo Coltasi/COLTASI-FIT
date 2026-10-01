@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { currentUser } from "@/lib/supabase/user";
 
 export async function GET() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser(supabase);
   if (!user) return new Response("Not signed in", { status: 401 });
   const tables = ["sessions", "session_exercises", "session_sets", "weigh_ins", "scans", "sleep_logs", "coach_reads"] as const;
   const out: Record<string, unknown> = { exported_at: new Date().toISOString(), email: user.email };

@@ -31,7 +31,7 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
         <button type="submit" className="btn small" style={{ height: 48 }} disabled={pending}>{pending ? "…" : "Log"}</button>
       </div>
       {state.error ? <p className="err" style={{ marginTop: 8 }}>{state.error}</p> : null}
-      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--kingfisher-text)", fontWeight: 600 }}>Logged. Coach has a new read for you.</p> : null}
+      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--kingfisher-text)", fontWeight: 600 }}>Logged. Coach is writing your read.</p> : null}
     </form>
   );
 }

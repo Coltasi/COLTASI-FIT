@@ -1,5 +1,6 @@
 import type { Supa } from "@/lib/data";
 import { daysBetween } from "@/lib/dates";
+import { currentUser } from "@/lib/supabase/user";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
 
@@ -27,7 +28,7 @@ type Facts = {
 };
 
 async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceId?: string): Promise<Facts> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser(supabase);
   const [{ data: prof }, { data: wis }, { data: sl }] = await Promise.all([
     supabase.from("profiles").select("target_rate_kg_week, target_kcal").eq("id", user?.id ?? "").single(),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(6),
