@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { siteUrl } from "@/lib/site-url";
 
 export type ActionState = { error: string | null };
 
@@ -19,6 +20,7 @@ export async function signup(
     email,
     password,
     options: {
+      emailRedirectTo: `${await siteUrl()}/auth/confirm?next=/`,
       data: {
         display_name: name,
         ...(inviteCode ? { household_invite_code: inviteCode } : {}),
