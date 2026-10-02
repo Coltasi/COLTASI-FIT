@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { BrandRow, CoachMark } from "@/components/ui";
+import { InstallCard } from "@/components/install-card";
 import { IconChevron, IconGear } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDow, fmtLong } from "@/lib/dates";
@@ -34,6 +35,8 @@ export default async function OverviewPage() {
         <p className="cap" style={{ fontWeight: 600 }}>{fmtLong(today)}</p>
         <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>Overview</h1>
       </div>
+
+      <InstallCard />
 
       <div className="card cream" style={{ padding: 16 }}>
         <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}><CoachMark />Coach</p>
