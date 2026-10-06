@@ -102,7 +102,7 @@ export default async function SettingsPage() {
             <p style={{ fontSize: 15, fontWeight: 600 }}>Export my data</p><IconChevron />
           </a>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>About Coltasi Fit</p><span className="cap">v3</span>
+            <p style={{ fontSize: 15, fontWeight: 600 }}>About Coltasi</p><span className="cap">v3</span>
           </div>
         </div>
       </div>

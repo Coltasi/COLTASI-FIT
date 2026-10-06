@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Coltasi Fit v3 design tokens, from the Coltasa brand kit v1.1
-   and the Claude Design canvas "Coltasi Fit: App design v3". Light mode only. */
+/* Coltasi v3 design tokens, from the Coltasa brand kit v1.1
+   and the Claude Design canvas "Coltasi: App design v3". Light mode only. */
 :root {
   --navy: #153261;
   --navy-deep: #0e2447;

@@ -10,7 +10,7 @@ export default function ResetPasswordPage() {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/coltasi-bird.svg" alt="" width={34} height={34} />
-        <span className="disp" style={{ fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>
+        <span className="disp" style={{ fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi</span>
       </div>
       <h1 className="disp" style={{ fontSize: 26 }}>Set a new password</h1>
       <form action={action} style={{ display: "flex", flexDirection: "column", gap: 14 }}>

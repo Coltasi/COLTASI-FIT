@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
 /**
- * Shows an "Install Coltasi Fit" card when the app is open in a normal Chrome tab.
+ * Shows an "Install Coltasi" card when the app is open in a normal Chrome tab.
  * Uses Chrome's real install flow (beforeinstallprompt), which installs it as an app
  * that opens full-screen, instead of a home-screen shortcut that opens a tab.
  */
@@ -39,7 +39,7 @@ export function InstallCard() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/icon-192.png" alt="" width={44} height={44} style={{ borderRadius: 12 }} />
         <div style={{ flexGrow: 1 }}>
-          <p className="ln">Install Coltasi Fit</p>
+          <p className="ln">Install Coltasi</p>
           <p className="cap">Opens full-screen like a normal app, not in a Chrome tab.</p>
         </div>
       </div>
