@@ -4,12 +4,11 @@ import { InstallCard } from "@/components/install-card";
 import { IconChevron, IconGear } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDow, fmtLong } from "@/lib/dates";
-import { fmtInt } from "@/lib/units";
 
 const FEEL: Record<string, string> = { energetic: "woke energetic", rested: "woke rested", groggy: "woke groggy", tired: "woke tired", exhausted: "woke exhausted" };
 
 export default async function OverviewPage() {
-  const { supabase, today, profile } = await getContext();
+  const { supabase, today } = await getContext();
   const programP = getProgram(supabase);
   const [program, week, { data: read }, { data: sleeps }] = await Promise.all([
     programP,
@@ -24,7 +23,6 @@ export default async function OverviewPage() {
   const byNight = new Map(((sleeps ?? []) as any[]).map((s) => [s.night_of, Number(s.hours)]));
   const maxH = Math.max(9, ...[...byNight.values()]);
   const latest = read?.[0];
-  const deficit = profile.tdee_kcal && profile.target_kcal ? profile.tdee_kcal - profile.target_kcal : null;
   const day = week.nextDay;
   const todayDone = day ? week.done.get(day.id) === today : false;
 
@@ -44,28 +42,6 @@ export default async function OverviewPage() {
           {latest ? [latest.headline, latest.weight ?? latest.lifting].filter(Boolean).join(" ") : "Your first Coach read shows up after your first session or Monday weigh-in."}
         </p>
         <div style={{ textAlign: "right", marginTop: 8 }}><Link href="/coach" style={{ fontSize: 13, fontWeight: 600 }}>Ask Coach</Link></div>
-      </div>
-
-      <div className="card" style={{ padding: "14px 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab">Energy · daily</p>
-          {deficit ? <p className="cap" style={{ fontSize: 12 }}>{fmtInt(Math.abs(deficit))} kcal {deficit > 0 ? "deficit" : "surplus"}</p> : null}
-        </div>
-        {profile.tdee_kcal || profile.target_kcal ? (
-          <>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8, marginTop: 8 }}>
-              <div><span className="num" style={{ fontSize: 22 }}>{fmtInt(profile.tdee_kcal)}</span><p className="cap">TDEE</p></div>
-              <div><span className="num" style={{ fontSize: 22, color: "var(--kingfisher-text)" }}>{fmtInt(profile.target_kcal)}</span><p className="cap">Target kcal</p></div>
-            </div>
-            {profile.protein_g || profile.carbs_g || profile.fat_g ? (
-              <p className="cap" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line-soft)" }}>
-                Targets · <b style={{ color: "var(--navy)", fontWeight: 600 }}>{profile.protein_g ?? "–"}g</b> protein · <b style={{ color: "var(--navy)", fontWeight: 600 }}>{profile.carbs_g ?? "–"}g</b> carbs · <b style={{ color: "var(--navy)", fontWeight: 600 }}>{profile.fat_g ?? "–"}g</b> fat
-              </p>
-            ) : null}
-          </>
-        ) : (
-          <p className="cap" style={{ marginTop: 8 }}>Add your TDEE and calorie target in <Link href="/settings/profile">Settings</Link>.</p>
-        )}
       </div>
 
       <div className="card" style={{ padding: "14px 16px" }}>
