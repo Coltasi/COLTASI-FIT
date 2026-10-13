@@ -13,6 +13,7 @@ export type Profile = {
   phase: string; target_rate_kg_week: number | null; tdee_kcal: number | null; target_kcal: number | null;
   protein_g: number | null; carbs_g: number | null; fat_g: number | null; kettlebells_kg: number[];
   notify_weigh_in: boolean; weigh_in_time: string; notify_workout: boolean; workout_time: string;
+  notify_sleep: boolean; sleep_time: string;
 };
 
 /**
@@ -38,25 +39,56 @@ export const getContext = cache(async () => {
   };
 });
 
+export type PlanLift = {
+  exercise_id: string; name: string; position: number; target_sets: number; rep_range: string;
+  sub_for?: { id: string; name: string } | null; added?: boolean;
+};
 export type ProgramDay = {
   id: string; program: "split" | "kettlebell"; name: string; day_order: number;
-  exercises: { exercise_id: string; name: string; position: number; target_sets: number; rep_range: string }[];
+  /** What the next session builds from: the user's plan override when one exists, else the template. */
+  exercises: PlanLift[];
+  template: PlanLift[];
+  overridden: boolean;
 };
 
+/** The program, with each day's lifts replaced by the user's plan override (swaps and additions) when there is one. */
 export async function getProgram(supabase: Supa): Promise<ProgramDay[]> {
-  const { data } = await supabase
-    .from("program_days")
-    .select("id, program, name, day_order, program_exercises(exercise_id, position, target_sets, rep_range, exercises(name))")
-    .order("program")
-    .order("day_order");
+  const [{ data }, { data: ov }] = await Promise.all([
+    supabase
+      .from("program_days")
+      .select("id, program, name, day_order, program_exercises(exercise_id, position, target_sets, rep_range, exercises(name))")
+      .order("program")
+      .order("day_order"),
+    supabase
+      .from("plan_overrides")
+      .select("day_id, position, exercise_id, target_sets, rep_range, sub_for, added, exercises!plan_overrides_exercise_id_fkey(name), sub:exercises!plan_overrides_sub_for_fkey(id, name)")
+      .order("position"),
+  ]);
+  const overrides = new Map<string, PlanLift[]>();
+  for (const r of (ov ?? []) as any[]) {
+    if (!overrides.has(r.day_id)) overrides.set(r.day_id, []);
+    overrides.get(r.day_id)!.push({
+      exercise_id: r.exercise_id, name: r.exercises?.name ?? "", position: r.position, target_sets: r.target_sets,
+      rep_range: r.rep_range ?? "", sub_for: r.sub ? { id: r.sub.id, name: r.sub.name } : null, added: r.added,
+    });
+  }
   return ((data ?? []) as any[])
-    .map((d) => ({
-      id: d.id, program: d.program, name: d.name, day_order: d.day_order,
-      exercises: (d.program_exercises ?? [])
+    .map((d) => {
+      const template: PlanLift[] = (d.program_exercises ?? [])
         .map((pe: any) => ({ exercise_id: pe.exercise_id, name: pe.exercises?.name ?? "", position: pe.position, target_sets: pe.target_sets, rep_range: pe.rep_range }))
-        .sort((a: any, b: any) => a.position - b.position),
-    }))
+        .sort((a: PlanLift, b: PlanLift) => a.position - b.position);
+      const over = overrides.get(d.id);
+      return { id: d.id, program: d.program, name: d.name, day_order: d.day_order, template, exercises: over?.length ? over : template, overridden: !!over?.length };
+    })
     .sort((a, b) => (a.program === b.program ? a.day_order - b.day_order : a.program === "split" ? -1 : 1));
+}
+
+export type FinisherMove = { name: string; dose: string; done?: boolean };
+export type Finisher = { id: string; name: string; moves: FinisherMove[]; is_default: boolean };
+
+export async function getFinishers(supabase: Supa): Promise<Finisher[]> {
+  const { data } = await supabase.from("finishers").select("id, name, moves, is_default").order("position");
+  return ((data ?? []) as any[]).map((f) => ({ id: f.id, name: f.name, moves: (f.moves ?? []) as FinisherMove[], is_default: f.is_default }));
 }
 
 export type LastTime = { date: string; top: number | null; sets: { weight_kg: number | null; reps: number | null }[] };
@@ -77,7 +109,8 @@ export async function getLastTimes(supabase: Supa, exerciseIds: string[], exclud
     if (out.has(r.exercise_id)) continue;
     const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no);
     if (!sets.length) continue;
-    const weights = sets.map((s: any) => s.weight_kg).filter((x: any) => x != null).map(Number);
+    // 0 kg means no added weight: it never counts as a top set.
+    const weights = sets.map((s: any) => Number(s.weight_kg)).filter((x: number) => x > 0);
     out.set(r.exercise_id, {
       date: r.sessions.session_date,
       top: weights.length ? Math.max(...weights) : null,

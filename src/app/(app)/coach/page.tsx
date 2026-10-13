@@ -1,6 +1,10 @@
 import { BrandRow, CoachMark } from "@/components/ui";
+import { CoachRead } from "@/components/coach-read";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
+
+/** "Mon, Oct 12" */
+const shortDay = (iso: string) => fmtDay(iso).replace(/^(\w{3}) /, "$1, ");
 import { signed, unit } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
 import { AskBox } from "./ask-box";
@@ -32,7 +36,8 @@ export default async function CoachPage() {
   const avgSleep = sl.length ? sl.reduce((a, b) => a + b) / sl.length : null;
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
   const [latest, ...earlier] = (reads ?? []) as any[];
-  const dayFmt = (iso: string) => fmtDay(new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso)));
+  const dayIso = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
+  const dayFmt = (iso: string) => fmtDay(dayIso(iso));
 
   return (
     <main className="screen" style={{ paddingBottom: 260 }}>
@@ -43,25 +48,17 @@ export default async function CoachPage() {
       </div>
 
       {latest ? (
-        <div className="card cream" style={{ padding: "16px 16px 6px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
-              <CoachMark />{latest.kind === "session" ? "After a session" : "Weigh-in"} · {dayFmt(latest.created_at)}
-            </p>
-            <p className="cap" style={{ fontSize: 12 }}>{ago(latest.created_at)}</p>
-          </div>
-          <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.4, margin: "8px 0 6px" }}>{latest.headline}</p>
-          {[
-            ["Lifting", latest.lifting, "var(--kingfisher)"],
-            ["Weight & diet", latest.weight, "var(--ember)"],
-            ["Recovery", latest.recovery, "var(--lagoon)"],
-          ].filter(([, t]) => t).map(([l, t, c]) => (
-            <div key={l} style={{ display: "grid", gridTemplateColumns: "10px minmax(0,1fr)", gap: 10, padding: "12px 0", borderTop: "1px solid #e6dcc0" }}>
-              <span style={{ width: 10, height: 10, borderRadius: "50%", marginTop: 5, background: c }} />
-              <div><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><p style={{ fontSize: 14, lineHeight: 1.45 }}>{t}</p></div>
+        <CoachRead
+          read={latest}
+          label={
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+              <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
+                <CoachMark />{latest.kind === "session" ? "After a session" : "Weigh-in"} · {shortDay(dayIso(latest.created_at))}
+              </p>
+              <p className="cap" style={{ fontSize: 12, flexShrink: 0, whiteSpace: "nowrap" }}>{ago(latest.created_at)}</p>
             </div>
-          ))}
-        </div>
+          }
+        />
       ) : (
         <div className="card cream" style={{ padding: 16, display: "flex", gap: 10 }}>
           <CoachMark />

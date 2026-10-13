@@ -4,7 +4,7 @@ import { useOptimistic, useTransition } from "react";
 import { setPref } from "./actions";
 import type { Units } from "@/lib/units";
 
-export function PrefToggle({ field, on, label }: { field: "notify_weigh_in" | "notify_workout"; on: boolean; label: string }) {
+export function PrefToggle({ field, on, label }: { field: "notify_sleep" | "notify_weigh_in" | "notify_workout"; on: boolean; label: string }) {
   const [v, setV] = useOptimistic(on);
   const [, start] = useTransition();
   return (

@@ -6,8 +6,9 @@ import { unit, w } from "@/lib/units";
 import { getLiftHistory } from "@/lib/lifts";
 import { LineChart } from "../../parts";
 
-export default async function ExercisePage({ params }: PageProps<"/progress/exercise/[id]">) {
-  const { id } = await params;
+export default async function ExercisePage({ params, searchParams }: PageProps<"/progress/exercise/[id]">) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
+  const fromOverview = sp.from === "overview";
   const { supabase, units } = await getContext();
   const [{ data: ex }, [hist]] = await Promise.all([
     supabase.from("exercises").select("id, name, modality").eq("id", id).single(),
@@ -22,14 +23,17 @@ export default async function ExercisePage({ params }: PageProps<"/progress/exer
   const prDates = new Set<string>();
   for (const s of tops) if (s.top > runningBest) { if (runningBest !== -Infinity) prDates.add(s.date); runningBest = s.top; }
   const x0 = tops[0]?.date;
+  // Logged, but never with a weight: a bodyweight lift.
+  const bw = best == null && sessions.length > 0;
+  const kg = (v: number | null) => (v != null ? <>{w(v, units)}<span style={{ fontSize: 13 }}> {unit(units)}</span></> : bw ? "BW" : "–");
 
   return (
     <main className="screen">
-      <BackHeader href="/progress/lifting" label="Lifting" eyebrow={ex.modality} title={ex.name} />
+      <BackHeader href={fromOverview ? "/" : "/progress/lifting"} label={fromOverview ? "Overview" : "Lifting"} eyebrow={ex.modality} title={ex.name} />
 
       <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
-        <div style={{ padding: "14px 12px" }}><div className="num" style={{ fontSize: 22 }}>{best != null ? w(best, units) : "–"}<span style={{ fontSize: 13 }}> {unit(units)}</span></div><p className="cap">Best</p></div>
-        <div style={{ padding: "14px 12px", borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 22 }}>{first != null ? w(first, units) : "–"}<span style={{ fontSize: 13 }}> {unit(units)}</span></div><p className="cap">First logged</p></div>
+        <div style={{ padding: "14px 12px" }}><div className="num" style={{ fontSize: 22 }}>{kg(best)}</div><p className="cap">Best</p></div>
+        <div style={{ padding: "14px 12px", borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 22 }}>{kg(first)}</div><p className="cap">First logged</p></div>
         <div style={{ padding: "14px 12px", borderLeft: "1px solid var(--line-soft)" }}>
           <div className="num" style={{ fontSize: 22, color: "var(--kingfisher-text)" }}>{best != null && first ? `${Math.round((best / first) * 10) / 10}×` : "–"}</div>
           <p className="cap">Load gained</p>
@@ -47,6 +51,11 @@ export default async function ExercisePage({ params }: PageProps<"/progress/exer
             height={140}
             xLabels={[...new Set(tops.map((s) => fmtMonth(s.date)))]}
           />
+        </div>
+      ) : bw ? (
+        <div className="card" style={{ padding: "16px 16px 12px" }}>
+          <p className="lab" style={{ marginBottom: 10 }}>Top set weight</p>
+          <p className="cap">Bodyweight lift. Track progress by reps in the history below.</p>
         </div>
       ) : null}
 
