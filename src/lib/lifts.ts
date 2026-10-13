@@ -15,7 +15,7 @@ export async function getLiftHistory(supabase: Supa, exerciseId?: string): Promi
     const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no)
       .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps }));
     if (!sets.length) continue;
-    const ws = sets.map((s: any) => s.weight_kg).filter((x: any) => x != null) as number[];
+    const ws = sets.map((s: any) => Number(s.weight_kg)).filter((x: number) => x > 0); // 0 kg = bodyweight
     if (!map.has(r.exercise_id)) map.set(r.exercise_id, { exercise_id: r.exercise_id, name: r.exercises?.name ?? "", sessions: [] });
     map.get(r.exercise_id)!.sessions.push({ date: r.sessions.session_date, top: ws.length ? Math.max(...ws) : null, sets });
   }

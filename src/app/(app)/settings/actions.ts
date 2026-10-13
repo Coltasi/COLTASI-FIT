@@ -12,7 +12,7 @@ async function ctx() {
   return { supabase, user };
 }
 
-const PREFS = ["units", "notify_weigh_in", "notify_workout"] as const;
+const PREFS = ["units", "notify_sleep", "notify_weigh_in", "notify_workout"] as const;
 
 export async function setPref(field: (typeof PREFS)[number], value: string | boolean) {
   if (!PREFS.includes(field)) return;

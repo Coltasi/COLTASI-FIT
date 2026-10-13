@@ -8,7 +8,8 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
   units: Units; today: string; placeholder: string; due: boolean; label: string;
 }) {
   const [state, action, pending] = useActionState<FormState, FormData>(async (prev, fd) => {
-    const raw = Number(String(fd.get("weight") ?? "").replace(",", "."));
+    // An empty input logs the placeholder, which is the last weight.
+    const raw = Number((String(fd.get("weight") ?? "").trim() || placeholder).replace(",", "."));
     if (raw) fd.set("weight_kg", String(toKg(raw, units)));
     return logWeighIn(prev, fd);
   }, { error: null });

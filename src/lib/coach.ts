@@ -17,6 +17,20 @@ export function weeklyRate(points: { measured_on: string; weight_kg: number }[])
   return slope * 7;
 }
 
+/** One Messages API call with the app's key. Returns the reply text, or null when there's no key or the call fails. */
+export async function callClaude(body: { system?: string; max_tokens: number; messages: unknown[] }): Promise<string | null> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) return null;
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: COACH_MODEL, ...body }),
+  });
+  if (!res.ok) return null;
+  const j = await res.json();
+  return typeof j?.content?.[0]?.text === "string" ? j.content[0].text : null;
+}
+
 type Facts = {
   sessionTitle?: string;
   lifts?: { name: string; top: number | null; reps: (number | null)[]; prevTop: number | null }[];
@@ -62,14 +76,14 @@ async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceI
           .neq("session_id", sourceId);
         for (const r of ((prev ?? []) as any[]).sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1))) {
           if (prevTops.has(r.exercise_id)) continue;
-          const ws = (r.session_sets ?? []).filter((z: any) => z.done && z.weight_kg != null).map((z: any) => Number(z.weight_kg));
+          const ws = (r.session_sets ?? []).filter((z: any) => z.done && Number(z.weight_kg) > 0).map((z: any) => Number(z.weight_kg));
           if (ws.length) prevTops.set(r.exercise_id, Math.max(...ws));
         }
       }
       facts.lifts = ses
         .map((x) => {
           const done = (x.session_sets ?? []).filter((z: any) => z.done);
-          const ws = done.filter((z: any) => z.weight_kg != null).map((z: any) => Number(z.weight_kg));
+          const ws = done.filter((z: any) => Number(z.weight_kg) > 0).map((z: any) => Number(z.weight_kg));
           return { name: x.exercises?.name ?? "", top: ws.length ? Math.max(...ws) : null, reps: done.map((z: any) => z.reps), prevTop: prevTops.get(x.exercise_id) ?? null };
         })
         .filter((l) => l.reps.length);
@@ -86,9 +100,10 @@ function ruleRead(kind: "session" | "weigh_in", f: Facts): Read {
   if (f.lifts?.length) {
     const ups = f.lifts.filter((l) => l.top != null && l.prevTop != null && l.top > l.prevTop);
     const downs = f.lifts.filter((l) => l.top != null && l.prevTop != null && l.top < l.prevTop);
-    if (ups.length) lifting = `${ups.map((l) => `${l.name} up to ${r1(l.top!)} kg`).slice(0, 2).join(", ")}. Hold the new weight until every set hits the top of the range.`;
-    else if (downs.length) lifting = `${downs[0].name} came in lighter than last time. One off day is noise; watch it next session.`;
-    else lifting = `${f.lifts.length} lifts logged at last time's weights. Add a rep before you add weight.`;
+    const setsLine = (l: { reps: (number | null)[] }) => `${l.reps.length} sets: ${l.reps.map((r) => r ?? "?").join(", ")} reps`;
+    if (ups.length) lifting = `${ups.slice(0, 2).map((l) => `${l.name} up ${r1(l.top! - l.prevTop!)} kg to ${r1(l.top!)} kg (${setsLine(l)})`).join(". ")}. Keep that weight next time until you reach the top of the rep range on every set.`;
+    else if (downs.length) lifting = `${downs[0].name} was lighter than last time, ${r1(downs[0].top!)} kg instead of ${r1(downs[0].prevTop!)} kg. One lighter day is normal; try the usual weight next session.`;
+    else lifting = `You logged ${f.lifts.length} lifts at the same weights as last time. Next time, try one more rep before adding weight.`;
   }
   let weight: string | null = null;
   if (f.rate != null && f.targetRate != null) {
@@ -103,7 +118,9 @@ function ruleRead(kind: "session" | "weigh_in", f: Facts): Read {
   let recovery: string | null = null;
   if (f.sleep) recovery = `${r1(Number(f.sleep.hours))} hours${f.sleep.wake_feeling ? `, woke ${f.sleep.wake_feeling}` : ""}.` + (Number(f.sleep.hours) < 6 ? " Keep tomorrow's session honest, not heroic." : "");
   const headline = kind === "session"
-    ? `${f.sessionTitle ?? "Session"} logged.${lifting && lifting.includes(" up to ") ? " Strength is moving." : ""}`
+    ? (f.lifts?.find((l) => l.top != null && l.prevTop != null && l.top > l.prevTop)
+        ? (() => { const l = f.lifts!.find((x) => x.top != null && x.prevTop != null && x.top > x.prevTop)!; return `${l.name} up ${r1(l.top! - l.prevTop!)} kg to ${r1(l.top!)} kg (${l.reps.length} sets: ${l.reps.map((r) => r ?? "?").join(", ")} reps).`; })()
+        : `${f.sessionTitle ?? "Session"} logged.`)
     : "Weigh-in logged.";
   return { headline, lifting: kind === "session" ? lifting : null, weight, recovery };
 }
@@ -120,7 +137,10 @@ async function haikuRead(kind: "session" | "weigh_in", f: Facts): Promise<Read |
       system:
         "You are the coach in a personal training app. Write a short, direct read after a " +
         (kind === "session" ? "workout session" : "weekly weigh-in") +
-        ". Be specific with the numbers given, never invent numbers, no hype, no emoji, no em dashes. " +
+        ". Write in plain language anyone can follow, and use full exercise names. " +
+        'State weight changes like this: "Bench Press up 2.5 kg to 82.5 kg (4 sets: 6, 5, 5, 5 reps)". ' +
+        'No gym shorthand: never say things like "moved", "held" or "accept 4s"; say what happened and what to do next time. ' +
+        "Be specific with the numbers given, never invent numbers, no hype, no emoji, no em dashes. " +
         'Reply with JSON only: {"headline": one sentence, "lifting": 1-2 sentences or null, "weight": 1-2 sentences or null, "recovery": one sentence or null}. ' +
         "A stall needs 2-3 flat weeks before you suggest a calorie change; suggest about 150 kcal when you do.",
       messages: [{ role: "user", content: JSON.stringify(f) }],

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { BrandRow } from "@/components/ui";
-import { IconCheck, IconClock } from "@/components/icons";
-import { getContext, getLastTimes, getProgram, getWeekState } from "@/lib/data";
-import { fmtDay, fmtDow, fmtShort } from "@/lib/dates";
+import { IconBook, IconCheck, IconClock } from "@/components/icons";
+import { getContext, getFinishers, getLastTimes, getProgram, getWeekState } from "@/lib/data";
+import { daysBetween, fmtDay, fmtDow, fmtShort } from "@/lib/dates";
 import { StartForm } from "./start-form";
 
 export default async function TrainPage({ searchParams }: PageProps<"/train">) {
@@ -13,21 +13,26 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const split = program.filter((d) => d.program === "split");
   const chosenId = typeof sp.day === "string" ? sp.day : undefined;
   const day = program.find((d) => d.id === chosenId) ?? week.nextDay;
-  const [last, { data: lastOfDay }] = await Promise.all([
+  const [last, finishers, { data: lastOfDay }] = await Promise.all([
     getLastTimes(supabase, day ? day.exercises.map((e) => e.exercise_id) : []),
+    getFinishers(supabase),
     day
       ? supabase.from("sessions").select("session_date").eq("day_id", day.id).eq("status", "done").order("session_date", { ascending: false }).limit(1)
       : Promise.resolve({ data: null }),
   ]);
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const doneCount = split.filter((d) => week.done.has(d.id)).length;
+  const suggested = !!day && day.id === week.nextDay?.id;
 
   return (
     <main className="screen">
       <BrandRow />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 className="disp" style={{ fontSize: 30 }}>Train</h1>
-        <Link href="/train/history" className="iconbtn" aria-label="Session history"><IconClock /></Link>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
+          <Link href="/train/history" className="iconbtn" aria-label="Session history"><IconClock /></Link>
+        </div>
       </div>
 
       {sp.finished ? (
@@ -85,16 +90,34 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
               {day.program === "split" ? "The Split" : "Kettlebell"} · {day.exercises.length} lifts · {totalSets} sets
               {lastOfDay?.[0] ? ` · last done ${fmtShort(lastOfDay[0].session_date)}` : ""}
             </p>
+            {suggested ? (
+              <p style={{ fontSize: 13, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line-soft)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/coltasi-bird.svg" alt="" width={18} height={18} style={{ flexShrink: 0 }} />
+                <span>
+                  Suggested: next in The Split{lastOfDay?.[0] ? `, last done ${ago(daysBetween(lastOfDay[0].session_date, today))}` : ""}.
+                  {day.overridden ? " Includes your swaps from last time." : ""}
+                </span>
+              </p>
+            ) : week.nextDay ? (
+              <p className="cap" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line-soft)" }}>
+                Suggested today is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 600 }}>Switch back</Link>
+              </p>
+            ) : null}
           </div>
           <StartForm
             dayId={day.id}
             dayName={day.name}
             units={units}
+            finishers={finishers}
             lifts={day.exercises.map((e) => ({
-              key: e.exercise_id,
+              key: `${e.position}:${e.exercise_id}`,
+              position: e.position,
               name: e.name,
-              plan: `${e.target_sets} × ${e.rep_range}`,
+              plan: `${e.target_sets} × ${e.rep_range}${e.sub_for ? ` · swapped in for ${e.sub_for.name}` : e.added ? " · added last time" : ""}`,
+              undo: day.overridden && (e.sub_for || e.added) ? (e.sub_for ? `Undo swap, back to ${e.sub_for.name}` : "Remove from this day") : null,
               lastKg: last.get(e.exercise_id)?.top ?? null,
+              hasLast: last.has(e.exercise_id),
             }))}
             disabled={!!week.inProgress}
           />
@@ -105,3 +128,5 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
     </main>
   );
 }
+
+const ago = (n: number) => (n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`);
