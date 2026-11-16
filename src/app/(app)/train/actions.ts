@@ -151,6 +151,14 @@ export async function setExtra(sessionId: string, field: "warmup_done" | "finish
   revalidatePath(`/train/session/${sessionId}`);
 }
 
+/** Picks (or switches) the warm-up machine, including after the workout has started. */
+export async function setWarmup(sessionId: string, warmup: string) {
+  const { supabase } = await ctx();
+  if (!WARMUPS.includes(warmup)) return;
+  await supabase.from("sessions").update({ warmup }).eq("id", sessionId).eq("status", "in_progress");
+  revalidatePath(`/train/session/${sessionId}`);
+}
+
 async function findOrCreateExercise(supabase: Supa, userId: string, name: string) {
   const clean = name.trim().replace(/\s+/g, " ");
   const { data: found } = await supabase.from("exercises").select("id, name, created_by").ilike("name", clean).limit(5);

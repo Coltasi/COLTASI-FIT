@@ -1,7 +1,7 @@
 {
   "id": "/",
-  "name": "Coltasi",
-  "short_name": "Coltasi",
+  "name": "Coltasi Fit",
+  "short_name": "Coltasi Fit",
   "description": "Track every lift. See every gain. Log workouts, weigh-ins and sleep, with a coach that reads it all.",
   "lang": "en",
   "start_url": "/?source=pwa",

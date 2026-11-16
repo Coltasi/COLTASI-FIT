@@ -8,7 +8,7 @@ import "@fontsource/montserrat/800.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Coltasi",
+  title: "Coltasi Fit",
   description: "Track every lift. See every gain. Log workouts, weigh-ins and sleep, with a coach that reads it all.",
   manifest: "/manifest.json",
   icons: {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "Coltasi" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Coltasi Fit" },
 };
 
 export const viewport: Viewport = {

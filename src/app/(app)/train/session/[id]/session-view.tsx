@@ -1,27 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconPlus } from "@/components/icons";
 import { Ring, Sheet, linkBtn } from "@/components/sheet";
 import { toKg, unit, w, type Units } from "@/lib/units";
 import { fmtShort } from "@/lib/dates";
 import { GUIDES } from "@/lib/exercise-guides";
-import type { FinisherMove, LastTime } from "@/lib/data";
-import { addLifts, addSet, finishSession, saveSet, setExtra, setSessionFinisher, swapLift } from "../../actions";
+import type { LastTime } from "@/lib/data";
+import { addLifts, addSet, finishSession, saveSet, setExtra, setWarmup, swapLift } from "../../actions";
 
 export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
 export type SEx = { id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; sets: SSet[] };
 export type Candidate = { name: string; last: LastTime | null };
-type Fin = { name: string; moves: FinisherMove[] };
 type Session = {
   id: string; kind: string; title: string;
   warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
-  finisher: Fin | null;
+  finisher: boolean; finisher_done: boolean;
 };
 
 const WARMUP_LABEL: Record<string, string> = { stairs: "Stairs", elliptical: "Elliptical", treadmill: "Treadmill", rower: "Rower" };
+const WARMUP_KEYS = Object.keys(WARMUP_LABEL);
 const isDone = (e: SEx) => e.sets.length > 0 && e.sets.every((s) => s.done);
 const rowBtn: CSSProperties = { width: "100%", background: "none", borderLeft: 0, borderRight: 0, borderBottom: 0, textAlign: "left", cursor: "pointer" };
 
@@ -45,30 +45,36 @@ function Row({ done, dashed, name, sub, muted, onClick }: { done: boolean; dashe
   );
 }
 
-export function SessionView({ session, exercises: initial, finishers, candidates, initialOpen, units }: {
-  session: Session; exercises: SEx[]; finishers: Fin[]; candidates: Candidate[]; initialOpen: string | null; units: Units;
+/** Warm-up: tap the row to tick it off, tap Change to pick (or switch) the machine at any point in the workout. */
+function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null; done: boolean; onToggle: () => void; onChange: () => void }) {
+  return (
+    <div className="row">
+      <button type="button" onClick={onToggle} aria-label="Warm-up done" style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "flex" }}>
+        <Dot done={done} />
+      </button>
+      <button type="button" onClick={onToggle} style={{ flexGrow: 1, background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}>
+        <p className="ln" style={{ color: done ? "var(--muted)" : "var(--navy)" }}>{warmup ? `Warm-up · ${WARMUP_LABEL[warmup] ?? warmup}` : "Warm-up"}</p>
+        <p className="cap">{warmup ? "10 min" : "10 min · pick a machine"}</p>
+      </button>
+      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 13, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
+    </div>
+  );
+}
+
+export function SessionView({ session, exercises: initial, candidates, initialOpen, units }: {
+  session: Session; exercises: SEx[]; candidates: Candidate[]; initialOpen: string | null; units: Units;
 }) {
   const router = useRouter();
   const [exs, setExs] = useState(initial);
-  const [extras, setExtras] = useState({ warmup_done: session.warmup_done, cooldown_done: session.cooldown_done });
+  const [extras, setExtras] = useState({ warmup_done: session.warmup_done, finisher_done: session.finisher_done, cooldown_done: session.cooldown_done });
+  const [warmup, setWarm] = useState<string | null>(session.warmup);
+  const [warmSheet, setWarmSheet] = useState(false);
   const [openId, setOpenId] = useState<string | null>(() =>
     (initialOpen && initial.some((e) => e.id === initialOpen) ? initialOpen : null) ?? initial.find((e) => !isDone(e))?.id ?? null);
-  const [fin, setFin] = useState<Fin | null>(session.finisher);
-  const [finOpen, setFinOpen] = useState(false);
   const [sheet, setSheet] = useState<{ mode: "swap" | "add"; ex?: SEx } | null>(() => (session.kind === "custom" && !initial.length ? { mode: "add" } : null));
   const [pending, start] = useTransition();
   const doneCount = exs.filter(isDone).length;
   const label = session.kind === "custom" ? "Custom" : session.kind === "kettlebell" ? "Kettlebell" : "The Split";
-
-  // Save finisher edits shortly after typing stops; ticks save right away.
-  const finTimer = useRef<number | undefined>(undefined);
-  function saveFin(next: Fin | null, now = false) {
-    setFin(next);
-    window.clearTimeout(finTimer.current);
-    const go = () => start(() => setSessionFinisher(session.id, next));
-    if (now) go(); else finTimer.current = window.setTimeout(go, 600);
-  }
-  useEffect(() => () => window.clearTimeout(finTimer.current), []);
 
   function patchSet(exId: string, setId: string, patch: Partial<SSet>) {
     setExs((prev) => {
@@ -105,24 +111,19 @@ export function SessionView({ session, exercises: initial, finishers, candidates
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
         sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
-  const top: ReactNode[] = [];
-  if (session.warmup) top.push(
-    <Row key="warmup" done={extras.warmup_done} muted={extras.warmup_done} name={`Warm-up · ${WARMUP_LABEL[session.warmup] ?? session.warmup}`} sub="10 min" onClick={() => toggleExtra("warmup_done")} />,
-  );
+  const top: ReactNode[] = [
+    <WarmupRow key="warmup" warmup={warmup} done={extras.warmup_done}
+      onToggle={() => (warmup ? toggleExtra("warmup_done") : setWarmSheet(true))} onChange={() => setWarmSheet(true)} />,
+  ];
   exs.slice(0, cut).forEach((e) => top.push(exRow(e)));
 
-  const finDone = !!fin?.moves.length && fin.moves.every((m) => m.done);
-  const finCollapsed = !!fin && !finOpen;
-  const cooldownRow = session.cooldown
-    ? <Row key="cooldown" done={extras.cooldown_done} dashed name="Cool-down · 5 min" sub="Stretch and breathing" onClick={() => toggleExtra("cooldown_done")} />
-    : null;
   const bottom: ReactNode[] = exs.slice(openPos < 0 ? exs.length : openPos + 1).map(exRow);
-  if (finCollapsed) bottom.push(
-    <Row key="finisher" done={finDone} dashed name={`Ab finisher · ${fin!.name}`} onClick={() => setFinOpen(true)}
-      sub={`${fin!.moves.filter((m) => m.done).length} of ${fin!.moves.length} done · tap to log or edit`} />,
+  if (session.finisher) bottom.push(
+    <Row key="finisher" done={extras.finisher_done} muted={extras.finisher_done} dashed name="Ab finisher" onClick={() => toggleExtra("finisher_done")} />,
   );
-  if (cooldownRow && (finCollapsed || !fin)) bottom.push(cooldownRow);
-  const after = cooldownRow && fin && finOpen ? cooldownRow : null;
+  if (session.cooldown) bottom.push(
+    <Row key="cooldown" done={extras.cooldown_done} muted={extras.cooldown_done} dashed name="Cool-down · 5 min" sub="Stretch and breathing" onClick={() => toggleExtra("cooldown_done")} />,
+  );
 
   return (
     <main className="screen">
@@ -157,13 +158,6 @@ export function SessionView({ session, exercises: initial, finishers, candidates
 
       {bottom.length ? <div className="card clip">{bottom}</div> : null}
 
-      {fin && finOpen ? (
-        <FinisherCard fin={fin} finishers={finishers} onChange={saveFin}
-          onClose={() => setFinOpen(false)} onSkip={() => { saveFin(null, true); setFinOpen(false); }} />
-      ) : null}
-
-      {after ? <div className="card clip">{after}</div> : null}
-
       <button type="button" onClick={() => setSheet({ mode: "add" })} className="card flat"
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", border: "1.5px dashed var(--mist)", background: "transparent", cursor: "pointer", textAlign: "left", width: "100%", color: "var(--navy)" }}>
         <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconPlus /></span>
@@ -185,6 +179,24 @@ export function SessionView({ session, exercises: initial, finishers, candidates
           onClose={() => setSheet(null)}
           onApply={applySheet}
         />
+      ) : null}
+
+      {warmSheet ? (
+        <Sheet title="Warm-up · 10 min" onClose={() => setWarmSheet(false)}>
+          <div className="card flat clip">
+            {WARMUP_KEYS.map((k) => {
+              const on = warmup === k;
+              return (
+                <button key={k} type="button" className="row" aria-pressed={on}
+                  onClick={() => { setWarm(k); setWarmSheet(false); start(() => setWarmup(session.id, k)); }}
+                  style={{ ...rowBtn, background: on ? "var(--tint-ember-soft)" : "transparent" }}>
+                  <Ring on={on} />
+                  <span className="ln" style={{ flexGrow: 1 }}>{WARMUP_LABEL[k]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Sheet>
       ) : null}
     </main>
   );
@@ -256,57 +268,6 @@ function PickSheet({ mode, title, options, units, pending, onClose, onApply }: {
         </button>
       </form>
     </Sheet>
-  );
-}
-
-function FinisherCard({ fin, finishers, onChange, onClose, onSkip }: {
-  fin: Fin; finishers: Fin[]; onChange: (f: Fin | null, now?: boolean) => void; onClose: () => void; onSkip: () => void;
-}) {
-  const setMove = (i: number, patch: Partial<FinisherMove>, now = false) =>
-    onChange({ ...fin, moves: fin.moves.map((m, j) => (j === i ? { ...m, ...patch } : m)) }, now);
-  const grid = "minmax(0,1.6fr) minmax(0,1fr) 44px";
-  return (
-    <div className="card" style={{ padding: 16, border: "2px solid var(--ember)", display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
-        <div><p className="lab" style={{ color: "var(--rust)" }}>Ab finisher</p><h2 className="disp" style={{ fontSize: 22, marginTop: 2 }}>{fin.name}</h2></div>
-        <button type="button" onClick={onClose} style={{ ...linkBtn, fontSize: 13, flexShrink: 0 }}>Close</button>
-      </div>
-      <div className="chips" style={{ marginRight: -16, paddingRight: 16 }}>
-        {finishers.map((o) => (
-          <button key={o.name} type="button" className={`chip${o.name === fin.name ? " on" : ""}`} style={{ minHeight: 36, padding: "0 12px" }}
-            onClick={() => onChange({ name: o.name, moves: o.moves.map((m) => ({ ...m, done: false })) }, true)}>
-            {o.name}
-          </button>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: grid, gap: 8 }}>
-        <span className="lab" style={{ fontSize: 10 }}>Move</span>
-        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>Reps / time</span>
-        <span />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: -6 }}>
-        {fin.moves.map((m, i) => {
-          const f: CSSProperties = { width: "100%", height: 44, borderRadius: 10, border: "1px solid var(--line-strong)", background: m.done ? "#fff" : "var(--field)", color: m.done ? "var(--muted)" : "var(--navy)" };
-          return (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: grid, gap: 8, alignItems: "center" }}>
-              <label><span className="sr-only">Move {i + 1}</span>
-                <input value={m.name} placeholder="Move" onChange={(e) => setMove(i, { name: e.target.value })} style={{ ...f, padding: "0 10px", fontSize: 14, fontWeight: 600 }} />
-              </label>
-              <label><span className="sr-only">Reps or time for {m.name || `move ${i + 1}`}</span>
-                <input value={m.dose} placeholder="20" onChange={(e) => setMove(i, { dose: e.target.value })} style={{ ...f, textAlign: "center", fontSize: 15, fontWeight: 700 }} />
-              </label>
-              <button type="button" className={`chk${m.done ? " on" : ""}`} aria-pressed={!!m.done} aria-label={`${m.name || "Move"} done`} onClick={() => setMove(i, { done: !m.done }, true)}>
-                {m.done ? <IconCheck size={18} /> : null}
-              </button>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
-        <button type="button" className="btn2" onClick={() => onChange({ ...fin, moves: [...fin.moves, { name: "", dose: "", done: false }] }, true)}>+ Add move</button>
-        <button type="button" className="btn2" style={{ color: "var(--rust)" }} onClick={onSkip}>Skip today</button>
-      </div>
-    </div>
   );
 }
 

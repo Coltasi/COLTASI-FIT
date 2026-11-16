@@ -23,7 +23,7 @@
 //
 // Bump CACHE_VERSION whenever this file's caching behavior changes, so old
 // caches get cleaned up on activate.
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v7";
 const STATIC_CACHE = `coltasi-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `coltasi-pages-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getContext, getFinishers, getLastTimes, type FinisherMove } from "@/lib/data";
+import { getContext, getLastTimes } from "@/lib/data";
 import { SessionView, type Candidate, type SEx } from "./session-view";
 import { LoggedView } from "./logged-view";
 
@@ -32,10 +32,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     );
   }
 
-  const [{ data: allEx }, finishers] = await Promise.all([
-    supabase.from("exercises").select("id, name, created_by").order("name"),
-    getFinishers(supabase),
-  ]);
+  const { data: allEx } = await supabase.from("exercises").select("id, name, created_by").order("name");
   const exRows = ((allEx ?? []) as any[]);
   const nameById = new Map(exRows.map((e) => [e.id as string, e.name as string]));
   const last = await getLastTimes(supabase, [...new Set([...ses.map((x) => x.exercise_id), ...exRows.map((e) => e.id)])], s.id);
@@ -64,24 +61,16 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   }
   const candidates = [...byName.values()];
 
-  // Sessions started before v4 have a finisher name but no moves: fill them from the matching finisher.
-  let finMoves = s.finisher_moves as FinisherMove[] | null;
-  if (s.finisher && !finMoves) {
-    const f = finishers.find((x) => x.name === s.finisher);
-    finMoves = (f?.moves ?? [{ name: s.finisher, dose: "" }]).map((m) => ({ ...m, done: s.finisher_done }));
-  }
-
   return (
     <SessionView
       key={exercises.map((e) => `${e.id}:${e.sets.length}`).join(",")}
       session={{
         id: s.id, kind: s.kind, title: s.title,
         warmup: s.warmup, warmup_done: s.warmup_done, cooldown: s.cooldown, cooldown_done: s.cooldown_done,
-        finisher: s.finisher ? { name: s.finisher, moves: finMoves ?? [] } : null,
+        finisher: !!s.finisher, finisher_done: s.finisher_done,
       }}
       initialOpen={typeof sp.open === "string" ? sp.open : null}
       exercises={exercises}
-      finishers={finishers.map((f) => ({ name: f.name, moves: f.moves }))}
       candidates={candidates}
       units={units}
     />
