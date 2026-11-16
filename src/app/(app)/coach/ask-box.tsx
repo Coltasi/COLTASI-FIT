@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { IconSend } from "@/components/icons";
 import { CoachMark } from "@/components/ui";
 import { ask } from "./actions";
@@ -11,11 +11,15 @@ export function AskBox() {
   const [state, action, pending] = useActionState(ask, null);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const answerRef = useRef<HTMLDivElement>(null);
+
+  // Bring the question and answer into view as soon as they appear.
+  useEffect(() => { if (pending || state) answerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [pending, state]);
 
   return (
     <>
       {pending || state ? (
-        <div className="card" style={{ padding: 16 }}>
+        <div ref={answerRef} className="card" style={{ padding: 16 }}>
           <p className="cap" style={{ fontWeight: 600 }}>{pending ? "Asking…" : `You asked: ${state?.q}`}</p>
           {state && !pending ? (
             <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
