@@ -1,5 +1,5 @@
 import { BrandRow, CoachMark } from "@/components/ui";
-import { CoachRead } from "@/components/coach-read";
+import { CoachRead, Disclosure } from "@/components/coach-read";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
 
@@ -79,8 +79,7 @@ export default async function CoachPage() {
       </div>
 
       {earlier.length ? (
-        <div className="card clip">
-          <div style={{ padding: "12px 16px 8px" }}><p className="lab">Earlier reads</p></div>
+        <Disclosure title="Earlier reads" summary={`${earlier.length}`}>
           {earlier.map((r) => (
             <details key={r.id} className="row" style={{ display: "block" }}>
               <summary style={{ listStyle: "none", cursor: "pointer" }}>
@@ -93,7 +92,7 @@ export default async function CoachPage() {
               {[r.lifting, r.weight, r.recovery].filter(Boolean).map((t: string, i: number) => <p key={i} style={{ fontSize: 14, lineHeight: 1.45, marginTop: 8 }}>{t}</p>)}
             </details>
           ))}
-        </div>
+        </Disclosure>
       ) : null}
 
       <AskBox />
