@@ -2,11 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
-import { saveFinisher, startSession, undoPlanChange } from "./actions";
+import { startSession, undoPlanChange } from "./actions";
 import { unit, w, type Units } from "@/lib/units";
-import type { Finisher, FinisherMove } from "@/lib/data";
-import { IconMinus } from "@/components/icons";
-import { Ring, Sheet, linkBtn } from "@/components/sheet";
+import type { Finisher } from "@/lib/data";
+import { linkBtn } from "@/components/sheet";
 
 const WARMUPS = [
   { v: "stairs", l: "Stairs" },
@@ -24,28 +23,17 @@ function StartButton({ label, disabled }: { label: string; disabled: boolean }) 
   );
 }
 
-export function StartForm({ dayId, dayName, units, lifts, finishers: initialFinishers, disabled }: {
+export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }: {
   dayId: string; dayName: string; units: Units; disabled: boolean; finishers: Finisher[];
   lifts: { key: string; position: number; name: string; plan: string; undo: string | null; lastKg: number | null; hasLast: boolean }[];
 }) {
   const [warmup, setWarmup] = useState("stairs");
   const [finisherOn, setFinisherOn] = useState(true);
-  const [finishers, setFinishers] = useState(initialFinishers);
-  const [finIdx, setFinIdx] = useState(() => Math.max(0, initialFinishers.findIndex((f) => f.is_default)));
   const [cooldown, setCooldown] = useState(true);
-  const [sheet, setSheet] = useState(false);
   const [pending, start] = useTransition();
-  const fin = finishers[finIdx] as Finisher | undefined;
-
-  const patchMoves = (fn: (m: FinisherMove[]) => FinisherMove[]) =>
-    setFinishers((fs) => fs.map((f, i) => (i === finIdx ? { ...f, moves: fn(f.moves) } : f)));
-  const closeSheet = () => {
-    setSheet(false);
-    if (fin) start(() => saveFinisher(fin.id, fin.moves));
-  };
+  const fin = (finishers.find((f) => f.is_default) ?? finishers[0]) as Finisher | undefined;
 
   return (
-    <>
     <form action={startSession} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <input type="hidden" name="day_id" value={dayId} />
       <input type="hidden" name="warmup" value={warmup} />
@@ -109,10 +97,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers: initialFini
         <div className="row" style={{ justifyContent: "space-between", padding: "14px 16px" }}>
           <div>
             <p className="ln" style={{ marginBottom: 2 }}>Ab finisher</p>
-            <p className="cap">
-              {fin?.name ?? "None"} ·{" "}
-              <button type="button" onClick={() => setSheet(true)} style={{ ...linkBtn, fontWeight: 400 }}>edit</button>
-            </p>
+            <p className="cap">Tick it off during the workout</p>
           </div>
           <button type="button" className={`sw${finisherOn ? " on" : ""}`} aria-pressed={finisherOn} aria-label="Ab finisher" onClick={() => setFinisherOn(!finisherOn)}><span /></button>
         </div>
@@ -129,52 +114,5 @@ export function StartForm({ dayId, dayName, units, lifts, finishers: initialFini
         <div><StartButton label={disabled ? "Finish your open session first" : `Start ${dayName}`} disabled={disabled} /></div>
       </div>
     </form>
-
-      {sheet ? (
-        <Sheet title="Ab finisher" onClose={closeSheet}>
-          <div className="card flat clip">
-            {finishers.map((f, i) => {
-              const on = i === finIdx;
-              return (
-                <button key={f.id} type="button" className="row" aria-pressed={on}
-                  onClick={() => { setFinIdx(i); setFinisherOn(true); }}
-                  style={{ width: "100%", textAlign: "left", cursor: "pointer", borderLeft: 0, borderRight: 0, borderBottom: 0, background: on ? "var(--tint-ember-soft)" : "transparent" }}>
-                  <Ring on={on} />
-                  <span style={{ flexGrow: 1, minWidth: 0 }}>
-                    <span className="ln" style={{ display: "block" }}>{f.name}</span>
-                    <span className="cap">{f.moves.map((m) => m.name).join(", ")}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {fin ? (
-            <>
-              <p className="lab">Moves · {fin.name}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {fin.moves.map((m, i) => (
-                  <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 96px 44px", gap: 8 }}>
-                    <label><span className="sr-only">Move {i + 1}</span>
-                      <input className="fld" value={m.name} placeholder="Move" style={{ height: 44, padding: "0 12px" }}
-                        onChange={(e) => { const v = e.target.value; patchMoves((ms) => ms.map((x, j) => (j === i ? { ...x, name: v } : x))); }} />
-                    </label>
-                    <label><span className="sr-only">Reps or time for move {i + 1}</span>
-                      <input className="fld" value={m.dose} placeholder="Reps / time" style={{ height: 44, padding: "0 10px", fontSize: 14, fontWeight: 600, background: "var(--field)" }}
-                        onChange={(e) => { const v = e.target.value; patchMoves((ms) => ms.map((x, j) => (j === i ? { ...x, dose: v } : x))); }} />
-                    </label>
-                    <button type="button" aria-label={`Remove ${m.name || "move"}`} onClick={() => patchMoves((ms) => ms.filter((_, j) => j !== i))}
-                      style={{ width: 44, height: 44, borderRadius: 12, border: "1px solid var(--line-strong)", background: "#fff", color: "var(--rust)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                      <IconMinus />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="btn2" style={{ width: "100%" }} onClick={() => patchMoves((ms) => [...ms, { name: "", dose: "" }])}>+ Add move</button>
-            </>
-          ) : null}
-          <button type="button" className="btn" onClick={closeSheet}>Done</button>
-        </Sheet>
-      ) : null}
-    </>
   );
 }
