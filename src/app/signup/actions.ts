@@ -15,6 +15,8 @@ export async function signup(
   const password = String(formData.get("password") ?? "");
   const inviteCode = String(formData.get("invite_code") ?? "").trim();
 
+  if (!inviteCode) return { error: "Signups are invite only. Enter your invite code." };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
@@ -29,7 +31,8 @@ export async function signup(
   });
 
   if (error) {
-    return { error: error.message };
+    // The database rejects bad or missing codes with a generic "Database error".
+    return { error: /database error|invite/i.test(error.message) ? "That invite code isn't valid." : error.message };
   }
 
   redirect("/signup/check-email");
