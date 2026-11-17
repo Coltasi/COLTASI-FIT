@@ -1,5 +1,5 @@
 /** Public VAPID key for web push. Public by design; the private half lives in Supabase Vault. */
-export const VAPID_PUBLIC_KEY = "BCXqsfLwJ8377igL2OenS9_CWrL_L5IxE7MvKnJB7Zje31PkJJcM9gFqpY2fUk1h6N0UCX4o7kdY1oa7-xQcEDY";
+export const VAPID_PUBLIC_KEY = "BH_JGfnueD90XD3s2F-yhVoX_nvNUYy8GLuQVpdxkMY3RgI1EXeB2W-2PU85pFzfKlZanYd6V9fvLOgvXFn1Q9Q";
 
 export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padded = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
