@@ -5,7 +5,7 @@ export async function GET() {
   const supabase = await createClient();
   const user = await currentUser(supabase);
   if (!user) return new Response("Not signed in", { status: 401 });
-  const tables = ["sessions", "session_exercises", "session_sets", "weigh_ins", "scans", "sleep_logs", "coach_reads"] as const;
+  const tables = ["sessions", "session_exercises", "session_sets", "weigh_ins", "scans", "sleep_logs", "step_logs", "coach_reads"] as const;
   const out: Record<string, unknown> = { exported_at: new Date().toISOString(), email: user.email };
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   out.profile = profile;

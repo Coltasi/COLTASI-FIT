@@ -7,6 +7,7 @@ import { addDays, fmtDay } from "@/lib/dates";
 const shortDay = (iso: string) => fmtDay(iso).replace(/^(\w{3}) /, "$1, ");
 import { signed, unit } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
+import { fmtK, getSteps, stepSummary } from "@/lib/steps";
 import { AskBox } from "./ask-box";
 
 function ago(iso: string) {
@@ -21,13 +22,15 @@ function ago(iso: string) {
 export default async function CoachPage() {
   const { supabase, today, units, profile, tz } = await getContext();
   const programP = getProgram(supabase);
-  const [program, week, { data: reads }, { data: wis }, { data: sleeps }] = await Promise.all([
+  const [program, week, { data: reads }, { data: wis }, { data: sleeps }, stepRows] = await Promise.all([
     programP,
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("*").order("created_at", { ascending: false }).limit(12),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(4),
     supabase.from("sleep_logs").select("hours").gte("night_of", addDays(today, -7)),
+    getSteps(supabase, today, 14),
   ]);
+  const stepAvg = stepSummary(stepRows, today).avg7;
   const split = program.filter((d) => d.program === "split");
   const rate = weeklyRate(((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })));
   const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);
@@ -68,13 +71,14 @@ export default async function CoachPage() {
 
       <div>
         <p className="lab" style={{ marginBottom: 8 }}>This week</p>
-        <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
+        <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))" }}>
           <div style={{ padding: 12 }}><div className="num" style={{ fontSize: 20 }}>{split.filter((d) => week.done.has(d.id)).length}<span style={{ fontSize: 13, color: "var(--muted)" }}> / {split.length}</span></div><p className="cap">Split days</p></div>
           <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}>
             <div className="num" style={{ fontSize: 20, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={{ fontSize: 13 }}> {unit(units)}</span></div>
             <p className="cap">{target != null ? `vs ${signed(conv(target), 2)} plan` : "per week"}</p>
           </div>
           <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={{ fontSize: 13, color: "var(--muted)" }}> h</span></div><p className="cap">Avg sleep</p></div>
+          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{stepAvg != null ? fmtK(stepAvg) : "–"}</div><p className="cap">Avg steps</p></div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
-import type { Supa } from "@/lib/data";
+import { getContext, type Supa } from "@/lib/data";
 import { daysBetween } from "@/lib/dates";
 import { currentUser } from "@/lib/supabase/user";
+import { getSteps, stepSummary } from "@/lib/steps";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
 
@@ -39,15 +40,20 @@ type Facts = {
   targetRate: number | null;
   targetKcal: number | null;
   sleep: { night_of: string; hours: number; wake_feeling: string | null; flags: string[] } | null;
+  /** Daily steps from the Garmin. Averages cover completed days only; null when fewer than 3 days are logged. */
+  steps: { avg7: number | null; avgPrev7: number | null; daysLogged7: number; last14: { day: string; steps: number }[] } | null;
 };
 
 async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceId?: string): Promise<Facts> {
   const user = await currentUser(supabase);
-  const [{ data: prof }, { data: wis }, { data: sl }] = await Promise.all([
+  const { today } = await getContext();
+  const [{ data: prof }, { data: wis }, { data: sl }, stepRows] = await Promise.all([
     supabase.from("profiles").select("target_rate_kg_week, target_kcal").eq("id", user?.id ?? "").single(),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(6),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(1),
+    getSteps(supabase, today, 14),
   ]);
+  const ss = stepSummary(stepRows, today);
   const weighIns = ((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
   const facts: Facts = {
     weighIns,
@@ -55,6 +61,7 @@ async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceI
     targetRate: prof?.target_rate_kg_week == null ? null : Number(prof.target_rate_kg_week),
     targetKcal: prof?.target_kcal ?? null,
     sleep: (sl?.[0] as any) ?? null,
+    steps: stepRows.length ? { avg7: ss.avg7, avgPrev7: ss.avgPrev7, daysLogged7: ss.days7, last14: stepRows } : null,
   };
   if (kind === "session" && sourceId) {
     const { data: s } = await supabase
@@ -108,8 +115,11 @@ function ruleRead(kind: "session" | "weigh_in", f: Facts): Read {
   let weight: string | null = null;
   if (f.rate != null && f.targetRate != null) {
     const behind = f.targetRate < 0 ? f.rate > f.targetRate * 0.75 : f.rate < f.targetRate * 0.75;
+    const st = f.steps;
+    const stepsFell = st?.avg7 != null && st.avgPrev7 != null && st.avg7 < st.avgPrev7 * 0.85;
     weight = `Recent weigh-ins average ${r1(f.rate)} kg/week against a ${r1(f.targetRate)} target.` +
-      (behind ? (f.targetKcal ? ` If next Monday is flat again, trim about 150 kcal from your ${f.targetKcal.toLocaleString("en-US")} target.` : " If next Monday is flat again, trim about 150 kcal a day.") : " On track.");
+      (behind && stepsFell ? ` Your steps fell from ${st!.avgPrev7!.toLocaleString("en-US")} to ${st!.avg7!.toLocaleString("en-US")} a day, which is a likely cause. Get back to about ${st!.avgPrev7!.toLocaleString("en-US")} a day before cutting calories.`
+      : behind ? (f.targetKcal ? ` If next Monday is flat again, trim about 150 kcal from your ${f.targetKcal.toLocaleString("en-US")} target.` : " If next Monday is flat again, trim about 150 kcal a day.") : " On track.");
   } else if (f.weighIns.length) {
     weight = `Latest weigh-in ${r1(f.weighIns[0].weight_kg)} kg. A few more Mondays and the trend will be clear.`;
   } else {
@@ -142,7 +152,8 @@ async function haikuRead(kind: "session" | "weigh_in", f: Facts): Promise<Read |
         'No gym shorthand: never say things like "moved", "held" or "accept 4s"; say what happened and what to do next time. ' +
         "Be specific with the numbers given, never invent numbers, no hype, no emoji, no em dashes. " +
         'Reply with JSON only: {"headline": one sentence, "lifting": 1-2 sentences or null, "weight": 1-2 sentences or null, "recovery": one sentence or null}. ' +
-        "A stall needs 2-3 flat weeks before you suggest a calorie change; suggest about 150 kcal when you do.",
+        "A stall needs 2-3 flat weeks before you suggest a calorie change; suggest about 150 kcal when you do. " +
+        "The data includes daily steps from a Garmin watch (steps.avg7 vs steps.avgPrev7, completed days only). If steps dropped by more than about 15% and weight loss is behind plan, say so and suggest restoring steps before cutting calories. Don't mention steps otherwise unless they help the read.",
       messages: [{ role: "user", content: JSON.stringify(f) }],
     }),
   });
@@ -179,7 +190,7 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
     body: JSON.stringify({
       model: COACH_MODEL,
       max_tokens: 500,
-      system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. Never invent numbers. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
+      system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data, including daily steps when relevant. Never invent numbers. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
       messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...facts, recentSessions: recent })}\n\nQuestion: ${question}` }],
     }),
   });
