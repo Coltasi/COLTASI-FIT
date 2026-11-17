@@ -26,8 +26,17 @@ export function PushSettings() {
     (async () => {
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return setState("unsupported");
       if (Notification.permission === "denied") return setState("blocked");
-      const { sub } = await currentSub();
+      const { reg, sub: found } = await currentSub();
+      let sub = found;
       if (sub && Notification.permission === "granted") {
+        // A subscription made with an older server key can never receive pushes: replace it.
+        const have = sub.options?.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
+        const want = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+        if (!have || have.length !== want.length || !have.every((b, i) => b === want[i])) {
+          await removePushSubscription(sub.endpoint);
+          await sub.unsubscribe();
+          sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: want });
+        }
         setState("on");
         // Keeps the saved time zone current when travelling.
         savePushSubscription(toPayload(sub), Intl.DateTimeFormat().resolvedOptions().timeZone, navigator.userAgent);
