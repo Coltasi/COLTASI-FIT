@@ -53,3 +53,19 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
   revalidatePath("/", "layout");
   redirect("/settings");
 }
+
+export async function savePushSubscription(sub: { endpoint: string; p256dh: string; auth: string }, timezone: string, userAgent: string) {
+  const { supabase, user } = await ctx();
+  try { Intl.DateTimeFormat("en-US", { timeZone: timezone }); } catch { return { error: "Bad time zone." }; }
+  if (!sub.endpoint.startsWith("https://") || !sub.p256dh || !sub.auth) return { error: "Bad subscription." };
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    { user_id: user.id, endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth, timezone, user_agent: userAgent.slice(0, 200), last_seen: new Date().toISOString() },
+    { onConflict: "endpoint" },
+  );
+  return { error: error?.message ?? null };
+}
+
+export async function removePushSubscription(endpoint: string) {
+  const { supabase } = await ctx();
+  await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+}

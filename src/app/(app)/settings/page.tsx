@@ -4,6 +4,7 @@ import { IconChevron } from "@/components/icons";
 import { displayName, getContext } from "@/lib/data";
 import { signOut } from "@/app/actions/auth";
 import { PrefToggle, UnitsToggle } from "./toggles";
+import { PushSettings } from "./push-settings";
 
 export default async function SettingsPage() {
   const { supabase, user, profile, units } = await getContext();
@@ -83,12 +84,13 @@ export default async function SettingsPage() {
       <div>
         <SectionLabel>Notifications</SectionLabel>
         <div className="card clip">
+          <PushSettings />
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Daily sleep log</p><p className="cap">Every morning at {profile.sleep_time?.slice(0, 5) ?? "07:00"}</p></div>
+            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Daily sleep log</p><p className="cap">Every morning at {profile.sleep_time?.slice(0, 5) ?? "08:45"}</p></div>
             <PrefToggle field="notify_sleep" on={profile.notify_sleep ?? true} label="Daily sleep log reminder" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Weekly weigh-in</p><p className="cap">Mondays at {profile.weigh_in_time?.slice(0, 5) ?? "07:30"}</p></div>
+            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Weekly weigh-in</p><p className="cap">Mondays at {profile.weigh_in_time?.slice(0, 5) ?? "08:45"}</p></div>
             <PrefToggle field="notify_weigh_in" on={profile.notify_weigh_in} label="Weekly weigh-in reminder" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
@@ -96,7 +98,7 @@ export default async function SettingsPage() {
             <PrefToggle field="notify_workout" on={profile.notify_workout} label="Workout day reminder" />
           </div>
         </div>
-        <p className="cap" style={{ marginTop: 8, marginLeft: 4 }}>Your choices are saved. Phone notifications switch on in a later update.</p>
+        <p className="cap" style={{ marginTop: 8, marginLeft: 4 }}>Sleep and weigh-in reminders skip themselves if you have already logged. Workout day reminders are not live yet.</p>
       </div>
 
       <div>
