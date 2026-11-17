@@ -9,6 +9,8 @@ import { addDays, daysBetween, fmtLong, mondayOf } from "@/lib/dates";
 import { unit, w } from "@/lib/units";
 import { startSession } from "./train/actions";
 import { SleepCard } from "./sleep-card";
+import { StepsCard } from "./steps-card";
+import { getSteps, stepSummary } from "@/lib/steps";
 import { Sparkline } from "./progress/parts";
 import { WeighInForm } from "./progress/weigh-in-form";
 
@@ -16,14 +18,17 @@ export default async function OverviewPage() {
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [program, week, hist, { data: read }, { data: sleeps }, { data: wis }] = await Promise.all([
+  const [program, week, hist, { data: read }, { data: sleeps }, { data: wis }, stepRows] = await Promise.all([
     programP,
     getWeekState(supabase, today, programP),
     getLiftHistory(supabase),
     supabase.from("coach_reads").select("headline, lifting, weight, recovery").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
+    getSteps(supabase, today, 14),
   ]);
+  const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
+  const stepAvg = stepSummary(stepRows, today).avg7;
   const split = program.filter((d) => d.program === "split");
   const doneCount = split.filter((d) => week.done.has(d.id)).length;
   const night = addDays(today, -1);
@@ -78,6 +83,13 @@ export default async function OverviewPage() {
         night={night}
         logged={lastNight ? { hours: Number(lastNight.hours), wake_feeling: lastNight.wake_feeling, flags: lastNight.flags ?? [], note: lastNight.note } : null}
         bars={Array.from({ length: 7 }, (_, i) => { const n = addDays(today, i - 7); return { night: n, hours: byNight.get(n) ?? null }; })}
+      />
+
+      <StepsCard
+        key={`${stepByDay.get(today) ?? "none"}-${stepByDay.get(addDays(today, -1)) ?? "none"}`}
+        today={today}
+        avg7={stepAvg}
+        bars={Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return { day: d, steps: stepByDay.get(d) ?? null }; })}
       />
 
       {day ? (
