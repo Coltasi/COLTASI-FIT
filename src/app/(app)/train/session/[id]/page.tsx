@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getContext, getLastTimes } from "@/lib/data";
-import { SessionView, type Candidate, type SEx } from "./session-view";
+import { getCandidates, getContext, getLastTimes } from "@/lib/data";
+import { SessionView, type SEx } from "./session-view";
 import { LoggedView } from "./logged-view";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
@@ -35,7 +35,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const { data: allEx } = await supabase.from("exercises").select("id, name, created_by").order("name");
   const exRows = ((allEx ?? []) as any[]);
   const nameById = new Map(exRows.map((e) => [e.id as string, e.name as string]));
-  const last = await getLastTimes(supabase, [...new Set([...ses.map((x) => x.exercise_id), ...exRows.map((e) => e.id)])], s.id);
+  const last = await getLastTimes(supabase, [...new Set(ses.map((x) => x.exercise_id))], s.id);
 
   const exercises: SEx[] = ses.map((x) => ({
     id: x.id,
@@ -49,17 +49,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
       .map((z) => ({ id: z.id, set_no: z.set_no, weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, done: z.done })),
   }));
 
-  // Lifts offered in the swap/add sheet: the program's lifts plus your own, one per name,
-  // with the most recent history of any lift by that name.
-  const byName = new Map<string, Candidate>();
-  for (const e of exRows) {
-    const k = e.name.toLowerCase();
-    const l = last.get(e.id) ?? null;
-    const prev = byName.get(k);
-    if (!prev) byName.set(k, { name: e.name, last: l });
-    else if (l && (!prev.last || l.date > prev.last.date)) prev.last = l;
-  }
-  const candidates = [...byName.values()];
+  // Lifts offered in the swap/add sheet: one per exercise (synonyms merged), with your latest history of it.
+  const candidates = await getCandidates(supabase, s.id);
 
   return (
     <SessionView

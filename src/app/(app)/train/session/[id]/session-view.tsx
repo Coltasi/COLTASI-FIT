@@ -8,12 +8,13 @@ import { Ring, Sheet, linkBtn } from "@/components/sheet";
 import { toKg, unit, w, type Units } from "@/lib/units";
 import { fmtShort } from "@/lib/dates";
 import { GUIDES } from "@/lib/exercise-guides";
-import type { LastTime } from "@/lib/data";
+import type { Candidate, LastTime } from "@/lib/data";
+import { exerciseKey } from "@/lib/exercise-match";
+import { lastLine, searchCandidates } from "@/components/exercise-search";
 import { addLifts, addSet, finishSession, saveSet, setExtra, setWarmup, swapLift } from "../../actions";
 
 export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
 export type SEx = { id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; sets: SSet[] };
-export type Candidate = { name: string; last: LastTime | null };
 type Session = {
   id: string; kind: string; title: string;
   warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
@@ -174,6 +175,7 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
           mode={sheet.mode}
           title={sheet.mode === "swap" ? `Swap ${sheet.ex?.name}` : "Add exercise"}
           options={suggestions(sheet.mode, sheet.ex ?? null, exs, candidates)}
+          all={candidates.filter((c) => !exs.some((e) => exerciseKey(e.name) === exerciseKey(c.name)))}
           units={units}
           pending={pending}
           onClose={() => setSheet(null)}
@@ -204,8 +206,8 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
 
 /** Swap: lifts that work the same main muscles first. Add: lifts you've done before. Never ones already in the session. */
 function suggestions(mode: "swap" | "add", ex: SEx | null, exs: SEx[], candidates: Candidate[]): Candidate[] {
-  const inSession = new Set(exs.map((e) => e.name.toLowerCase()));
-  const pool = candidates.filter((c) => !inSession.has(c.name.toLowerCase()));
+  const inSession = new Set(exs.map((e) => exerciseKey(e.name)));
+  const pool = candidates.filter((c) => !inSession.has(exerciseKey(c.name)));
   const recent = (c: Candidate) => c.last?.date ?? "";
   if (mode === "swap" && ex) {
     const g = GUIDES[ex.subFor ?? ex.name] ?? GUIDES[ex.name];
@@ -227,32 +229,33 @@ function suggestions(mode: "swap" | "add", ex: SEx | null, exs: SEx[], candidate
   return [...done, ...rest].slice(0, 8);
 }
 
-function PickSheet({ mode, title, options, units, pending, onClose, onApply }: {
-  mode: "swap" | "add"; title: string; options: Candidate[]; units: Units; pending: boolean;
+function PickSheet({ mode, title, options, all, units, pending, onClose, onApply }: {
+  mode: "swap" | "add"; title: string; options: Candidate[]; all: Candidate[]; units: Units; pending: boolean;
   onClose: () => void; onApply: (names: string[]) => void;
 }) {
   const [picks, setPicks] = useState<string[]>([]);
   const [own, setOwn] = useState("");
   const names = [...picks, ...(own.trim() ? [own.trim()] : [])];
   const n = names.length;
-  const lastLine = (c: Candidate) => c.last
-    ? `last ${c.last.top != null ? `${w(c.last.top, units)} ${unit(units)} × ` : ""}${c.last.sets.map((s) => s.reps ?? "?").join(", ")} · ${fmtShort(c.last.date)}`
-    : "new";
+  // Typing searches the whole library (synonyms count: "kb swings" finds Kettlebell Swing).
+  const q = own.trim();
+  const shown = q ? searchCandidates(all, q, 8) : options;
+  const noMatch = q.length > 0 && shown.length === 0;
   return (
     <Sheet title={title} onClose={onClose}>
       <p className="cap">{mode === "swap" ? "Pick one or more. Next time this day comes up, your swap is kept." : "Added lifts are kept for next time too."}</p>
-      {options.length ? (
+      {shown.length || picks.length ? (
         <div className="card flat clip">
-          {options.map((o) => {
+          {[...picks.filter((p) => !shown.some((o) => o.name === p)).map((p) => all.find((o) => o.name === p) ?? options.find((o) => o.name === p) ?? { name: p, last: null }), ...shown].map((o) => {
             const on = picks.includes(o.name);
             return (
               <button key={o.name} type="button" className="row" aria-pressed={on}
-                onClick={() => setPicks(on ? picks.filter((x) => x !== o.name) : [...picks, o.name])}
+                onClick={() => { setPicks(on ? picks.filter((x) => x !== o.name) : [...picks, o.name]); if (!on) setOwn(""); }}
                 style={{ ...rowBtn, background: on ? "var(--tint-ember-soft)" : "transparent" }}>
                 <Ring on={on} />
                 <span style={{ flexGrow: 1, minWidth: 0 }}>
                   <span className="ln" style={{ display: "block" }}>{o.name}</span>
-                  <span className="cap">{lastLine(o)}</span>
+                  <span className="cap">{lastLine(o, units)}</span>
                 </span>
               </button>
             );
@@ -260,8 +263,9 @@ function PickSheet({ mode, title, options, units, pending, onClose, onApply }: {
         </div>
       ) : null}
       <form onSubmit={(e) => { e.preventDefault(); onApply(names); }} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <label style={{ display: "block" }}><span className="flab">Or type your own</span>
-          <input className="fld" value={own} onChange={(e) => setOwn(e.target.value)} placeholder="Exercise name" autoComplete="off" />
+        <label style={{ display: "block" }}><span className="flab">Search or type your own</span>
+          <input className="fld" value={own} onChange={(e) => setOwn(e.target.value)} placeholder="e.g. KB swings" autoComplete="off" />
+          {noMatch ? <span className="cap">No match. It will be added as a new exercise.</span> : null}
         </label>
         <button type="submit" className="btn" disabled={pending || !n}>
           {pending ? "Saving…" : mode === "swap" ? (n ? `Swap in ${n}` : "Swap") : (n ? `Add ${n}` : "Add")}
