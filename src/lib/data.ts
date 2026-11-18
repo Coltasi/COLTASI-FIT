@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Units } from "@/lib/units";
 import { mondayOf, todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
+import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 
 export type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -93,31 +94,56 @@ export async function getFinishers(supabase: Supa): Promise<Finisher[]> {
 
 export type LastTime = { date: string; top: number | null; sets: { weight_kg: number | null; reps: number | null }[] };
 
-/** Most recent finished-session performance for each exercise. */
+/**
+ * Most recent finished-session performance for each exercise. Names that mean the same lift
+ * ("KB Swings" / "Kettlebell Swing") are one exercise here: each requested id gets the latest
+ * session across all of them.
+ */
 export async function getLastTimes(supabase: Supa, exerciseIds: string[], excludeSessionId?: string) {
   const out = new Map<string, LastTime>();
   if (!exerciseIds.length) return out;
+  const { data: exRows } = await supabase.from("exercises").select("id, name, created_by, created_at");
+  const { keyById, byKey } = groupExercises((exRows ?? []) as ExerciseRow[]);
+  const keyOf = (id: string) => keyById.get(id) ?? id;
+  const wanted = new Set<string>();
+  for (const id of exerciseIds) for (const sib of byKey.get(keyOf(id))?.ids ?? [id]) wanted.add(sib);
   const { data } = await supabase
     .from("session_exercises")
     .select("exercise_id, session_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
-    .in("exercise_id", exerciseIds)
+    .in("exercise_id", [...wanted])
     .eq("sessions.status", "done");
   const rows = ((data ?? []) as any[])
     .filter((r) => r.session_id !== excludeSessionId)
     .sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1));
+  const byGroup = new Map<string, LastTime>();
   for (const r of rows) {
-    if (out.has(r.exercise_id)) continue;
+    const k = keyOf(r.exercise_id);
+    if (byGroup.has(k)) continue;
     const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no);
     if (!sets.length) continue;
     // 0 kg means no added weight: it never counts as a top set.
     const weights = sets.map((s: any) => Number(s.weight_kg)).filter((x: number) => x > 0);
-    out.set(r.exercise_id, {
+    byGroup.set(k, {
       date: r.sessions.session_date,
       top: weights.length ? Math.max(...weights) : null,
       sets: sets.map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps })),
     });
   }
+  for (const id of exerciseIds) {
+    const l = byGroup.get(keyOf(id));
+    if (l) out.set(id, l);
+  }
   return out;
+}
+
+export type Candidate = { name: string; last: LastTime | null };
+
+/** Every lift you can add: one entry per exercise (synonyms merged), with your latest history of it. */
+export async function getCandidates(supabase: Supa, excludeSessionId?: string): Promise<Candidate[]> {
+  const { data } = await supabase.from("exercises").select("id, name, created_by, created_at");
+  const { groups } = groupExercises((data ?? []) as ExerciseRow[]);
+  const last = await getLastTimes(supabase, groups.map((g) => g.rep.id), excludeSessionId);
+  return groups.map((g) => ({ name: g.rep.name, last: last.get(g.rep.id) ?? null }));
 }
 
 export type WeekState = {

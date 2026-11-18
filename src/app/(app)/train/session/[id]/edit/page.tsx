@@ -1,20 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getContext } from "@/lib/data";
+import { getCandidates, getContext } from "@/lib/data";
 import { IconDown, IconLock, IconMinus, IconUp } from "@/components/icons";
 import { discardSession, moveExercise, removeExercise } from "../../../actions";
 import { AddExerciseRow } from "./add-row";
 
 export default async function EditSessionPage({ params }: PageProps<"/train/session/[id]/edit">) {
   const { id } = await params;
-  const { supabase } = await getContext();
-  const [{ data: s }, { data: allEx }] = await Promise.all([
+  const { supabase, units } = await getContext();
+  const [{ data: s }, candidates] = await Promise.all([
     supabase
       .from("sessions")
       .select("id, title, status, session_exercises(id, position, target_sets, rep_range, exercises(name), session_sets(done))")
       .eq("id", id)
       .single(),
-    supabase.from("exercises").select("name").order("name"),
+    getCandidates(supabase),
   ]);
   if (!s) notFound();
   const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
@@ -60,7 +60,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
         {!ses.length ? <p className="cap" style={{ padding: 16 }}>No lifts yet.</p> : null}
       </div>
 
-      <AddExerciseRow sessionId={s.id} names={((allEx ?? []) as any[]).map((e) => e.name)} />
+      <AddExerciseRow sessionId={s.id} candidates={candidates} units={units} />
 
       <form action={discardSession.bind(null, s.id)} style={{ marginTop: 8 }}>
         <button type="submit" className="ghost" style={{ color: "var(--rust)" }}>Discard this session</button>

@@ -9,6 +9,7 @@ import { getTz } from "@/lib/tz";
 import { writeCoachRead } from "@/lib/coach";
 import { currentUser } from "@/lib/supabase/user";
 import { getLastTimes } from "@/lib/data";
+import { exerciseKey, groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 
 async function ctx() {
   const supabase = await createClient();
@@ -161,12 +162,11 @@ export async function setWarmup(sessionId: string, warmup: string) {
 
 async function findOrCreateExercise(supabase: Supa, userId: string, name: string) {
   const clean = name.trim().replace(/\s+/g, " ");
-  const { data: found } = await supabase.from("exercises").select("id, name, created_by").ilike("name", clean).limit(5);
-  // With both a personal and a program lift of the same name, use the personal one: that's where your history is.
-  const exact = ((found ?? []) as any[])
-    .sort((a, b) => (a.created_by == null ? 1 : 0) - (b.created_by == null ? 1 : 0))
-    .find((e) => e.name.toLowerCase() === clean.toLowerCase());
-  if (exact) return exact.id as string;
+  // Same lift under another spelling ("KB swings" = "Kettlebell Swing") reuses that exercise, so history stays in one place.
+  const { data: all } = await supabase.from("exercises").select("id, name, created_by, created_at");
+  const { byKey } = groupExercises((all ?? []) as ExerciseRow[]);
+  const hit = byKey.get(exerciseKey(clean));
+  if (hit) return hit.rep.id;
   const { data, error } = await supabase.from("exercises").insert({ name: clean, created_by: userId }).select("id").single();
   if (error || !data) throw new Error(error?.message ?? "Could not add that exercise.");
   return data.id as string;
