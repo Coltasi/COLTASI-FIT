@@ -92,21 +92,38 @@ export default async function OverviewPage() {
         bars={Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return { day: d, steps: stepByDay.get(d) ?? null }; })}
       />
 
-      {day ? (
+      {day ? (() => {
+        // A finished session today (custom or kettlebell included) counts as today's workout.
+        const doneToday = !week.inProgress && !todayDone && week.doneToday.length ? week.doneToday : null;
+        const isDone = todayDone || !!doneToday;
+        return (
         <div style={{ background: "var(--navy)", borderRadius: 18, padding: 16, boxShadow: "0 6px 18px rgba(21,50,97,.18)", color: "#fff", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
             <div>
-              <p className="lab" style={{ color: "var(--lagoon)" }}>Suggested today</p>
-              <p className="disp" style={{ fontSize: 30, lineHeight: 1.1, marginTop: 2 }}>{week.inProgress?.title ?? day.name}</p>
+              <p className="lab" style={{ color: "var(--lagoon)" }}>{doneToday ? "Done today" : "Suggested today"}</p>
+              <p className="disp" style={{ fontSize: 30, lineHeight: 1.1, marginTop: 2 }}>{week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day.name)}</p>
               <p style={{ fontSize: 13, color: "#c9d3e3", marginTop: 4 }}>The Split · {doneCount} of {split.length} done this week</p>
-              <p style={{ fontSize: 13, color: "#c9d3e3" }}>{afterNext ? `Next in The Split · ${afterNext.name} after that` : "Last day of The Split this week"}</p>
+              <p style={{ fontSize: 13, color: "#c9d3e3" }}>{doneToday ? `Next in The Split · ${day.name}` : afterNext ? `Next in The Split · ${afterNext.name} after that` : "Last day of The Split this week"}</p>
             </div>
-            <span className={`tag ${week.inProgress || !todayDone ? "ember" : "blue"}`}>{week.inProgress ? "In progress" : todayDone ? "Done" : "Not started"}</span>
+            <span className={`tag ${week.inProgress || !isDone ? "ember" : "blue"}`}>{week.inProgress ? "In progress" : isDone ? "Done" : "Not started"}</span>
           </div>
           {week.inProgress ? (
             <Link href={`/train/session/${week.inProgress.id}`} className="btn" style={{ height: 52, gap: 8, boxShadow: "0 6px 18px rgba(176,64,29,.35)" }}>
               Resume {week.inProgress.title}<IconChevron stroke="currentColor" />
             </Link>
+          ) : doneToday ? (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} style={{ color: "#fff", fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
+                View workout<IconChevron stroke="currentColor" />
+              </Link>
+              <form action={startSession}>
+                <input type="hidden" name="day_id" value={day.id} />
+                <input type="hidden" name="quick" value="1" />
+                <button type="submit" style={{ background: "transparent", border: 0, color: "#c9d3e3", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}>
+                  Start {day.name} anyway
+                </button>
+              </form>
+            </div>
           ) : (
             <form action={startSession}>
               <input type="hidden" name="day_id" value={day.id} />
@@ -117,7 +134,8 @@ export default async function OverviewPage() {
             </form>
           )}
         </div>
-      ) : null}
+        );
+      })() : null}
 
       {prs.length ? (
         <Disclosure title="Recent PRs" openSummary="top set"

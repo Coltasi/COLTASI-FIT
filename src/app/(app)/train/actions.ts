@@ -117,6 +117,15 @@ export async function startSession(formData: FormData) {
 export async function startCustom() {
   const { supabase } = await ctx();
   const today = todayIn(await getTz());
+  // A double tap fires this twice; reuse a custom session started seconds ago instead of creating a twin.
+  const { data: recent } = await supabase
+    .from("sessions")
+    .select("id")
+    .eq("kind", "custom")
+    .eq("status", "in_progress")
+    .gte("started_at", new Date(Date.now() - 30_000).toISOString())
+    .limit(1);
+  if (recent?.length) redirect(`/train/session/${recent[0].id}`);
   const { data: session, error } = await supabase
     .from("sessions")
     .insert({ kind: "custom", title: "Custom workout", session_date: today })
