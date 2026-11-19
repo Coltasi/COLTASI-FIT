@@ -23,6 +23,10 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const doneCount = split.filter((d) => week.done.has(d.id)).length;
   const suggested = !!day && day.id === week.nextDay?.id;
+  // A custom or kettlebell session finished today, shown in the week strip as today's workout.
+  const offPlanToday = [...week.doneToday].reverse().find((s) => s.kind !== "split") ?? null;
+  const firstUndone = split.findIndex((d) => !week.done.has(d.id));
+  const todaySlot = firstUndone < 0 ? split.length : firstUndone;
 
   return (
     <main className="screen">
@@ -71,8 +75,8 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           <p className="lab">This week · The Split</p>
           <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{doneCount}</span> of {split.length} done</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${split.length || 5}, minmax(0, 1fr))`, gap: 6 }}>
-          {split.map((d) => {
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${(split.length || 5) + (offPlanToday ? 1 : 0)}, minmax(0, 1fr))`, gap: 6 }}>
+          {split.flatMap((d, i) => {
             const doneOn = week.done.get(d.id);
             const isNext = !doneOn && week.nextDay?.id === d.id;
             const style = doneOn
@@ -80,14 +84,17 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
               : isNext
                 ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" }
                 : {};
-            return (
-              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat" style={{ borderRadius: 12, padding: "9px 2px", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: "var(--navy)", ...style }}>
-                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{doneOn ? fmtDow(doneOn) : isNext ? "Today" : "Next"}</span>
+            const tile = (
+              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat" style={{ ...tileBase, ...style }}>
+                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{doneOn ? fmtDow(doneOn) : isNext && !offPlanToday ? "Today" : "Next"}</span>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>{d.name}</span>
                 {doneOn ? <IconCheck size={14} /> : <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />}
               </Link>
             );
+            // Today's custom or kettlebell workout takes today's slot: after the days already done, before what's next.
+            return offPlanToday && i === todaySlot ? [todayTile(offPlanToday), tile] : [tile];
           })}
+          {offPlanToday && todaySlot === split.length ? todayTile(offPlanToday) : null}
         </div>
       </div>
 
@@ -141,5 +148,17 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
     </main>
   );
 }
+
+function todayTile(s: { id: string; kind: string }) {
+  return (
+    <Link key="today-off-plan" href={`/train/session/${s.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
+      <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>Today</span>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>{s.kind === "kettlebell" ? "KB" : "Custom"}</span>
+      <IconCheck size={14} />
+    </Link>
+  );
+}
+
+const tileBase = { borderRadius: 12, padding: "9px 2px", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2, color: "var(--navy)" };
 
 const ago = (n: number) => (n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`);
