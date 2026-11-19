@@ -20,6 +20,14 @@ function toPayload(sub: PushSubscription) {
   return { endpoint: sub.endpoint, p256dh: j.keys?.p256dh ?? "", auth: j.keys?.auth ?? "" };
 }
 
+/** A subscription made with an old key can never receive the server's pushes (Google answers 403). */
+function usesCurrentKey(sub: PushSubscription) {
+  const k = sub.options?.applicationServerKey;
+  if (!k) return true;
+  const a = new Uint8Array(k), b = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+  return a.length === b.length && a.every((x, i) => x === b[i]);
+}
+
 /** Always a brand-new push address: an old one may already be dead at Google's end. */
 async function freshSubscription(reg: ServiceWorkerRegistration) {
   const old = await reg.pushManager.getSubscription();
@@ -46,12 +54,12 @@ export function PushSettings() {
       if (Notification.permission !== "granted") return setState("off");
       const reg = await registration();
       const sub = await reg.pushManager.getSubscription();
-      if (sub && (await hasPushSubscription(sub.endpoint))) {
+      if (sub && usesCurrentKey(sub) && (await hasPushSubscription(sub.endpoint))) {
         // Keeps the saved time zone current when travelling.
         await savePushSubscription(toPayload(sub), tz(), navigator.userAgent);
         return setState("on");
       }
-      // Permission is granted but the server doesn't have this phone: fix it without asking.
+      // Permission is granted but the server doesn't have this phone (or it was made with an old key): fix it without asking.
       const fresh = await freshSubscription(reg);
       const res = await savePushSubscription(toPayload(fresh), tz(), navigator.userAgent);
       if (res.error) { setMsg(`Couldn't save this phone: ${res.error}`); return setState("off"); }
