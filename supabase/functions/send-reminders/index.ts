@@ -1,6 +1,8 @@
 // Sends the daily sleep and weekly weigh-in push reminders.
 // Called every 15 minutes by pg_cron (see the push_reminders migration).
 // Only sends when the thing is not already logged, and at most once per day per kind.
+// A reminder only counts as sent (reminder_log) when at least one device accepted it.
+// Also handles {"test": true} from a signed-in user: sends a test notification to their devices.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
 
@@ -44,10 +46,41 @@ const MESSAGES: Record<Kind, { title: string; body: string; url: string }> = {
   weigh_in_nudge: { title: "No weigh-in logged this week", body: "Log it now so the trend stays honest.", url: "/progress" },
 };
 
+/** Sends to every device; drops devices the push service says are gone. Returns how many accepted it. */
+async function sendToDevices(userSubs: any[], payload: string) {
+  let ok = 0;
+  const errors: string[] = [];
+  for (const s of userSubs) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
+      ok++;
+    } catch (e: any) {
+      errors.push(`${e?.statusCode ?? "?"} ${String(e?.body ?? e?.message ?? e).slice(0, 120)}`);
+      if (e?.statusCode === 404 || e?.statusCode === 410) await admin.from("push_subscriptions").delete().eq("id", s.id);
+    }
+  }
+  return { ok, errors };
+}
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   try {
-    if (req.headers.get("x-cron-secret") !== (await secret("reminder_cron_secret"))) {
-      return new Response("forbidden", { status: 403 });
+    const isCron = req.headers.get("x-cron-secret") === (await secret("reminder_cron_secret"));
+    if (!isCron) {
+      // Test notification for the signed-in user (Settings → "Send test").
+      const token = (req.headers.get("authorization") ?? "").replace(/^Bearer /i, "");
+      const { data: u } = token ? await admin.auth.getUser(token) : { data: { user: null } };
+      const body = await req.json().catch(() => ({}));
+      if (!u?.user || !body?.test) return new Response("forbidden", { status: 403, headers: CORS });
+      webpush.setVapidDetails("https://www.coltasi.com", await secret("vapid_public_key"), await secret("vapid_private_key"));
+      const { data: mine } = await admin.from("push_subscriptions").select("*").eq("user_id", u.user.id);
+      const r = await sendToDevices(mine ?? [], JSON.stringify({ title: "Test from Coltasi Fit", body: "Reminders reach this phone.", url: "/settings", tag: "test" }));
+      return Response.json({ devices: mine?.length ?? 0, delivered: r.ok, errors: r.errors }, { headers: CORS });
     }
     const dry = new URL(req.url).searchParams.get("dry") === "1";
     webpush.setVapidDetails("https://www.coltasi.com", await secret("vapid_public_key"), await secret("vapid_private_key"));
@@ -63,6 +96,7 @@ Deno.serve(async (req) => {
       .in("id", [...byUser.keys()]);
 
     const sent: string[] = [];
+    const failed: string[] = [];
     for (const p of profiles ?? []) {
       const userSubs = byUser.get(p.id)!;
       // The most recently seen device decides the time zone, so travel just works.
@@ -101,17 +135,19 @@ Deno.serve(async (req) => {
 
         const m = MESSAGES[kind];
         const payload = JSON.stringify({ ...m, tag: kind.startsWith("weigh") ? "weigh-in" : "sleep" });
-        for (const s of userSubs) {
-          try {
-            await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
-          } catch (e: any) {
-            if (e?.statusCode === 404 || e?.statusCode === 410) await admin.from("push_subscriptions").delete().eq("id", s.id);
-          }
+        const r = await sendToDevices(userSubs, payload);
+        if (r.ok === 0) {
+          // Nothing reached a device: release the claim so it isn't recorded as sent
+          // (and a later run inside the catch-up window can try again).
+          await admin.from("reminder_log").delete().match({ user_id: p.id, kind, local_date: date });
+          console.error(`reminder ${kind} not delivered`, r.errors);
+          failed.push(`${p.id}:${kind}`);
+          continue;
         }
         sent.push(`${p.id}:${kind}`);
       }
     }
-    return Response.json({ users: byUser.size, sent });
+    return Response.json({ users: byUser.size, sent, failed });
   } catch (e) {
     return new Response(String((e as Error).message ?? e), { status: 500 });
   }

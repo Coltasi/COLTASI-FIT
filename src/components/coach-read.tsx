@@ -2,14 +2,9 @@
 
 import { useState, type ReactNode } from "react";
 import { IconDown } from "./icons";
+import { PARTS, ReadText, type ReadParts } from "./coach-read-parts";
 
-const PARTS = [
-  ["Lifting", "lifting", "var(--kingfisher)"],
-  ["Weight & diet", "weight", "var(--ember)"],
-  ["Recovery", "recovery", "var(--lagoon)"],
-] as const;
-
-export type ReadParts = { headline: string; lifting: string | null; weight: string | null; recovery: string | null };
+export { PARTS, ReadText, type ReadParts };
 
 /** Cream Coach card whose headline collapses and expands the full read. Collapsed by default. */
 export function CoachRead({ label, read, footer, padding = "16px 16px 6px" }: {
@@ -28,7 +23,7 @@ export function CoachRead({ label, read, footer, padding = "16px 16px 6px" }: {
       {open ? parts.map(([l, k, c]) => (
         <div key={k} style={{ display: "grid", gridTemplateColumns: "10px minmax(0,1fr)", gap: 10, padding: "10px 0", borderTop: "1px solid #e6dcc0" }}>
           <span style={{ width: 10, height: 10, borderRadius: "50%", marginTop: 5, background: c }} />
-          <div><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><p style={{ fontSize: 14, lineHeight: 1.45 }}>{read[k]}</p></div>
+          <div><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={read[k] as string} /></div>
         </div>
       )) : null}
       {footer}

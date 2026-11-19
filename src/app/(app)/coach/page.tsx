@@ -1,5 +1,7 @@
 import { BrandRow, CoachMark } from "@/components/ui";
 import { CoachRead, Disclosure } from "@/components/coach-read";
+import { PARTS, ReadText } from "@/components/coach-read-parts";
+import { RefreshRead } from "./refresh-read";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
 
@@ -47,16 +49,17 @@ export default async function CoachPage() {
       <BrandRow />
       <div>
         <h1 className="disp" style={{ fontSize: 30, lineHeight: 1 }}>Coach</h1>
-        <p className="cap" style={{ marginTop: 6 }}>A read after every session and every Monday weigh-in</p>
+        <p className="cap" style={{ marginTop: 6 }}>A read after every session, weigh-in and scan</p>
       </div>
 
       {latest ? (
         <CoachRead
           read={latest}
+          footer={<RefreshRead />}
           label={
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
               <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
-                <CoachMark />{latest.kind === "session" ? "After a session" : "Weigh-in"} · {shortDay(dayIso(latest.created_at))}
+                <CoachMark />{latest.kind === "session" ? "After a session" : latest.kind === "scan" ? "Body scan" : "Weigh-in"} · {shortDay(dayIso(latest.created_at))}
               </p>
               <p className="cap" style={{ fontSize: 12, flexShrink: 0, whiteSpace: "nowrap" }}>{ago(latest.created_at)}</p>
             </div>
@@ -88,12 +91,14 @@ export default async function CoachPage() {
             <details key={r.id} className="row" style={{ display: "block" }}>
               <summary style={{ listStyle: "none", cursor: "pointer" }}>
                 <p style={{ fontSize: 15, fontWeight: 600 }}>
-                  {r.kind === "session" ? "Session" : "Weigh-in"} · {dayFmt(r.created_at)}{" "}
-                  <span className={`tag ${r.kind === "session" ? "blue" : "ember"}`} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", verticalAlign: 2 }}>{r.kind === "session" ? "Session" : "Weigh-in"}</span>
+                  {r.kind === "session" ? "Session" : r.kind === "scan" ? "Scan" : "Weigh-in"} · {dayFmt(r.created_at)}{" "}
+                  <span className={`tag ${r.kind === "session" ? "blue" : "ember"}`} style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: ".06em", verticalAlign: 2 }}>{r.kind === "session" ? "Session" : r.kind === "scan" ? "Scan" : "Weigh-in"}</span>
                 </p>
                 <p className="cap">{r.headline}</p>
               </summary>
-              {[r.lifting, r.weight, r.recovery].filter(Boolean).map((t: string, i: number) => <p key={i} style={{ fontSize: 14, lineHeight: 1.45, marginTop: 8 }}>{t}</p>)}
+              {PARTS.filter(([, k]) => r[k]).map(([l, k]) => (
+                <div key={k} style={{ marginTop: 8 }}><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[k]} /></div>
+              ))}
             </details>
           ))}
         </Disclosure>

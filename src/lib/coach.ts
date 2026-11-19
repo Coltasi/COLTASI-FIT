@@ -1,10 +1,14 @@
-import { getContext, type Supa } from "@/lib/data";
+import { getContext, getProgram, type Supa } from "@/lib/data";
 import { daysBetween } from "@/lib/dates";
 import { currentUser } from "@/lib/supabase/user";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { fetchAll } from "@/lib/fetch-all";
+import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
+import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
+
+export type ReadKind = "session" | "weigh_in" | "scan";
 
 /** kg per week from a least-squares fit over the given weigh-ins (oldest first or any order). */
 export function weeklyRate(points: { measured_on: string; weight_kg: number }[]): number | null {
@@ -33,171 +37,216 @@ export async function callClaude(body: { system?: string; max_tokens: number; me
   return typeof j?.content?.[0]?.text === "string" ? j.content[0].text : null;
 }
 
-type Facts = {
-  sessionTitle?: string;
-  lifts?: { name: string; top: number | null; reps: (number | null)[]; prevTop: number | null }[];
-  weighIns: { measured_on: string; weight_kg: number }[];
-  rate: number | null;
-  targetRate: number | null;
-  targetKcal: number | null;
-  sleep: { night_of: string; hours: number; wake_feeling: string | null; flags: string[] } | null;
-  /** Daily steps from the Garmin. Averages cover completed days only; null when fewer than 3 days are logged. */
-  steps: { avg7: number | null; avgPrev7: number | null; daysLogged7: number; last14: { day: string; steps: number }[] } | null;
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Everything the Coach knows, already computed. Stored with each read (coach_reads.signals). */
+export type Signals = {
+  kind: ReadKind;
+  today: string;
+  sessionTitle: string | null;
+  /** Whose lifts the "Next session" calls are for: the session just finished, or the most overdue split day. */
+  liftsFor: string | null;
+  lifts: LiftSignal[];
+  splitDue: DayDue[];
+  sleep: SleepSignal;
+  /** Only on weigh-in and scan reads. */
+  weight: { lines: string[]; latestKg: number | null; rateKgWeek: number | null; targetKgWeek: number | null; behind: boolean } | null;
 };
 
-async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceId?: string): Promise<Facts> {
+export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: string): Promise<Signals> {
   const user = await currentUser(supabase);
   const { today } = await getContext();
-  const [{ data: prof }, { data: wis }, { data: sl }, stepRows] = await Promise.all([
-    supabase.from("profiles").select("target_rate_kg_week, target_kcal").eq("id", user?.id ?? "").single(),
-    supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(6),
-    supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(1),
-    getSteps(supabase, today, 14),
+  const [{ data: prof }, { data: exRows }, program, { data: nights }, { data: splitSessions }, history] = await Promise.all([
+    supabase.from("profiles").select("target_rate_kg_week, target_kcal, kettlebells_kg").eq("id", user?.id ?? "").single(),
+    supabase.from("exercises").select("id, name, modality, created_by, created_at"),
+    getProgram(supabase),
+    supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(14),
+    supabase.from("sessions").select("day_id, session_date").eq("status", "done").eq("kind", "split").not("day_id", "is", null).order("session_date", { ascending: false }).limit(200),
+    fetchAll<any>((a, b) => supabase
+      .from("session_exercises")
+      .select("id, exercise_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
+      .eq("sessions.status", "done")
+      .order("id")
+      .range(a, b)),
   ]);
-  const ss = stepSummary(stepRows, today);
-  const weighIns = ((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
-  const facts: Facts = {
-    weighIns,
-    rate: weeklyRate(weighIns.slice(0, 4)),
-    targetRate: prof?.target_rate_kg_week == null ? null : Number(prof.target_rate_kg_week),
-    targetKcal: prof?.target_kcal ?? null,
-    sleep: (sl?.[0] as any) ?? null,
-    steps: stepRows.length ? { avg7: ss.avg7, avgPrev7: ss.avgPrev7, daysLogged7: ss.days7, last14: stepRows } : null,
-  };
+  const kettlebells = ((prof?.kettlebells_kg as number[] | null) ?? [8, 12, 16, 20, 24, 30]).map(Number);
+
+  // History grouped by exercise (synonyms like "KB Swing" / "Kettlebell Swing" are one lift), oldest first.
+  const { keyById } = groupExercises((exRows ?? []) as ExerciseRow[]);
+  const modality = new Map(((exRows ?? []) as any[]).map((e) => [e.id, e.modality as string | null]));
+  const keyOf = (id: string) => keyById.get(id) ?? id;
+  const perfs = new Map<string, Perf[]>();
+  for (const r of [...history].sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? -1 : 1))) {
+    const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no)
+      .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps }));
+    if (!sets.length) continue;
+    const k = keyOf(r.exercise_id);
+    if (!perfs.has(k)) perfs.set(k, []);
+    perfs.get(k)!.push({ date: r.sessions.session_date, sets });
+  }
+
+  // Split days, most overdue first.
+  const lastDone = new Map<string, string>();
+  for (const s of (splitSessions ?? []) as any[]) if (!lastDone.has(s.day_id)) lastDone.set(s.day_id, s.session_date);
+  const due = splitDue(program.filter((d) => d.program === "split"), lastDone, today);
+
+  const sleep = sleepSignal(((nights ?? []) as any[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today);
+  const ease = sleep.call === "ease";
+
+  // Which lifts get a call: the session just finished, or the most overdue split day.
+  let sessionTitle: string | null = null;
+  let liftsFor: string | null = null;
+  let plan: { exercise_id: string; name: string; rep_range: string | null }[] = [];
   if (kind === "session" && sourceId) {
     const { data: s } = await supabase
       .from("sessions")
-      .select("title, session_exercises(exercise_id, position, exercises(name), session_sets(weight_kg, reps, done))")
+      .select("title, session_exercises(exercise_id, position, rep_range, exercises(name))")
       .eq("id", sourceId)
       .single();
-    if (s) {
-      facts.sessionTitle = s.title;
-      const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
-      const ids = ses.map((x) => x.exercise_id);
-      const prevTops = new Map<string, number>();
-      if (ids.length) {
-        const prev = await fetchAll<any>((a, b) => supabase
-          .from("session_exercises")
-          .select("id, exercise_id, session_id, sessions!inner(status, started_at), session_sets(weight_kg, done)")
-          .in("exercise_id", ids)
-          .eq("sessions.status", "done")
-          .neq("session_id", sourceId)
-          .order("id")
-          .range(a, b));
-        for (const r of ((prev ?? []) as any[]).sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1))) {
-          if (prevTops.has(r.exercise_id)) continue;
-          const ws = (r.session_sets ?? []).filter((z: any) => z.done && Number(z.weight_kg) > 0).map((z: any) => Number(z.weight_kg));
-          if (ws.length) prevTops.set(r.exercise_id, Math.max(...ws));
-        }
-      }
-      facts.lifts = ses
-        .map((x) => {
-          const done = (x.session_sets ?? []).filter((z: any) => z.done);
-          const ws = done.filter((z: any) => Number(z.weight_kg) > 0).map((z: any) => Number(z.weight_kg));
-          return { name: x.exercises?.name ?? "", top: ws.length ? Math.max(...ws) : null, reps: done.map((z: any) => z.reps), prevTop: prevTops.get(x.exercise_id) ?? null };
-        })
-        .filter((l) => l.reps.length);
+    sessionTitle = s?.title ?? null;
+    liftsFor = sessionTitle;
+    plan = ((s?.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position)
+      .map((x) => ({ exercise_id: x.exercise_id, name: x.exercises?.name ?? "", rep_range: x.rep_range }));
+  } else if (due.length) {
+    const day = program.find((d) => d.name === due[0].name && d.program === "split");
+    liftsFor = day?.name ?? null;
+    plan = (day?.exercises ?? []).map((x) => ({ exercise_id: x.exercise_id, name: x.name, rep_range: x.rep_range || null }));
+  }
+  const lifts = plan
+    .map((p) => liftSignal({ name: p.name, modality: modality.get(p.exercise_id) ?? null, repRange: p.rep_range, history: perfs.get(keyOf(p.exercise_id)) ?? [] }, kettlebells, ease))
+    .filter((x): x is LiftSignal => x != null);
+
+  // Weight: only on weigh-in and scan reads.
+  let weight: Signals["weight"] = null;
+  if (kind !== "session") {
+    const [{ data: wis }, stepRows, { data: scans }] = await Promise.all([
+      supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(6),
+      getSteps(supabase, today, 14),
+      supabase.from("scans").select("scanned_on, weight_kg, body_fat_pct, muscle_mass_kg").order("scanned_on", { ascending: false }).limit(2),
+    ]);
+    const pts = ((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
+    const rate = weeklyRate(pts.slice(0, 4));
+    const target = prof?.target_rate_kg_week == null ? null : Number(prof.target_rate_kg_week);
+    const behind = rate != null && target != null && (target < 0 ? rate > target * 0.75 : rate < target * 0.75);
+    const lines: string[] = [];
+    if (kind === "scan" && scans?.length) {
+      const [a, b] = scans as any[];
+      const part = (v: any, pv: any, label: string, u: string) =>
+        v == null ? null : `${label} ${r1(Number(v))}${u}${pv != null ? ` (${Number(v) - Number(pv) >= 0 ? "up" : "down"} ${r1(Math.abs(Number(v) - Number(pv)))}${u} since ${b.scanned_on})` : ""}`;
+      const bits = [part(a.body_fat_pct, b?.body_fat_pct, "Body fat", "%"), part(a.muscle_mass_kg, b?.muscle_mass_kg, "muscle", " kg")].filter(Boolean);
+      if (bits.length) lines.push(`Scan: ${bits.join(", ")}.`);
     }
+    if (rate != null && target != null) {
+      const ss = stepSummary(stepRows, today);
+      const stepsFell = ss.avg7 != null && ss.avgPrev7 != null && ss.avg7 < ss.avgPrev7 * 0.85;
+      lines.push(`Losing ${r1(Math.abs(rate))} kg a week against a ${r1(Math.abs(target))} kg target.` +
+        (!behind ? " On track." : stepsFell ? ` Steps fell from ${ss.avgPrev7!.toLocaleString("en-US")} to ${ss.avg7!.toLocaleString("en-US")} a day; get those back first.` : " Sleep and training come first; change calories only after 2 more flat weeks."));
+    } else if (pts.length) lines.push(`Latest weigh-in ${kg(pts[0].weight_kg)}.`);
+    weight = { lines, latestKg: pts[0]?.weight_kg ?? null, rateKgWeek: rate == null ? null : r1(rate), targetKgWeek: target, behind };
   }
-  return facts;
+
+  return { kind, today, sessionTitle, liftsFor, lifts, splitDue: due.slice(0, 4), sleep, weight };
 }
 
-type Read = { headline: string; lifting: string | null; weight: string | null; recovery: string | null };
-const r1 = (n: number) => Math.round(n * 10) / 10;
+export type Read = { headline: string; next_session: string | null; recovery: string | null; weight: string | null };
 
-function ruleRead(kind: "session" | "weigh_in", f: Facts): Read {
-  let lifting: string | null = null;
-  if (f.lifts?.length) {
-    const ups = f.lifts.filter((l) => l.top != null && l.prevTop != null && l.top > l.prevTop);
-    const downs = f.lifts.filter((l) => l.top != null && l.prevTop != null && l.top < l.prevTop);
-    const setsLine = (l: { reps: (number | null)[] }) => `${l.reps.length} sets: ${l.reps.map((r) => r ?? "?").join(", ")} reps`;
-    if (ups.length) lifting = `${ups.slice(0, 2).map((l) => `${l.name} up ${r1(l.top! - l.prevTop!)} kg to ${r1(l.top!)} kg (${setsLine(l)})`).join(". ")}. Keep that weight next time until you reach the top of the rep range on every set.`;
-    else if (downs.length) lifting = `${downs[0].name} was lighter than last time, ${r1(downs[0].top!)} kg instead of ${r1(downs[0].prevTop!)} kg. One lighter day is normal; try the usual weight next session.`;
-    else lifting = `You logged ${f.lifts.length} lifts at the same weights as last time. Next time, try one more rep before adding weight.`;
-  }
-  let weight: string | null = null;
-  if (f.rate != null && f.targetRate != null) {
-    const behind = f.targetRate < 0 ? f.rate > f.targetRate * 0.75 : f.rate < f.targetRate * 0.75;
-    const st = f.steps;
-    const stepsFell = st?.avg7 != null && st.avgPrev7 != null && st.avg7 < st.avgPrev7 * 0.85;
-    weight = `Recent weigh-ins average ${r1(f.rate)} kg/week against a ${r1(f.targetRate)} target.` +
-      (behind && stepsFell ? ` Your steps fell from ${st!.avgPrev7!.toLocaleString("en-US")} to ${st!.avg7!.toLocaleString("en-US")} a day, which is a likely cause. Get back to about ${st!.avgPrev7!.toLocaleString("en-US")} a day before cutting calories.`
-      : behind ? (f.targetKcal ? ` If next Monday is flat again, trim about 150 kcal from your ${f.targetKcal.toLocaleString("en-US")} target.` : " If next Monday is flat again, trim about 150 kcal a day.") : " On track.");
-  } else if (f.weighIns.length) {
-    weight = `Latest weigh-in ${r1(f.weighIns[0].weight_kg)} kg. A few more Mondays and the trend will be clear.`;
-  } else {
-    weight = "No weigh-ins yet. Log one on Monday morning so the trend can start.";
-  }
-  let recovery: string | null = null;
-  if (f.sleep) recovery = `${r1(Number(f.sleep.hours))} hours${f.sleep.wake_feeling ? `, woke ${f.sleep.wake_feeling}` : ""}.` + (Number(f.sleep.hours) < 6 ? " Keep tomorrow's session honest, not heroic." : "");
-  const headline = kind === "session"
-    ? (f.lifts?.find((l) => l.top != null && l.prevTop != null && l.top > l.prevTop)
-        ? (() => { const l = f.lifts!.find((x) => x.top != null && x.prevTop != null && x.top > x.prevTop)!; return `${l.name} up ${r1(l.top! - l.prevTop!)} kg to ${r1(l.top!)} kg (${l.reps.length} sets: ${l.reps.map((r) => r ?? "?").join(", ")} reps).`; })()
-        : `${f.sessionTitle ?? "Session"} logged.`)
-    : "Weigh-in logged.";
-  return { headline, lifting: kind === "session" ? lifting : null, weight, recovery };
+function nextUpLine(s: Signals): string | null {
+  const d = s.splitDue[0];
+  if (!d) return null;
+  return d.daysSince == null ? `Next up: ${d.name} (not done yet).` : `Next up: ${d.name}, last done ${d.daysSince} day${d.daysSince === 1 ? "" : "s"} ago.`;
 }
 
-async function haikuRead(kind: "session" | "weigh_in", f: Facts): Promise<Read | null> {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return null;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({
-      model: COACH_MODEL,
-      max_tokens: 400,
-      system:
-        "You are the coach in a personal training app. Write a short, direct read after a " +
-        (kind === "session" ? "workout session" : "weekly weigh-in") +
-        ". Write in plain language anyone can follow, and use full exercise names. " +
-        'State weight changes like this: "Bench Press up 2.5 kg to 82.5 kg (4 sets: 6, 5, 5, 5 reps)". ' +
-        'No gym shorthand: never say things like "moved", "held" or "accept 4s"; say what happened and what to do next time. ' +
-        "Be specific with the numbers given, never invent numbers, no hype, no emoji, no em dashes. " +
-        'Reply with JSON only: {"headline": one sentence, "lifting": 1-2 sentences or null, "weight": 1-2 sentences or null, "recovery": one sentence or null}. ' +
-        "A stall needs 2-3 flat weeks before you suggest a calorie change; suggest about 150 kcal when you do. " +
-        "The data includes daily steps from a Garmin watch (steps.avg7 vs steps.avgPrev7, completed days only). If steps dropped by more than about 15% and weight loss is behind plan, say so and suggest restoring steps before cutting calories. Don't mention steps otherwise unless they help the read.",
-      messages: [{ role: "user", content: JSON.stringify(f) }],
-    }),
+/** The read built straight from the signals. Also the fallback for any field the model gets wrong. */
+export function ruleRead(s: Signals): Read {
+  const up = s.lifts.filter((l) => l.call === "up");
+  const stalled = s.lifts.filter((l) => l.call === "back_off");
+  let headline: string;
+  if (s.kind !== "session" && s.weight?.lines.length) headline = s.weight.lines[s.weight.lines.length - 1].split(". ")[0].replace(/\.$/, "") + ".";
+  else if (s.sleep.call === "ease") headline = `Ease off next session: ${s.sleep.reasons[0]}.`;
+  else if (up.length) headline = up.length === 1 ? `${up[0].name} is ready to go up next time.` : `${up.length} lifts are ready to go up: ${up.slice(0, 3).map((l) => l.name).join(", ")}.`;
+  else if (stalled.length) headline = `${stalled[0].name} has stalled for ${stalled[0].stalledFor} sessions. Time to back off or swap it.`;
+  else headline = nextUpLine(s) ?? `${s.sessionTitle ?? "Session"} logged.`;
+
+  const lines = s.lifts.map((l) => l.line);
+  const head = s.kind === "session" ? (s.liftsFor ? `Next time you do ${s.liftsFor}:` : null) : s.liftsFor ? `For ${s.liftsFor}:` : null;
+  const next = [nextUpLine(s), lines.length ? [head, ...lines].filter(Boolean).join("\n") : null].filter(Boolean).join("\n\n");
+  return {
+    headline,
+    next_session: next || null,
+    recovery: s.sleep.line,
+    weight: s.kind !== "session" && s.weight?.lines.length ? s.weight.lines.join(" ") : null,
+  };
+}
+
+/** Every number in `text` must appear somewhere in the facts we gave the model. */
+function numbersOk(text: string, facts: string) {
+  const allowed = new Set((facts.match(/\d+(?:\.\d+)?/g) ?? []).map((n) => String(Number(n))));
+  return (text.match(/\d+(?:\.\d+)?/g) ?? []).every((n) => allowed.has(String(Number(n))));
+}
+const WEIGHT_TALK = /weigh|weight loss|kg\s*(a|per|\/)\s*week|calori|kcal|deficit|scale/i;
+
+/**
+ * The model rewords the headline and recovery advice from finished facts. The per-lift calls are
+ * never sent through the model: they are written in code, so they can't come out wrong.
+ */
+async function polish(s: Signals, base: Read): Promise<{ read: Read; model: string }> {
+  const facts = {
+    readType: s.kind,
+    workout: s.sessionTitle,
+    liftCalls: s.lifts.map((l) => ({ lift: l.name, call: l.call, instruction: l.line })),
+    nextUp: nextUpLine(s),
+    sleep: { call: s.sleep.call, reasons: s.sleep.reasons, advice: s.sleep.line },
+    weight: s.kind === "session" ? null : s.weight?.lines ?? null,
+    draftHeadline: base.headline,
+  };
+  const factsText = JSON.stringify(facts);
+  const text = await callClaude({
+    max_tokens: 300,
+    system:
+      "You are the coach in a personal training app. You are given conclusions that are already worked out. " +
+      "Your only job is to word them as short, plain sentences. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
+      "Priorities: training first, then sleep and recovery, then body weight. " +
+      (s.kind === "session"
+        ? "This read is after a workout: the headline must be about training or recovery and must not mention body weight, calories or the scale. "
+        : "This read is after a weigh-in or body scan: the headline may mention weight, in one short sentence. ") +
+      "Plain words, full exercise names, no gym shorthand, no hype, no emoji, no em dashes. " +
+      'Reply with JSON only: {"headline": one sentence under 20 words, "recovery": one or two sentences saying whether to push or ease off next session and why}.',
+    messages: [{ role: "user", content: factsText }],
   });
-  if (!res.ok) return null;
-  const body = await res.json();
-  const text: string = body?.content?.[0]?.text ?? "";
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) return null;
-  const j = JSON.parse(m[0]);
-  if (!j.headline) return null;
-  return { headline: String(j.headline), lifting: j.lifting ?? null, weight: j.weight ?? null, recovery: j.recovery ?? null };
+  const m = text?.match(/\{[\s\S]*\}/);
+  if (!m) return { read: base, model: "rules" };
+  let j: any;
+  try { j = JSON.parse(m[0]); } catch { return { read: base, model: "rules" }; }
+  const ok = (v: unknown) => typeof v === "string" && v.trim().length > 0 && numbersOk(v, factsText) && !/—/.test(v);
+  const headline = ok(j.headline) && !(s.kind === "session" && WEIGHT_TALK.test(j.headline)) ? j.headline.trim() : base.headline;
+  const recovery = ok(j.recovery) && !WEIGHT_TALK.test(j.recovery) ? j.recovery.trim() : base.recovery;
+  const used = headline !== base.headline || recovery !== base.recovery;
+  return { read: { ...base, headline, recovery }, model: used ? COACH_MODEL : "rules" };
 }
 
-export async function writeCoachRead(supabase: Supa, { kind, sourceId }: { kind: "session" | "weigh_in"; sourceId?: string }) {
-  const facts = await gatherFacts(supabase, kind, sourceId);
-  let read: Read | null = null;
-  let model = "rules";
-  try {
-    read = await haikuRead(kind, facts);
-    if (read) model = COACH_MODEL;
-  } catch {}
-  read ??= ruleRead(kind, facts);
-  await supabase.from("coach_reads").insert({ kind, source_id: sourceId ?? null, model, ...read });
+export async function buildCoachRead(supabase: Supa, kind: ReadKind, sourceId?: string) {
+  const signals = await gatherSignals(supabase, kind, sourceId);
+  const base = ruleRead(signals);
+  let out = { read: base, model: "rules" };
+  try { out = await polish(signals, base); } catch {}
+  return { ...out, signals };
+}
+
+export async function writeCoachRead(supabase: Supa, { kind, sourceId }: { kind: ReadKind; sourceId?: string }) {
+  const { read, model, signals } = await buildCoachRead(supabase, kind, sourceId);
+  const { error } = await supabase.from("coach_reads").insert({ kind, source_id: sourceId ?? null, model, ...read, lifting: null, signals });
+  if (error) throw new Error(error.message);
 }
 
 export async function askCoach(supabase: Supa, question: string): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return "Coach can't answer questions yet: the Anthropic API key hasn't been added to the app's settings on Vercel.";
-  const facts = await gatherFacts(supabase, "weigh_in");
+  const signals = await gatherSignals(supabase, "weigh_in");
   const { data: recent } = await supabase.from("sessions").select("title, session_date, status").order("started_at", { ascending: false }).limit(8);
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({
-      model: COACH_MODEL,
-      max_tokens: 500,
-      system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data, including daily steps when relevant. Never invent numbers. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
-      messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...facts, recentSessions: recent })}\n\nQuestion: ${question}` }],
-    }),
+  const text = await callClaude({
+    max_tokens: 500,
+    system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
+    messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...signals, recentSessions: recent })}\n\nQuestion: ${question}` }],
   });
-  if (!res.ok) return "Coach couldn't answer just now. Try again in a minute.";
-  const body = await res.json();
-  return String(body?.content?.[0]?.text ?? "Coach couldn't answer just now.");
+  return text ?? "Coach couldn't answer just now. Try again in a minute.";
 }

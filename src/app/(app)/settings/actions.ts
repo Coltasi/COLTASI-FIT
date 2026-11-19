@@ -69,3 +69,10 @@ export async function removePushSubscription(endpoint: string) {
   const { supabase } = await ctx();
   await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
 }
+
+/** Whether the server has this device saved (the phone can think it's subscribed when the server has dropped it). */
+export async function hasPushSubscription(endpoint: string) {
+  const { supabase } = await ctx();
+  const { data } = await supabase.from("push_subscriptions").select("id").eq("endpoint", endpoint).maybeSingle();
+  return !!data;
+}

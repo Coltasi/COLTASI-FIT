@@ -59,9 +59,16 @@ export async function saveScan(_prev: FormState, fd: FormData): Promise<FormStat
     photo_paths: fd.getAll("photo_path").map(String).filter(Boolean),
   };
   if (row.weight_kg == null && row.body_fat_pct == null && row.muscle_mass_kg == null) return { error: "Fill in at least weight, body fat or muscle mass." };
-  const { error } = await supabase.from("scans").insert(row);
+  const { data: scan, error } = await supabase.from("scans").insert(row).select("id").single();
   if (error) return { error: error.message };
-  revalidatePath("/progress");
+  after(async () => {
+    try {
+      await writeCoachRead(supabase, { kind: "scan", sourceId: scan?.id });
+    } catch (e) {
+      console.error("Coach read failed", e);
+    }
+  });
+  revalidatePath("/", "layout");
   redirect("/progress");
 }
 

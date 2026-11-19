@@ -237,3 +237,21 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+
+// Chrome can replace a phone's push address at any time. Save the new one so reminders keep arriving.
+self.addEventListener("pushsubscriptionchange", (event) => {
+  event.waitUntil(
+    (async () => {
+      const key = event.oldSubscription && event.oldSubscription.options && event.oldSubscription.options.applicationServerKey;
+      const sub = event.newSubscription || (key ? await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }) : null);
+      if (!sub) return;
+      const j = sub.toJSON();
+      await fetch("/api/push/resubscribe", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ endpoint: sub.endpoint, p256dh: j.keys && j.keys.p256dh, auth: j.keys && j.keys.auth, oldEndpoint: event.oldSubscription && event.oldSubscription.endpoint }),
+      });
+    })().catch(() => {})
+  );
+});
