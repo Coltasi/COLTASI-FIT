@@ -102,7 +102,7 @@ export default async function OverviewPage() {
             <div>
               <p className="lab" style={{ color: "var(--lagoon)" }}>{doneToday ? "Done today" : "Suggested today"}</p>
               <p className="disp" style={{ fontSize: 30, lineHeight: 1.1, marginTop: 2 }}>{week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day.name)}</p>
-              <p style={{ fontSize: 13, color: "#c9d3e3", marginTop: 4 }}>The Split · {doneCount} of {split.length} done this week</p>
+              <p style={{ fontSize: 13, color: "#c9d3e3", marginTop: 4 }}>{week.doneThisWeek} {week.doneThisWeek === 1 ? "workout" : "workouts"} this week · {doneCount} of {split.length} Split days</p>
               <p style={{ fontSize: 13, color: "#c9d3e3" }}>{doneToday ? `Next in The Split · ${day.name}` : afterNext ? `Next in The Split · ${afterNext.name} after that` : "Last day of The Split this week"}</p>
             </div>
             <span className={`tag ${week.inProgress || !isDone ? "ember" : "blue"}`}>{week.inProgress ? "In progress" : isDone ? "Done" : "Not started"}</span>
