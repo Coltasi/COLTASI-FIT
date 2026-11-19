@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { BackHeader } from "@/components/ui";
-import { IconPlus } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { fmtDow, fmtShort } from "@/lib/dates";
 import { startCustom } from "../actions";
+import { CustomButton } from "./custom-button";
 
 export default async function ChoosePage() {
   const { supabase, today } = await getContext();
@@ -46,10 +46,7 @@ export default async function ChoosePage() {
         {program.filter((d) => d.program === "kettlebell").map((d) => <Row key={d.id} d={d} />)}
       </div>
       <form action={startCustom}>
-        <button type="submit" className="card flat" style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", border: "1.5px dashed var(--mist)", background: "transparent", cursor: "pointer", textAlign: "left", width: "100%", color: "var(--navy)" }}>
-          <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus /></span>
-          <span><span className="ln" style={{ display: "block" }}>Custom workout</span><span className="cap">Blank session, add lifts as you go</span></span>
-        </button>
+        <CustomButton />
       </form>
     </main>
   );

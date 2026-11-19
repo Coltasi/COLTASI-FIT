@@ -151,6 +151,8 @@ export type WeekState = {
   done: Map<string, string>; // split day id -> session date
   nextDay: ProgramDay | null;
   inProgress: { id: string; title: string } | null;
+  /** Every session finished today, any kind (split, kettlebell, custom). */
+  doneToday: { id: string; title: string; kind: string }[];
 };
 
 /** Which split days are done this week, and which one is up next. */
@@ -166,9 +168,12 @@ export async function getWeekState(supabase: Supa, today: string, program: Progr
     if (s.kind === "split" && s.day_id && !done.has(s.day_id)) done.set(s.day_id, s.session_date);
   }
   const inProgress = open?.length ? { id: open[0].id as string, title: open[0].title as string } : null;
+  const doneToday = ((data ?? []) as any[])
+    .filter((s) => s.session_date === today)
+    .map((s) => ({ id: s.id as string, title: s.title as string, kind: s.kind as string }));
   const split = prog.filter((d) => d.program === "split");
   const nextDay = split.find((d) => !done.has(d.id)) ?? split[0] ?? null;
-  return { monday, done, nextDay, inProgress };
+  return { monday, done, nextDay, inProgress, doneToday };
 }
 
 export function displayName(p: Profile, email?: string | null) {

@@ -53,6 +53,19 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         </Link>
       ) : null}
 
+      {!week.inProgress && week.doneToday.length ? (
+        <div className="card" style={{ padding: "4px 0" }}>
+          <p className="lab" style={{ padding: "10px 16px 4px" }}>Done today</p>
+          {week.doneToday.map((s) => (
+            <Link key={s.id} href={`/train/session/${s.id}`} className="row" style={{ color: "var(--navy)" }}>
+              <IconCheck size={16} />
+              <span className="ln" style={{ flexGrow: 1 }}>{s.title}</span>
+              <span className="tag blue">Done</span>
+            </Link>
+          ))}
+        </div>
+      ) : null}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="lab">This week · The Split</p>
@@ -81,7 +94,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
       {day ? (
         <>
           <div className="card" style={{ padding: "18px 18px 16px" }}>
-            <p className="lab" style={{ color: "var(--rust)" }}>{day.id === week.nextDay?.id ? `Today · ${fmtDay(today)}` : fmtDay(today)}</p>
+            <p className="lab" style={{ color: "var(--rust)" }}>{day.id === week.nextDay?.id ? (week.doneToday.length ? "Up next in The Split" : `Today · ${fmtDay(today)}`) : fmtDay(today)}</p>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 4 }}>
               <h2 className="disp" style={{ fontSize: 40, lineHeight: 1 }}>{day.name}</h2>
               <Link href="/train/choose" style={{ fontSize: 14, fontWeight: 600, padding: "10px 0 4px 12px" }}>Change</Link>
