@@ -5,6 +5,7 @@ import type { Units } from "@/lib/units";
 import { mondayOf, todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
+import { fetchAll } from "@/lib/fetch-all";
 
 export type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -107,12 +108,14 @@ export async function getLastTimes(supabase: Supa, exerciseIds: string[], exclud
   const keyOf = (id: string) => keyById.get(id) ?? id;
   const wanted = new Set<string>();
   for (const id of exerciseIds) for (const sib of byKey.get(keyOf(id))?.ids ?? [id]) wanted.add(sib);
-  const { data } = await supabase
+  const data = await fetchAll<any>((a, b) => supabase
     .from("session_exercises")
-    .select("exercise_id, session_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
+    .select("id, exercise_id, session_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
     .in("exercise_id", [...wanted])
-    .eq("sessions.status", "done");
-  const rows = ((data ?? []) as any[])
+    .eq("sessions.status", "done")
+    .order("id")
+    .range(a, b));
+  const rows = data
     .filter((r) => r.session_id !== excludeSessionId)
     .sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1));
   const byGroup = new Map<string, LastTime>();

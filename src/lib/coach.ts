@@ -2,6 +2,7 @@ import { getContext, type Supa } from "@/lib/data";
 import { daysBetween } from "@/lib/dates";
 import { currentUser } from "@/lib/supabase/user";
 import { getSteps, stepSummary } from "@/lib/steps";
+import { fetchAll } from "@/lib/fetch-all";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
 
@@ -75,12 +76,14 @@ async function gatherFacts(supabase: Supa, kind: "session" | "weigh_in", sourceI
       const ids = ses.map((x) => x.exercise_id);
       const prevTops = new Map<string, number>();
       if (ids.length) {
-        const { data: prev } = await supabase
+        const prev = await fetchAll<any>((a, b) => supabase
           .from("session_exercises")
-          .select("exercise_id, session_id, sessions!inner(status, started_at), session_sets(weight_kg, done)")
+          .select("id, exercise_id, session_id, sessions!inner(status, started_at), session_sets(weight_kg, done)")
           .in("exercise_id", ids)
           .eq("sessions.status", "done")
-          .neq("session_id", sourceId);
+          .neq("session_id", sourceId)
+          .order("id")
+          .range(a, b));
         for (const r of ((prev ?? []) as any[]).sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1))) {
           if (prevTops.has(r.exercise_id)) continue;
           const ws = (r.session_sets ?? []).filter((z: any) => z.done && Number(z.weight_kg) > 0).map((z: any) => Number(z.weight_kg));
