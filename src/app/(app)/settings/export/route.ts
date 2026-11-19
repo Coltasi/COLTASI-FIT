@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@/lib/supabase/user";
+import { fetchAll } from "@/lib/fetch-all";
 
 export async function GET() {
   const supabase = await createClient();
@@ -10,8 +11,8 @@ export async function GET() {
   const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
   out.profile = profile;
   for (const t of tables) {
-    const { data } = await supabase.from(t).select("*");
-    out[t] = data ?? [];
+    // Every one of these tables has an id column; page so a long history isn't cut at 1,000 rows.
+    out[t] = await fetchAll((a, b) => supabase.from(t).select("*").order("id").range(a, b));
   }
   return new Response(JSON.stringify(out, null, 2), {
     headers: {

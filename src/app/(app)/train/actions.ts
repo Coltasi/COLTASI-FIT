@@ -42,6 +42,12 @@ async function insertLifts(supabase: Supa, sessionId: string, lifts: NewLift[], 
   return rows.map((r) => r.id as string);
 }
 
+/** Sends you to the workout that's already in progress, if there is one. */
+async function goToOpenSession(supabase: Supa) {
+  const { data: open } = await supabase.from("sessions").select("id").eq("status", "in_progress").order("started_at", { ascending: false }).limit(1);
+  if (open?.length) redirect(`/train/session/${open[0].id}`);
+}
+
 function parseMoves(raw: FormDataEntryValue | null): { name: string; dose: string; done: boolean }[] | null {
   try {
     const j = JSON.parse(String(raw ?? ""));
@@ -65,8 +71,7 @@ export async function startSession(formData: FormData) {
   const dayId = String(formData.get("day_id") ?? "");
   const quick = formData.get("quick") === "1";
 
-  const { data: open } = await supabase.from("sessions").select("id").eq("status", "in_progress").limit(1);
-  if (open?.length) redirect(`/train/session/${open[0].id}`);
+  await goToOpenSession(supabase);
 
   const [{ data: day }, { data: over }, { data: fins }] = await Promise.all([
     supabase.from("program_days").select("id, program, name, program_exercises(exercise_id, position, target_sets, rep_range)").eq("id", dayId).single(),
@@ -103,6 +108,7 @@ export async function startSession(formData: FormData) {
     })
     .select("id")
     .single();
+  if (error?.code === "23505") await goToOpenSession(supabase);
   if (error || !session) throw new Error(error?.message ?? "Could not start the session.");
 
   const plan: NewLift[] = over?.length
@@ -117,26 +123,25 @@ export async function startSession(formData: FormData) {
 export async function startCustom() {
   const { supabase } = await ctx();
   const today = todayIn(await getTz());
-  // A double tap fires this twice; reuse a custom session started seconds ago instead of creating a twin.
-  const { data: recent } = await supabase
-    .from("sessions")
-    .select("id")
-    .eq("kind", "custom")
-    .eq("status", "in_progress")
-    .gte("started_at", new Date(Date.now() - 30_000).toISOString())
-    .limit(1);
-  if (recent?.length) redirect(`/train/session/${recent[0].id}`);
+  // Only one workout can be open at a time (also enforced by the database), so a double tap
+  // or a second device lands on the session that's already running instead of making a twin.
+  await goToOpenSession(supabase);
   const { data: session, error } = await supabase
     .from("sessions")
     .insert({ kind: "custom", title: "Custom workout", session_date: today })
     .select("id")
     .single();
+  if (error?.code === "23505") await goToOpenSession(supabase);
   if (error || !session) throw new Error(error?.message ?? "Could not start the session.");
   redirect(`/train/session/${session.id}`);
 }
 
 export async function saveSet(setId: string, weightKg: number | null, reps: number | null, done: boolean) {
   const { supabase } = await ctx();
+  // Keep junk out: the database rejects negatives and silly values, which would surface as a crash mid-workout.
+  const kg = weightKg == null || !Number.isFinite(weightKg) ? null : Math.min(1000, Math.max(0, Math.round(weightKg * 100) / 100));
+  const r = reps == null || !Number.isFinite(reps) ? null : Math.min(200, Math.max(0, Math.round(reps)));
+  weightKg = kg; reps = r;
   const { error } = await supabase
     .from("session_sets")
     .update({ weight_kg: weightKg, reps, done, done_at: done ? new Date().toISOString() : null })
@@ -231,12 +236,19 @@ export async function moveExercise(sessionId: string, sessionExerciseId: string,
 export async function finishSession(sessionId: string) {
   const { supabase, user } = await ctx();
   // Unticked sets stay in the session but never count as logged (only done sets feed history).
+  // Only an open session can be finished. A second tap on Finish (or a retry) would otherwise
+  // re-stamp the finish time and write a duplicate Coach read.
   const { data: s } = await supabase
     .from("sessions")
     .update({ status: "done", finished_at: new Date().toISOString() })
     .eq("id", sessionId)
+    .eq("status", "in_progress")
     .select("kind, day_id, session_exercises(exercise_id, position, target_sets, rep_range, sub_for, added, session_sets(id))")
-    .single();
+    .maybeSingle();
+  if (!s) {
+    revalidatePath("/", "layout");
+    redirect("/train");
+  }
   // Carry-over: a Split day's final lift list becomes that day's plan for next time.
   if (s?.kind === "split" && s.day_id) {
     try {

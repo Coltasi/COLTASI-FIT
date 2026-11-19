@@ -1,15 +1,18 @@
 import type { Supa } from "@/lib/data";
+import { fetchAll } from "@/lib/fetch-all";
 
 export type ExHistory = { exercise_id: string; name: string; sessions: { date: string; top: number | null; sets: { weight_kg: number | null; reps: number | null }[] }[] };
 
 /** Every finished-session performance, grouped by exercise, oldest first. */
 export async function getLiftHistory(supabase: Supa, exerciseId?: string): Promise<ExHistory[]> {
-  let q = supabase
-    .from("session_exercises")
-    .select("exercise_id, exercises(name), sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
-    .eq("sessions.status", "done");
-  if (exerciseId) q = q.eq("exercise_id", exerciseId);
-  const { data } = await q;
+  const data = await fetchAll<any>((a, b) => {
+    let q = supabase
+      .from("session_exercises")
+      .select("id, exercise_id, exercises(name), sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
+      .eq("sessions.status", "done");
+    if (exerciseId) q = q.eq("exercise_id", exerciseId);
+    return q.order("id").range(a, b);
+  });
   const map = new Map<string, ExHistory>();
   for (const r of ((data ?? []) as any[]).sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? -1 : 1))) {
     const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no)
