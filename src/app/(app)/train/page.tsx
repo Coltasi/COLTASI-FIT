@@ -72,8 +72,8 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab">This week · The Split</p>
-          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{doneCount}</span> of {split.length} done</p>
+          <p className="lab">This week</p>
+          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"} · {doneCount} of {split.length} Split</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${(split.length || 5) + (offPlanToday ? 1 : 0)}, minmax(0, 1fr))`, gap: 6 }}>
           {split.flatMap((d, i) => {
