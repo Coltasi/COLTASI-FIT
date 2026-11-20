@@ -21,7 +21,6 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
       : Promise.resolve({ data: null }),
   ]);
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
-  const doneCount = split.filter((d) => week.done.has(d.id)).length;
   const suggested = !!day && day.id === week.nextDay?.id;
   // A custom or kettlebell session finished today, shown in the week strip as today's workout.
   const offPlanToday = [...week.doneToday].reverse().find((s) => s.kind !== "split") ?? null;
@@ -73,7 +72,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="lab">This week</p>
-          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"} · {doneCount} of {split.length} Split</p>
+          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${(split.length || 5) + (offPlanToday ? 1 : 0)}, minmax(0, 1fr))`, gap: 6 }}>
           {split.flatMap((d, i) => {
@@ -86,7 +85,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
                 : {};
             const tile = (
               <Link key={d.id} href={`/train?day=${d.id}`} className="card flat" style={{ ...tileBase, ...style }}>
-                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{doneOn ? fmtDow(doneOn) : isNext && !offPlanToday ? "Today" : "Next"}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{doneOn ? (doneOn === today ? "Today" : fmtDow(doneOn)) : isNext && !week.doneToday.length ? "Today" : "Next"}</span>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>{d.name}</span>
                 {doneOn ? <IconCheck size={14} /> : <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />}
               </Link>
