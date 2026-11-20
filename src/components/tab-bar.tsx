@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { IconCoach, IconHome, IconProgress, IconTrain } from "./icons";
 
 const TABS = [
-  { href: "/", label: "Overview", Icon: IconHome, match: (p: string) => p === "/" || p.startsWith("/sleep") || p.startsWith("/settings") },
+  { href: "/", label: "Today", Icon: IconHome, match: (p: string) => p === "/" || p.startsWith("/sleep") || p.startsWith("/settings") },
   { href: "/train", label: "Train", Icon: IconTrain, match: (p: string) => p.startsWith("/train") },
   { href: "/progress", label: "Progress", Icon: IconProgress, match: (p: string) => p.startsWith("/progress") },
   { href: "/coach", label: "Coach", Icon: IconCoach, match: (p: string) => p.startsWith("/coach") },

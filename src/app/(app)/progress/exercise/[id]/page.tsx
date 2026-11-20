@@ -29,7 +29,7 @@ export default async function ExercisePage({ params, searchParams }: PageProps<"
 
   return (
     <main className="screen">
-      <BackHeader href={fromOverview ? "/" : "/progress/lifting"} label={fromOverview ? "Overview" : "Lifting"} eyebrow={ex.modality} title={ex.name} />
+      <BackHeader href={fromOverview ? "/" : "/progress/lifting"} label={fromOverview ? "Today" : "Lifting"} eyebrow={ex.modality} title={ex.name} />
 
       <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
         <div style={{ padding: "14px 12px" }}><div className="num" style={{ fontSize: 22 }}>{kg(best)}</div><p className="cap">Best</p></div>

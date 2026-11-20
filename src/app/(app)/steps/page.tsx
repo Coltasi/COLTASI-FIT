@@ -20,7 +20,7 @@ export default async function StepsPage({ searchParams }: { searchParams: Promis
 
   return (
     <main className="screen">
-      <BackHeader href="/" label="Overview" eyebrow="Garmin" title="Steps" />
+      <BackHeader href="/" label="Today" eyebrow="Garmin" title="Steps" />
       <div className="card" style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div><div className="num" style={{ fontSize: 22 }}>{s.avg7 != null ? fmtSteps(s.avg7) : "–"}</div><p className="cap">7-day avg{s.avg7 == null ? " (needs 3 days)" : ""}</p></div>
         <div><div className="num" style={{ fontSize: 22 }}>{s.avgPrev7 != null ? fmtSteps(s.avgPrev7) : "–"}</div><p className="cap">Week before</p></div>

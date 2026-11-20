@@ -1,156 +1,140 @@
 import Link from "next/link";
 import { BrandRow, CoachMark } from "@/components/ui";
 import { InstallCard } from "@/components/install-card";
-import { CoachRead, Disclosure } from "@/components/coach-read";
+import { CoachRead } from "@/components/coach-read";
 import { IconChevron, IconGear } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
-import { getLiftHistory } from "@/lib/lifts";
 import { addDays, daysBetween, fmtLong, mondayOf } from "@/lib/dates";
 import { unit, w } from "@/lib/units";
 import { startSession } from "./train/actions";
 import { SleepCard } from "./sleep-card";
 import { StepsCard } from "./steps-card";
 import { getSteps, stepSummary } from "@/lib/steps";
-import { Sparkline } from "./progress/parts";
 import { WeighInForm } from "./progress/weigh-in-form";
 
+const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+
+/** Today: the Coach's note and today's workout in one card, then quick check-ins and the week. */
 export default async function OverviewPage() {
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [program, week, hist, { data: read }, { data: sleeps }, { data: wis }, stepRows] = await Promise.all([
-    programP,
+  const [week, { data: read }, { data: sleeps }, { data: wis }, stepRows, { data: weekSessions }] = await Promise.all([
     getWeekState(supabase, today, programP),
-    getLiftHistory(supabase),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     getSteps(supabase, today, 14),
+    supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
   ]);
   const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
   const stepAvg = stepSummary(stepRows, today).avg7;
-  const split = program.filter((d) => d.program === "split");
-  const doneCount = split.filter((d) => week.done.has(d.id)).length;
   const night = addDays(today, -1);
   const lastNight = ((sleeps ?? []) as any[]).find((s) => s.night_of === night);
   const byNight = new Map(((sleeps ?? []) as any[]).map((s) => [s.night_of, Number(s.hours)]));
   const latest = read?.[0];
   const day = week.nextDay;
-  const todayDone = day ? week.done.get(day.id) === today : false;
-  const afterNext = split.find((d) => !week.done.has(d.id) && d.id !== day?.id);
-
-  // A PR is the heaviest top set ever. Most recent new best first.
-  const prs = hist
-    .map((h) => {
-      let best = -Infinity, bestDate = "";
-      for (const s of h.sessions) if (s.top != null && s.top > best) { best = s.top; bestDate = s.date; }
-      return { id: h.exercise_id, name: h.name, best, bestDate, tops: h.sessions.map((s) => s.top).filter((x): x is number => x != null) };
-    })
-    .filter((p) => p.bestDate)
-    .sort((a, b) => (a.bestDate < b.bestDate ? 1 : a.bestDate > b.bestDate ? -1 : 0))
-    .slice(0, 5);
+  const trainedOn = new Set(((weekSessions ?? []) as any[]).map((s) => s.session_date as string));
 
   const lastWi = (wis ?? [])[0] as { measured_on: string; weight_kg: number } | undefined;
   const wiDue = !lastWi || lastWi.measured_on < monday;
+
+  // A finished session today (custom or kettlebell included) counts as today's workout.
+  const doneToday = !week.inProgress && week.doneToday.length ? week.doneToday : null;
+  const title = week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day?.name ?? "Workout");
+  const status = week.inProgress ? "In progress" : doneToday ? "Done" : null;
+
+  const label = (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+      <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
+        <CoachMark />{doneToday ? "Done today" : "Today"} · {title}
+      </p>
+      {status ? <span className={`tag ${week.inProgress ? "ember" : "blue"}`}>{status}</span> : null}
+    </div>
+  );
+
+  const action = week.inProgress ? (
+    <Link href={`/train/session/${week.inProgress.id}`} className="btn" style={{ height: 50, gap: 8, boxShadow: "none" }}>
+      Resume {week.inProgress.title}<IconChevron stroke="currentColor" />
+    </Link>
+  ) : doneToday ? (
+    <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} className="btn2" style={{ height: 46, gap: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      View workout<IconChevron stroke="currentColor" />
+    </Link>
+  ) : day ? (
+    <form action={startSession}>
+      <input type="hidden" name="day_id" value={day.id} />
+      <input type="hidden" name="quick" value="1" />
+      <button type="submit" className="btn" style={{ height: 50, gap: 8, boxShadow: "none" }}>
+        Start {day.name}<IconChevron stroke="currentColor" />
+      </button>
+    </form>
+  ) : null;
+
+  const footer = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "10px 0 10px" }}>
+      {action}
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
+        <Link href="/train">{doneToday || week.inProgress ? "Train" : "Pick another workout"}</Link>
+        <Link href="/coach">Ask Coach</Link>
+      </div>
+    </div>
+  );
 
   return (
     <main className="screen">
       <BrandRow right={<Link href="/settings" className="iconbtn" aria-label="Settings"><IconGear /></Link>} />
       <div>
         <p className="cap" style={{ fontWeight: 600 }}>{fmtLong(today)}</p>
-        <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>Overview</h1>
+        <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>Today</h1>
       </div>
 
       <InstallCard />
 
       {latest ? (
-        <CoachRead
-          padding="16px"
-          read={latest}
-          units={units}
-          label={<p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}><CoachMark />Coach</p>}
-          footer={<div style={{ textAlign: "right", marginTop: 4 }}><Link href="/coach" style={{ fontSize: 13, fontWeight: 600 }}>Ask Coach</Link></div>}
-        />
+        <CoachRead padding="16px 16px 6px" read={latest} units={units} label={label} footer={footer} />
       ) : (
-        <div className="card cream" style={{ padding: 16 }}>
-          <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}><CoachMark />Coach</p>
-          <p style={{ fontSize: 15, lineHeight: 1.45, marginTop: 6 }}>Your first Coach read shows up after your first session or Monday weigh-in.</p>
-          <div style={{ textAlign: "right", marginTop: 8 }}><Link href="/coach" style={{ fontSize: 13, fontWeight: 600 }}>Ask Coach</Link></div>
+        <div className="card cream" style={{ padding: "16px 16px 6px" }}>
+          {label}
+          <p style={{ fontSize: 15, lineHeight: 1.45, margin: "8px 0 0" }}>Your Coach&apos;s first note shows up after your first session.</p>
+          {footer}
         </div>
       )}
 
-      <SleepCard
-        key={lastNight ? `${lastNight.hours}-${lastNight.wake_feeling}` : "none"}
-        night={night}
-        logged={lastNight ? { hours: Number(lastNight.hours), wake_feeling: lastNight.wake_feeling, flags: lastNight.flags ?? [], note: lastNight.note } : null}
-        bars={Array.from({ length: 7 }, (_, i) => { const n = addDays(today, i - 7); return { night: n, hours: byNight.get(n) ?? null }; })}
-      />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+        <SleepCard
+          key={lastNight ? `${lastNight.hours}-${lastNight.wake_feeling}` : "none"}
+          night={night}
+          logged={lastNight ? { hours: Number(lastNight.hours), wake_feeling: lastNight.wake_feeling, flags: lastNight.flags ?? [], note: lastNight.note } : null}
+          bars={Array.from({ length: 7 }, (_, i) => { const n = addDays(today, i - 7); return { night: n, hours: byNight.get(n) ?? null }; })}
+        />
+        <StepsCard
+          key={`${stepByDay.get(today) ?? "none"}-${stepByDay.get(addDays(today, -1)) ?? "none"}`}
+          today={today}
+          avg7={stepAvg}
+          bars={Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return { day: d, steps: stepByDay.get(d) ?? null }; })}
+        />
+      </div>
 
-      <StepsCard
-        key={`${stepByDay.get(today) ?? "none"}-${stepByDay.get(addDays(today, -1)) ?? "none"}`}
-        today={today}
-        avg7={stepAvg}
-        bars={Array.from({ length: 7 }, (_, i) => { const d = addDays(today, i - 6); return { day: d, steps: stepByDay.get(d) ?? null }; })}
-      />
-
-      {day ? (() => {
-        // A finished session today (custom or kettlebell included) counts as today's workout.
-        const doneToday = !week.inProgress && !todayDone && week.doneToday.length ? week.doneToday : null;
-        const isDone = todayDone || !!doneToday;
-        return (
-        <div style={{ background: "var(--navy)", borderRadius: 18, padding: 16, boxShadow: "0 6px 18px rgba(21,50,97,.18)", color: "#fff", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-            <div>
-              <p className="lab" style={{ color: "var(--lagoon)" }}>{doneToday ? "Done today" : "Suggested today"}</p>
-              <p className="disp" style={{ fontSize: 30, lineHeight: 1.1, marginTop: 2 }}>{week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day.name)}</p>
-              <p style={{ fontSize: 13, color: "#c9d3e3", marginTop: 4 }}>{week.doneThisWeek} {week.doneThisWeek === 1 ? "workout" : "workouts"} this week · {doneCount} of {split.length} Split days</p>
-              <p style={{ fontSize: 13, color: "#c9d3e3" }}>{doneToday ? `Next in The Split · ${day.name}` : afterNext ? `Next in The Split · ${afterNext.name} after that` : "Last day of The Split this week"}</p>
-            </div>
-            <span className={`tag ${week.inProgress || !isDone ? "ember" : "blue"}`}>{week.inProgress ? "In progress" : isDone ? "Done" : "Not started"}</span>
-          </div>
-          {week.inProgress ? (
-            <Link href={`/train/session/${week.inProgress.id}`} className="btn" style={{ height: 52, gap: 8, boxShadow: "0 6px 18px rgba(176,64,29,.35)" }}>
-              Resume {week.inProgress.title}<IconChevron stroke="currentColor" />
-            </Link>
-          ) : doneToday ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} style={{ color: "#fff", fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
-                View workout<IconChevron stroke="currentColor" />
-              </Link>
-              <form action={startSession}>
-                <input type="hidden" name="day_id" value={day.id} />
-                <input type="hidden" name="quick" value="1" />
-                <button type="submit" style={{ background: "transparent", border: 0, color: "#c9d3e3", fontSize: 13, textDecoration: "underline", cursor: "pointer" }}>
-                  Start {day.name} anyway
-                </button>
-              </form>
-            </div>
-          ) : (
-            <form action={startSession}>
-              <input type="hidden" name="day_id" value={day.id} />
-              <input type="hidden" name="quick" value="1" />
-              <button type="submit" className="btn" style={{ height: 52, gap: 8, boxShadow: "0 6px 18px rgba(176,64,29,.35)" }}>
-                Start {day.name}<IconChevron stroke="currentColor" />
-              </button>
-            </form>
-          )}
+      <div className="card" style={{ padding: "12px 14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <p className="lab">This week</p>
+          <p className="cap" style={{ fontSize: 12 }}>{week.doneThisWeek} {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
         </div>
-        );
-      })() : null}
-
-      {prs.length ? (
-        <Disclosure title="Recent PRs" openSummary="top set"
-          summary={`${prs[0].name} ${w(prs[0].best, units)} ${unit(units)}${prs.length > 1 ? ` + ${prs.length - 1} more` : ""}`}>
-          {prs.map((p) => (
-            <Link key={p.id} href={`/progress/exercise/${p.id}?from=overview`} className="row" style={{ borderTop: "1px solid var(--line-soft)" }}>
-              <span className="ln" style={{ flexGrow: 1, minWidth: 0 }}>{p.name}</span>
-              <Sparkline values={p.tops.slice(-8)} />
-              <span style={{ flexShrink: 0, width: 64, textAlign: "right" }}><span className="num" style={{ fontSize: 17 }}>{w(p.best, units)}</span> <span className="cap">{unit(units)}</span></span>
-              <IconChevron style={{ flexShrink: 0 }} />
-            </Link>
-          ))}
-        </Disclosure>
-      ) : null}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 5, marginTop: 8 }}>
+          {DOW.map((d, i) => {
+            const date = addDays(monday, i);
+            const done = trainedOn.has(date);
+            const isToday = date === today;
+            return (
+              <div key={date} style={{ textAlign: "center" }}>
+                <div style={{ height: 8, borderRadius: 4, background: done ? "var(--kingfisher)" : "var(--line-soft)", border: isToday && !done ? "1px dashed var(--ember)" : "none" }} />
+                <p className="cap" style={{ fontSize: 11, marginTop: 4, fontWeight: isToday ? 700 : 400, color: isToday ? "var(--navy)" : undefined }}>{d}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {wiDue ? (
         <WeighInForm

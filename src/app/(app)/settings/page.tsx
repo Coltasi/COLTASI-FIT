@@ -19,7 +19,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="screen" style={{ gap: 20 }}>
-      <BackHeader href="/" label="Overview" title="Settings" />
+      <BackHeader href="/" label="Today" title="Settings" />
 
       <div>
         <SectionLabel>Account</SectionLabel>

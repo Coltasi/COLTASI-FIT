@@ -24,6 +24,17 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
   }
   const ordered = groupsOrder.filter((g) => groups.has(g));
 
+  // A PR is the heaviest top set ever. Most recent new best first (moved here from the home screen).
+  const prs = hist
+    .map((h) => {
+      let best = -Infinity, bestDate = "";
+      for (const x of h.sessions) if (x.top != null && x.top > best) { best = x.top; bestDate = x.date; }
+      return { id: h.exercise_id, name: h.name, best, bestDate };
+    })
+    .filter((p) => p.bestDate)
+    .sort((a, b) => (a.bestDate < b.bestDate ? 1 : a.bestDate > b.bestDate ? -1 : 0))
+    .slice(0, 3);
+
   return (
     <main className="screen">
       <BrandRow />
@@ -34,6 +45,18 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
           <Link key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>
         ))}
       </div>
+
+      {filter === "All" && prs.length ? (
+        <div className="card clip">
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 16px 8px" }}><p className="lab">Recent PRs</p><p className="lab">Top set</p></div>
+          {prs.map((p, i) => (
+            <Link key={p.id} href={`/progress/exercise/${p.id}`} className="row" style={i === 0 ? { paddingTop: 6 } : undefined}>
+              <div style={{ flexGrow: 1, minWidth: 0 }}><p className="ln">{p.name}</p><p className="cap">{fmtShort(p.bestDate)}</p></div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}><span className="num" style={{ fontSize: 17 }}>{w(p.best, units)}</span> <span className="cap">{unit(units)}</span></div>
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       {ordered.map((g) => (
         <div key={g} className="card clip">
