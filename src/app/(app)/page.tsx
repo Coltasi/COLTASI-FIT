@@ -39,27 +39,21 @@ export default async function OverviewPage() {
   const lastWi = (wis ?? [])[0] as { measured_on: string; weight_kg: number } | undefined;
   const wiDue = !lastWi || lastWi.measured_on < monday;
 
-  // A finished session today (custom or kettlebell included) counts as today's workout.
-  const doneToday = !week.inProgress && week.doneToday.length ? week.doneToday : null;
-  const title = week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day?.name ?? "Workout");
-  const status = week.inProgress ? "In progress" : doneToday ? "Done" : null;
+  // The card always points at what's NEXT. Anything already finished today shows as a small tick line.
+  const doneToday = week.doneToday.length ? week.doneToday : null;
+  const nextTitle = week.inProgress?.title ?? day?.name ?? "Workout";
 
   const label = (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
       <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
-        <CoachMark />{doneToday ? "Done today" : "Today"} · {title}
+        <CoachMark />{week.inProgress ? "In progress" : "Next workout"} · {nextTitle}
       </p>
-      {status ? <span className={`tag ${week.inProgress ? "ember" : "blue"}`}>{status}</span> : null}
     </div>
   );
 
   const action = week.inProgress ? (
     <Link href={`/train/session/${week.inProgress.id}`} className="btn" style={{ height: 50, gap: 8, boxShadow: "none" }}>
       Resume {week.inProgress.title}<IconChevron stroke="currentColor" />
-    </Link>
-  ) : doneToday ? (
-    <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} className="btn2" style={{ height: 46, gap: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      View workout<IconChevron stroke="currentColor" />
     </Link>
   ) : day ? (
     <form action={startSession}>
@@ -73,9 +67,16 @@ export default async function OverviewPage() {
 
   const footer = (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "10px 0 10px" }}>
+      {doneToday ? (
+        <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", borderRadius: 10, padding: "9px 12px", fontSize: 14, fontWeight: 600, color: "var(--navy)" }}>
+          <span style={{ color: "var(--kingfisher-text)", fontWeight: 800 }}>✓</span>
+          <span style={{ flexGrow: 1 }}>Done today: {doneToday.map((s) => s.title).join(" + ")}</span>
+          <IconChevron style={{ color: "var(--stone)" }} />
+        </Link>
+      ) : null}
       {action}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
-        <Link href="/train">{doneToday || week.inProgress ? "Train" : "Pick another workout"}</Link>
+        <Link href="/train">Pick another workout</Link>
         <Link href="/coach">Ask Coach</Link>
       </div>
     </div>
@@ -84,10 +85,7 @@ export default async function OverviewPage() {
   return (
     <main className="screen">
       <BrandRow right={<Link href="/settings" className="iconbtn" aria-label="Settings"><IconGear /></Link>} />
-      <div>
-        <p className="cap" style={{ fontWeight: 600 }}>{fmtLong(today)}</p>
-        <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>Today</h1>
-      </div>
+      <h1 className="disp" style={{ fontSize: 30, lineHeight: 1.1 }}>{fmtLong(today)}</h1>
 
       <InstallCard />
 
