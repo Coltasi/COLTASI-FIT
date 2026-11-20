@@ -1,6 +1,7 @@
 import { BrandRow, CoachMark } from "@/components/ui";
 import { CoachRead, Disclosure } from "@/components/coach-read";
 import { PARTS, ReadText } from "@/components/coach-read-parts";
+import { CoachPlan } from "@/components/coach-plan";
 import { RefreshRead } from "./refresh-read";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
@@ -55,6 +56,8 @@ export default async function CoachPage() {
       {latest ? (
         <CoachRead
           read={latest}
+          units={units}
+          defaultOpen
           footer={<RefreshRead />}
           label={
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
@@ -96,7 +99,9 @@ export default async function CoachPage() {
                 </p>
                 <p className="cap">{r.headline}</p>
               </summary>
-              {PARTS.filter(([, k]) => r[k]).map(([l, k]) => (
+              {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
+                <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
+              ) : PARTS.filter(([, k]) => r[k]).map(([l, k]) => (
                 <div key={k} style={{ marginTop: 8 }}><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[k]} /></div>
               ))}
             </details>

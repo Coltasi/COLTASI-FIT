@@ -14,7 +14,9 @@ import { lastLine, searchCandidates } from "@/components/exercise-search";
 import { addLifts, addSet, finishSession, saveSet, setExtra, setWarmup, swapLift } from "../../actions";
 
 export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
-export type SEx = { id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; sets: SSet[] };
+/** Coach's change for this lift next time (from the latest Coach read), shown as a tag and prefilled on set 1. */
+export type CoachCall = { tone: "up" | "down"; text: string; kg: number | null };
+export type SEx = { id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; coach?: CoachCall | null; sets: SSet[] };
 type Session = {
   id: string; kind: string; title: string;
   warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
@@ -110,7 +112,7 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
   const exRow = (e: SEx) => isDone(e)
     ? <Row key={e.id} done muted name={e.name} sub={summary(e, units)} onClick={() => setOpenId(e.id)} />
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
-        sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
+        sub={`${e.coach ? `${e.coach.text} · ` : ""}${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
   const top: ReactNode[] = [
     <WarmupRow key="warmup" warmup={warmup} done={extras.warmup_done}
@@ -299,11 +301,12 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
     return (s: SSet) => {
       const prevSet = ex.sets.filter((z) => z.set_no < s.set_no && z.done).at(-1);
       const lastSame = ex.last?.sets[s.set_no - 1] ?? ex.last?.sets.at(-1);
-      const kg = prevSet?.weight_kg ?? lastSame?.weight_kg ?? ex.last?.top ?? null;
+      const coachKg = s.set_no === 1 && ex.coach?.kg != null ? ex.coach.kg : null;
+      const kg = coachKg ?? prevSet?.weight_kg ?? lastSame?.weight_kg ?? ex.last?.top ?? null;
       const reps = lastSame?.reps ?? prevSet?.reps ?? null;
       return { w: kg == null ? "" : w(kg, units), r: reps == null ? "" : String(reps) };
     };
-  }, [ex.sets, ex.last, units]);
+  }, [ex.sets, ex.last, ex.coach, units]);
 
   function toggle(s: SSet) {
     const v = vals[s.id] ?? { w: "", r: "" };
@@ -326,7 +329,10 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
 
   return (
     <div className="card" style={{ padding: 16, border: "2px solid var(--ember)" }}>
-      <h2 className="disp" style={{ fontSize: 22 }}>{ex.name}</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+        <h2 className="disp" style={{ fontSize: 22 }}>{ex.name}</h2>
+        {ex.coach ? <span className={`tag ${ex.coach.tone === "up" ? "blue" : "ember"}`} title="Coach's call for today">{ex.coach.text}</span> : null}
+      </div>
       <p className="cap" style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "baseline", marginTop: 2 }}>
         {ex.plan}
         {logged ? null : <button type="button" onClick={onSwap} style={linkBtn}>Swap</button>}

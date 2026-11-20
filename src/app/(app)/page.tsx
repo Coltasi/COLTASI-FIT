@@ -22,7 +22,7 @@ export default async function OverviewPage() {
     programP,
     getWeekState(supabase, today, programP),
     getLiftHistory(supabase),
-    supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery").order("created_at", { ascending: false }).limit(1),
+    supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     getSteps(supabase, today, 14),
@@ -67,6 +67,7 @@ export default async function OverviewPage() {
         <CoachRead
           padding="16px"
           read={latest}
+          units={units}
           label={<p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}><CoachMark />Coach</p>}
           footer={<div style={{ textAlign: "right", marginTop: 4 }}><Link href="/coach" style={{ fontSize: 13, fontWeight: 600 }}>Ask Coach</Link></div>}
         />
