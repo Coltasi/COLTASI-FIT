@@ -7,8 +7,8 @@ export function BrandRow({ right }: { right?: ReactNode }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: -4 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/coltasi-bird.svg" alt="" width={34} height={34} />
-        <span className="disp" style={{ fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>
+        <img src="/brand/coltasi-bird.svg" alt="" width={48} height={48} />
+        <span className="disp" style={{ fontSize: 19, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>
       </div>
       {right}
     </div>
