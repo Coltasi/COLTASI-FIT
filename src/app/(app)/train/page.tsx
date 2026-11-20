@@ -2,14 +2,20 @@ import Link from "next/link";
 import { BrandRow } from "@/components/ui";
 import { IconBook, IconCheck, IconClock } from "@/components/icons";
 import { getContext, getFinishers, getLastTimes, getProgram, getWeekState } from "@/lib/data";
-import { daysBetween, fmtDay, fmtDow, fmtShort } from "@/lib/dates";
+import { daysBetween, fmtDay, fmtDow, fmtShort, mondayOf as week0 } from "@/lib/dates";
 import { StartForm } from "./start-form";
 
 export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const sp = await searchParams;
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
-  const [program, week] = await Promise.all([programP, getWeekState(supabase, today, programP)]);
+  const [program, week, { data: weekRows }] = await Promise.all([
+    programP,
+    getWeekState(supabase, today, programP),
+    supabase.from("sessions").select("id, title, kind, session_date, started_at").eq("status", "done").gte("session_date", week0(today)).order("session_date").order("started_at"),
+  ]);
+  // Every workout done this week, in order (split, custom and kettlebell alike), then the Split days still to do.
+  const weekDone = (weekRows ?? []) as { id: string; title: string; kind: string; session_date: string }[];
   const split = program.filter((d) => d.program === "split");
   const chosenId = typeof sp.day === "string" ? sp.day : undefined;
   const day = program.find((d) => d.id === chosenId) ?? week.nextDay;
@@ -22,10 +28,6 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   ]);
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const suggested = !!day && day.id === week.nextDay?.id;
-  // A custom or kettlebell session finished today, shown in the week strip as today's workout.
-  const offPlanToday = [...week.doneToday].reverse().find((s) => s.kind !== "split") ?? null;
-  const firstUndone = split.findIndex((d) => !week.done.has(d.id));
-  const todaySlot = firstUndone < 0 ? split.length : firstUndone;
 
   return (
     <main className="screen">
@@ -74,26 +76,25 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           <p className="lab">This week</p>
           <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${(split.length || 5) + (offPlanToday ? 1 : 0)}, minmax(0, 1fr))`, gap: 6 }}>
-          {split.flatMap((d, i) => {
-            const doneOn = week.done.get(d.id);
-            const isNext = !doneOn && week.nextDay?.id === d.id;
-            const style = doneOn
-              ? { background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }
-              : isNext
-                ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" }
-                : {};
-            const tile = (
-              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat" style={{ ...tileBase, ...style }}>
-                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{doneOn ? (doneOn === today ? "Today" : fmtDow(doneOn)) : isNext && !week.doneToday.length ? "Today" : "Next"}</span>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + split.filter((d) => !week.done.has(d.id)).length)}, minmax(0, 1fr))`, gap: 6 }}>
+          {weekDone.map((x) => (
+            <Link key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
+              <span style={{ fontSize: 12, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
+              <IconCheck size={14} />
+            </Link>
+          ))}
+          {split.filter((d) => !week.done.has(d.id)).map((d) => {
+            const isNext = week.nextDay?.id === d.id;
+            return (
+              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat"
+                style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
+                <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
                 <span style={{ fontSize: 12, fontWeight: 700 }}>{d.name}</span>
-                {doneOn ? <IconCheck size={14} /> : <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />}
+                <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
               </Link>
             );
-            // Today's custom or kettlebell workout takes today's slot: after the days already done, before what's next.
-            return offPlanToday && i === todaySlot ? [todayTile(offPlanToday), tile] : [tile];
           })}
-          {offPlanToday && todaySlot === split.length ? todayTile(offPlanToday) : null}
         </div>
       </div>
 
@@ -145,16 +146,6 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         <p className="cap">No program found.</p>
       )}
     </main>
-  );
-}
-
-function todayTile(s: { id: string; kind: string }) {
-  return (
-    <Link key="today-off-plan" href={`/train/session/${s.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
-      <span style={{ fontSize: 11, fontWeight: 600, opacity: 0.8 }}>Today</span>
-      <span style={{ fontSize: 12, fontWeight: 700 }}>{s.kind === "kettlebell" ? "KB" : "Custom"}</span>
-      <IconCheck size={14} />
-    </Link>
   );
 }
 
