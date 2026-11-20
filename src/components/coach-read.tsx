@@ -20,7 +20,7 @@ export function CoachRead({ label, read, footer, units = "metric", defaultOpen =
       {label}
       <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? "Hide full read" : "Show full read"}
         style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, width: "100%", background: "none", border: 0, padding: 0, margin: "8px 0 6px", textAlign: "left", cursor: "pointer", color: "var(--navy)" }}>
-        <span style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.4 }}>{read.headline}</span>
+        <span style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.45 }}>{read.headline}</span>
         {parts.length || plan ? <IconDown style={{ flexShrink: 0, marginTop: 3, color: "var(--stone)", transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} /> : null}
       </button>
       {open && plan ? <CoachPlan s={plan} weight={read.weight} units={units} /> : null}

@@ -156,12 +156,36 @@ function nextUpLine(s: Signals): string | null {
   return d.daysSince == null ? `Next up: ${d.name} (not done yet).` : `Next up: ${d.name}, last done ${d.daysSince} day${d.daysSince === 1 ? "" : "s"} ago.`;
 }
 
+/** Lifts that went heavier or lighter than the session before, from the session just finished. */
+function moves(s: Signals) {
+  const withKg = s.lifts.filter((l) => l.change?.kg != null && l.change.kg !== 0 && l.change.from != null && l.top != null);
+  return {
+    heavier: withKg.filter((l) => (l.change!.kg as number) > 0).map((l) => ({ lift: l.name, from: l.change!.from, to: l.top })),
+    lighter: withKg.filter((l) => (l.change!.kg as number) < 0).map((l) => ({ lift: l.name, from: l.change!.from, to: l.top })),
+  };
+}
+
+/** Two short coach-voice sentences reacting to the session, built in code. */
+function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string | null {
+  if (s.kind !== "session") return null;
+  const { heavier, lighter } = moves(s);
+  const first: string[] = [];
+  if (heavier.length) first.push(`Great work. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
+  else if (up.length) first.push(`Solid session. You're ready to go up on ${up[0].name}.`);
+  if (lighter.length) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
+  else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Come on, let's break through it.`);
+  if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : "Session logged. Next time, chase one more rep per set.");
+  return first.slice(0, 2).join(" ");
+}
+
 /** The read built straight from the signals. Also the fallback for any field the model gets wrong. */
 export function ruleRead(s: Signals): Read {
   const up = s.lifts.filter((l) => l.call === "up");
   const stalled = s.lifts.filter((l) => l.call === "back_off");
   let headline: string;
-  if (s.kind !== "session" && s.weight?.lines.length) headline = s.weight.lines[s.weight.lines.length - 1].split(". ")[0].replace(/\.$/, "") + ".";
+  const note = ruleNote(s, up, stalled);
+  if (note) headline = note;
+  else if (s.kind !== "session" && s.weight?.lines.length) headline = s.weight.lines[s.weight.lines.length - 1].split(". ")[0].replace(/\.$/, "") + ".";
   else if (s.sleep.call === "ease") headline = `Ease off next session: ${s.sleep.reasons[0]}.`;
   else if (up.length) headline = up.length === 1 ? `${up[0].name} is ready to go up next time.` : `${up.length} lifts are ready to go up: ${up.slice(0, 3).map((l) => l.name).join(", ")}.`;
   else if (stalled.length) headline = `${stalled[0].name} has stalled for ${stalled[0].stalledFor} sessions. Time to back off or swap it.`;
@@ -194,6 +218,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     readType: s.kind,
     workout: s.sessionTitle,
     liftCalls: s.lifts.map((l) => ({ lift: l.name, call: l.call, instruction: l.line })),
+    ...(s.kind === "session" ? moves(s) : {}),
     nextUp: nextUpLine(s),
     sleep: { call: s.sleep.call, reasons: s.sleep.reasons, advice: s.sleep.line },
     weight: s.kind === "session" ? null : s.weight?.lines ?? null,
@@ -203,14 +228,15 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
   const text = await callClaude({
     max_tokens: 300,
     system:
-      "You are the coach in a personal training app. You are given conclusions that are already worked out. " +
-      "Your only job is to word them as short, plain sentences. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
+      "You are the coach in a personal training app, talking to one person you train. Warm, direct and human, like a good personal trainer: praise real wins (\"Great work\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
+      "If a lift is in `lighter`, ask about it kindly, e.g. \"I noticed you went lighter on Seated Row today. Everything okay?\". If lifts are in `heavier`, call out the best one. " +
+      "You are given conclusions that are already worked out. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
       "Priorities: training first, then sleep and recovery, then body weight. " +
       (s.kind === "session"
-        ? "This read is after a workout: the headline must be about training or recovery and must not mention body weight, calories or the scale. "
+        ? "This read is after a workout: the headline must be about this workout or recovery and must not mention body weight, calories or the scale. Do not list every lift; pick the one or two things that matter most. "
         : "This read is after a weigh-in or body scan: the headline may mention weight, in one short sentence. ") +
       "Plain words, full exercise names, no gym shorthand, no hype, no emoji, no em dashes. " +
-      'Reply with JSON only: {"headline": one sentence under 20 words, "recovery": one or two sentences saying whether to push or ease off next session and why}.',
+      'Reply with JSON only: {"headline": the coach talking, two short sentences, under 35 words in total, "recovery": one or two sentences saying whether to push or ease off next session and why}.',
     messages: [{ role: "user", content: factsText }],
   });
   const m = text?.match(/\{[\s\S]*\}/);
