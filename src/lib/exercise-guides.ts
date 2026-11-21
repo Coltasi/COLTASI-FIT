@@ -227,6 +227,24 @@ export const GUIDES: Record<string, Guide> = {
     steps: ["Hold the bell upside down by the horns.","Circle it around your head, close to your neck.","Switch direction each rep."],
     mistake: "Arching the lower back.",
   },
+  "Bosu Ski Jumps": {
+    primary: ["Quads","Glutes"],
+    secondary: ["Calves","Core"],
+    steps: ["Stand beside the Bosu, feet together, knees soft.","Hop sideways onto the dome, land quietly in a quarter squat.","Hop off the far side and keep the rhythm going back and forth."],
+    mistake: "Landing stiff-legged instead of absorbing through the hips and knees.",
+  },
+  "Bosu Single Leg Squat": {
+    primary: ["Quads","Glutes"],
+    secondary: ["Hamstrings","Core"],
+    steps: ["Stand on one leg in the middle of the dome, hold a light bell at your chest.","Sit back and down as far as you can stay balanced.","Drive up through the whole foot, knee tracking over your toes."],
+    mistake: "Letting the knee cave inward as you wobble.",
+  },
+  "Crow Pose": {
+    primary: ["Core","Shoulders"],
+    secondary: ["Wrists","Triceps"],
+    steps: ["Squat, hands flat shoulder-width, fingers spread.","Bend elbows, put knees high on the backs of your upper arms.","Lean forward until your feet float, eyes ahead, and hold."],
+    mistake: "Looking down at your feet, which tips you back out of it.",
+  },
 };
 
 /** Library sections: one per program day, plus Kettlebell. */

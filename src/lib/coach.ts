@@ -4,6 +4,7 @@ import { currentUser } from "@/lib/supabase/user";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { fetchAll } from "@/lib/fetch-all";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
+import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
@@ -47,6 +48,8 @@ export type Signals = {
   /** Whose lifts the "Next session" calls are for: the session just finished, or the most overdue split day. */
   liftsFor: string | null;
   lifts: LiftSignal[];
+  /** Lifts skipped in the session just finished, and why. */
+  skipped?: { lift: string; reason: string }[];
   splitDue: DayDue[];
   sleep: SleepSignal;
   /** Only on weigh-in and scan reads. */
@@ -97,15 +100,18 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   let sessionTitle: string | null = null;
   let liftsFor: string | null = null;
   let plan: { exercise_id: string; name: string; rep_range: string | null }[] = [];
+  let skipped: { lift: string; reason: string }[] = [];
   if (kind === "session" && sourceId) {
     const { data: s } = await supabase
       .from("sessions")
-      .select("title, session_exercises(exercise_id, position, rep_range, exercises(name))")
+      .select("title, session_exercises(exercise_id, position, rep_range, skipped_reason, skill, exercises(name))")
       .eq("id", sourceId)
       .single();
     sessionTitle = s?.title ?? null;
     liftsFor = sessionTitle;
-    plan = ((s?.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position)
+    const rows = ((s?.session_exercises ?? []) as any[]).filter((x) => !x.skill);
+    skipped = rows.filter((x) => x.skipped_reason).map((x) => ({ lift: x.exercises?.name ?? "", reason: SKIP_LABEL[x.skipped_reason as SkipReason] ?? x.skipped_reason }));
+    plan = rows.sort((a, b) => a.position - b.position)
       .map((x) => ({ exercise_id: x.exercise_id, name: x.exercises?.name ?? "", rep_range: x.rep_range }));
   } else if (due.length) {
     const day = program.find((d) => d.name === due[0].name && d.program === "split");
@@ -145,7 +151,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     weight = { lines, latestKg: pts[0]?.weight_kg ?? null, rateKgWeek: rate == null ? null : r1(rate), targetKgWeek: target, behind };
   }
 
-  return { kind, today, sessionTitle, liftsFor, lifts, splitDue: due.slice(0, 4), sleep, weight };
+  return { kind, today, sessionTitle, liftsFor, lifts, skipped, splitDue: due.slice(0, 4), sleep, weight };
 }
 
 export type Read = { headline: string; next_session: string | null; recovery: string | null; weight: string | null };
@@ -174,6 +180,10 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   else if (up.length) first.push(`Solid session. You're ready to go up on ${up[0].name}.`);
   if (lighter.length) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
   else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Come on, let's break through it.`);
+  const sk = s.skipped ?? [];
+  if (first.length < 2 && sk.length) first.push(sk.length === 1
+    ? `You skipped ${sk[0].lift} (${sk[0].reason}). I'll remind you to fit it in this week.`
+    : `You skipped ${sk.length} lifts today. I'll remind you to fit them in this week.`);
   if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : "Session logged. Next time, chase one more rep per set.");
   return first.slice(0, 2).join(" ");
 }
@@ -219,6 +229,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     workout: s.sessionTitle,
     liftCalls: s.lifts.map((l) => ({ lift: l.name, call: l.call, instruction: l.line })),
     ...(s.kind === "session" ? moves(s) : {}),
+    skipped: s.skipped ?? [],
     nextUp: nextUpLine(s),
     sleep: { call: s.sleep.call, reasons: s.sleep.reasons, advice: s.sleep.line },
     weight: s.kind === "session" ? null : s.weight?.lines ?? null,
@@ -229,6 +240,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     max_tokens: 300,
     system:
       "You are the coach in a personal training app, talking to one person you train. Warm, direct and human, like a good personal trainer: praise real wins (\"Great work\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
+      "If `skipped` has lifts, say briefly that you'll remind them to come back to it (if sore, tell them to let it recover first). " +
       "If a lift is in `lighter`, ask about it kindly, e.g. \"I noticed you went lighter on Seated Row today. Everything okay?\". If lifts are in `heavier`, call out the best one. " +
       "You are given conclusions that are already worked out. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
       "Priorities: training first, then sleep and recovery, then body weight. " +

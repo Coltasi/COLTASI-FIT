@@ -11,12 +11,19 @@ import { GUIDES } from "@/lib/exercise-guides";
 import type { Candidate, LastTime } from "@/lib/data";
 import { exerciseKey } from "@/lib/exercise-match";
 import { lastLine, searchCandidates } from "@/components/exercise-search";
-import { addLifts, addSet, finishSession, saveSet, setExtra, setWarmup, swapLift } from "../../actions";
+import { addLifts, addOwed, addSet, dropOwed, finishSession, saveSet, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
+import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
 
 export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
 /** Coach's change for this lift next time (from the latest Coach read), shown as a tag and prefilled on set 1. */
 export type CoachCall = { tone: "up" | "down"; text: string; kg: number | null };
-export type SEx = { id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; coach?: CoachCall | null; sets: SSet[] };
+export type SEx = {
+  id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; coach?: CoachCall | null; sets: SSet[];
+  /** Skipped today, and why. Counts as handled for progress, logs nothing. */
+  skipped: SkipReason | null;
+  /** Warm-up skill block (crow pose): reps are seconds held, no weight. */
+  skill: boolean;
+};
 type Session = {
   id: string; kind: string; title: string;
   warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
@@ -25,7 +32,8 @@ type Session = {
 
 const WARMUP_LABEL: Record<string, string> = { stairs: "Stairs", elliptical: "Elliptical", treadmill: "Treadmill", rower: "Rower" };
 const WARMUP_KEYS = Object.keys(WARMUP_LABEL);
-const isDone = (e: SEx) => e.sets.length > 0 && e.sets.every((s) => s.done);
+const isDone = (e: SEx) => !!e.skipped || (e.sets.length > 0 && e.sets.every((s) => s.done));
+const SKIP_REASONS: SkipReason[] = ["sore", "equipment", "time"];
 const rowBtn: CSSProperties = { width: "100%", background: "none", borderLeft: 0, borderRight: 0, borderBottom: 0, textAlign: "left", cursor: "pointer" };
 
 function Dot({ done, dashed }: { done: boolean; dashed?: boolean }) {
@@ -64,8 +72,8 @@ function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null
   );
 }
 
-export function SessionView({ session, exercises: initial, candidates, initialOpen, units }: {
-  session: Session; exercises: SEx[]; candidates: Candidate[]; initialOpen: string | null; units: Units;
+export function SessionView({ session, exercises: initial, candidates, owed: initialOwed, initialOpen, units }: {
+  session: Session; exercises: SEx[]; candidates: Candidate[]; owed: Owed[]; initialOpen: string | null; units: Units;
 }) {
   const router = useRouter();
   const [exs, setExs] = useState(initial);
@@ -74,9 +82,37 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
   const [warmSheet, setWarmSheet] = useState(false);
   const [openId, setOpenId] = useState<string | null>(() =>
     (initialOpen && initial.some((e) => e.id === initialOpen) ? initialOpen : null) ?? initial.find((e) => !isDone(e))?.id ?? null);
+  const [owed, setOwed] = useState(initialOwed);
+  const [skipFor, setSkipFor] = useState<SEx | null>(null);
   const [sheet, setSheet] = useState<{ mode: "swap" | "add"; ex?: SEx } | null>(() => (session.kind === "custom" && !initial.length ? { mode: "add" } : null));
   const [pending, start] = useTransition();
   const doneCount = exs.filter(isDone).length;
+  const skippedCount = exs.filter((e) => e.skipped).length;
+
+  function skip(ex: SEx, reason: SkipReason | null) {
+    setSkipFor(null);
+    setExs((prev) => {
+      const next = prev.map((e) => (e.id === ex.id ? { ...e, skipped: reason } : e));
+      if (reason) setOpenId(next.find((e) => !isDone(e))?.id ?? null);
+      else setOpenId(ex.id);
+      return next;
+    });
+    start(() => skipLift(ex.id, reason));
+  }
+
+  function takeOwed(o: Owed) {
+    setOwed((p) => p.filter((x) => x.id !== o.id));
+    start(async () => {
+      const newId = await addOwed(session.id, o.id);
+      router.replace(newId ? `/train/session/${session.id}?open=${newId}` : `/train/session/${session.id}`, { scroll: false });
+      router.refresh();
+    });
+  }
+
+  function leaveOwed(o: Owed) {
+    setOwed((p) => p.filter((x) => x.id !== o.id));
+    start(() => dropOwed(o.id));
+  }
   const label = session.kind === "custom" ? "Custom" : session.kind === "kettlebell" ? "Kettlebell" : "The Split";
 
   function patchSet(exId: string, setId: string, patch: Partial<SSet>) {
@@ -109,7 +145,9 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
   const openPos = exs.findIndex((e) => e.id === openId);
   const cut = openPos < 0 ? exs.length : openPos;
   const open = openPos < 0 ? null : exs[openPos];
-  const exRow = (e: SEx) => isDone(e)
+  const exRow = (e: SEx) => e.skipped
+    ? <Row key={e.id} done={false} dashed muted name={e.name} sub={e.skill ? "Skipped · tap to undo" : `Skipped · ${SKIP_LABEL[e.skipped]} · Coach will remind you · tap to undo`} onClick={() => skip(e, null)} />
+    : isDone(e)
     ? <Row key={e.id} done muted name={e.name} sub={summary(e, units)} onClick={() => setOpenId(e.id)} />
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
         sub={`${e.coach ? `${e.coach.text} · ` : ""}${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
@@ -143,10 +181,28 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", gap: 4 }}>
             {exs.map((e) => (
-              <div key={e.id} style={{ height: 6, borderRadius: 3, flex: 1, background: isDone(e) ? "var(--navy)" : e.id === openId ? "var(--ember)" : "var(--line-strong)" }} />
+              <div key={e.id} style={{ height: 6, borderRadius: 3, flex: 1, background: e.skipped ? "var(--mist)" : isDone(e) ? "var(--navy)" : e.id === openId ? "var(--ember)" : "var(--line-strong)" }} />
             ))}
           </div>
-          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{doneCount}</span> of {exs.length} lifts done</p>
+          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{doneCount}</span> of {exs.length} lifts done{skippedCount ? ` · ${skippedCount} skipped` : ""}</p>
+        </div>
+      ) : null}
+
+      {owed.length ? (
+        <div className="card cream" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <p className="lab" style={{ color: "var(--navy)" }}>Coach · owed from earlier</p>
+          {owed.map((o) => (
+            <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flexGrow: 1, minWidth: 0 }}>
+                <p className="ln">{o.name}</p>
+                <p className="cap">{owedLine(o)}</p>
+                {o.skips30 >= 3 ? <p className="cap" style={{ color: "var(--rust)" }}>{o.skips30} skips this month. Is it soreness, or should we swap it?</p> : null}
+              </div>
+              <button type="button" className="btn2" disabled={pending} onClick={() => takeOwed(o)} style={{ flexShrink: 0 }}>Add</button>
+              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 13, flexShrink: 0 }}>Drop</button>
+            </div>
+          ))}
+          <p className="cap" style={{ fontSize: 12 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
         </div>
       ) : null}
 
@@ -155,6 +211,7 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
       {open ? (
         <ExerciseCard key={open.id} ex={open} units={units} sessionId={session.id}
           onSwap={() => setSheet({ mode: "swap", ex: open })}
+          onSkip={() => (open.skill ? skip(open, "time") : setSkipFor(open))}
           onPatch={patchSet}
           onAddSet={(s) => setExs((prev) => prev.map((e) => (e.id === open.id ? { ...e, sets: [...e.sets, s] } : e)))} />
       ) : null}
@@ -183,6 +240,19 @@ export function SessionView({ session, exercises: initial, candidates, initialOp
           onClose={() => setSheet(null)}
           onApply={applySheet}
         />
+      ) : null}
+
+      {skipFor ? (
+        <Sheet title={`Skip ${skipFor.name}`} onClose={() => setSkipFor(null)}>
+          <p className="cap">Why? Coach will remind you to come back to it within the week.</p>
+          <div className="card flat clip">
+            {SKIP_REASONS.map((r) => (
+              <button key={r} type="button" className="row" onClick={() => skip(skipFor, r)} style={rowBtn}>
+                <span className="ln" style={{ flexGrow: 1 }}>{r === "sore" ? "Sore" : r === "equipment" ? "No equipment" : "Short on time"}</span>
+              </button>
+            ))}
+          </div>
+        </Sheet>
       ) : null}
 
       {warmSheet ? (
@@ -281,12 +351,14 @@ function summary(e: SEx, units: Units) {
   const done = e.sets.filter((s) => s.done);
   const ws = [...new Set(done.map((s) => (s.weight_kg == null ? null : w(s.weight_kg, units))).filter(Boolean))];
   const reps = done.map((s) => s.reps ?? "?").join(", ");
+  if (e.skill) return `${reps} s held`;
   return ws.length ? `${ws.join(" · ")} ${unit(units)} · ${reps}` : `${reps} reps`;
 }
 
-function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
+function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet }: {
   ex: SEx; units: Units; sessionId: string;
   onSwap: () => void;
+  onSkip: () => void;
   onPatch: (exId: string, setId: string, patch: Partial<SSet>) => void;
   onAddSet: (s: SSet) => void;
 }) {
@@ -335,9 +407,11 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
       </div>
       <p className="cap" style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "baseline", marginTop: 2 }}>
         {ex.plan}
-        {logged ? null : <button type="button" onClick={onSwap} style={linkBtn}>Swap</button>}
+        {logged || ex.skill ? null : <button type="button" onClick={onSwap} style={linkBtn}>Swap</button>}
+        {logged ? null : <button type="button" onClick={onSkip} style={linkBtn}>Skip</button>}
         <Link href={`/train/library/${ex.exerciseId}?from=${sessionId}`} style={{ fontWeight: 600 }}>How to</Link>
       </p>
+      {ex.skill ? <p style={{ marginTop: 6 }}><span className="tag cream">Skill · warm-up</span></p> : null}
       {ex.subFor ? <p style={{ marginTop: 6 }}><span className="tag ember">Swapped in for {ex.subFor}</span></p> : null}
       {ex.last ? (
         <p className="cap" style={{ marginTop: 4 }}>
@@ -349,8 +423,8 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
 
       <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: "14px 0 6px" }}>
         <span className="lab" style={{ fontSize: 10 }}>Set</span>
-        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>{unit(units)}</span>
-        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>Reps</span>
+        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
+        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>
         <span />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -361,11 +435,13 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onPatch, onAddSet }: {
           return (
             <div key={s.id} style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center" }}>
               <span className="num" style={{ color: active ? "var(--rust)" : "var(--muted)" }}>{s.set_no}</span>
-              <label><span className="sr-only">Set {s.set_no} weight in {unit(units)}</span>
-                <input inputMode="decimal" value={v.w} placeholder={ph.w} style={fld(active, s.done)}
-                  onChange={(e) => setVals({ ...vals, [s.id]: { ...v, w: e.target.value.replace(",", ".") } })} />
-              </label>
-              <label><span className="sr-only">Set {s.set_no} reps</span>
+              {ex.skill ? <span /> : (
+                <label><span className="sr-only">Set {s.set_no} weight in {unit(units)}</span>
+                  <input inputMode="decimal" value={v.w} placeholder={ph.w} style={fld(active, s.done)}
+                    onChange={(e) => setVals({ ...vals, [s.id]: { ...v, w: e.target.value.replace(",", ".") } })} />
+                </label>
+              )}
+              <label><span className="sr-only">Set {s.set_no} {ex.skill ? "seconds held" : "reps"}</span>
                 <input inputMode="numeric" value={v.r} placeholder={ph.r} style={fld(active, s.done)}
                   onChange={(e) => setVals({ ...vals, [s.id]: { ...v, r: e.target.value.replace(/\D/g, "") } })} />
               </label>

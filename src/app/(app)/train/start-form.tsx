@@ -30,6 +30,8 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
   const [warmup, setWarmup] = useState("stairs");
   const [finisherOn, setFinisherOn] = useState(true);
   const [cooldown, setCooldown] = useState(true);
+  // Crow pose isn't every day: suggested on Push, off elsewhere.
+  const [skill, setSkill] = useState(dayName === "Push");
   const [pending, start] = useTransition();
   const fin = (finishers.find((f) => f.is_default) ?? finishers[0]) as Finisher | undefined;
 
@@ -40,6 +42,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
       <input type="hidden" name="finisher" value={finisherOn && fin ? fin.name : ""} />
       <input type="hidden" name="finisher_moves" value={finisherOn && fin ? JSON.stringify(fin.moves) : ""} />
       {cooldown ? <input type="hidden" name="cooldown" value="on" /> : null}
+      {skill ? <input type="hidden" name="skill" value="on" /> : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <p className="lab">Warm-up · 10 min</p>
@@ -62,6 +65,16 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
               </button>
             );
           })}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="row" style={{ justifyContent: "space-between", padding: "14px 16px" }}>
+          <div>
+            <p className="ln" style={{ marginBottom: 2 }}>Skill · Crow pose</p>
+            <p className="cap">3 holds after the warm-up, log seconds{dayName === "Push" ? " · suggested today" : ""}</p>
+          </div>
+          <button type="button" className={`sw${skill ? " on" : ""}`} aria-pressed={skill} aria-label="Crow pose skill block" onClick={() => setSkill(!skill)}><span /></button>
         </div>
       </div>
 

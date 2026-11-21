@@ -4,13 +4,14 @@ import { SessionView, type SEx } from "./session-view";
 import { LoggedView } from "./logged-view";
 import { sleepSignal, type LiftSignal, type Night } from "@/lib/coach-signals";
 import { liftChange } from "@/components/coach-plan";
+import { getOwed, owedFor } from "@/lib/owed";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const { supabase, units, today } = await getContext();
   const { data: s } = await supabase
     .from("sessions")
-    .select("id, kind, title, status, session_date, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
+    .select("id, kind, title, status, session_date, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
     .eq("id", id)
     .single();
   if (!s) notFound();
@@ -27,6 +28,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
         lifts={ses.map((x) => ({
           id: x.id,
           name: x.exercises?.name ?? "",
+          skipped: x.skipped_reason ?? null,
+          skill: !!x.skill,
           sets: ((x.session_sets ?? []) as any[]).filter((z) => z.done).sort((a, b) => a.set_no - b.set_no)
             .map((z) => ({ weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps })),
         }))}
@@ -37,11 +40,13 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const { data: allEx } = await supabase.from("exercises").select("id, name, created_by").order("name");
   const exRows = ((allEx ?? []) as any[]);
   const nameById = new Map(exRows.map((e) => [e.id as string, e.name as string]));
-  const [last, { data: reads }, { data: nights }] = await Promise.all([
+  const [last, { data: reads }, { data: nights }, owedAll] = await Promise.all([
     getLastTimes(supabase, [...new Set(ses.map((x) => x.exercise_id))], s.id),
     supabase.from("coach_reads").select("signals").not("signals", "is", null).order("created_at", { ascending: false }).limit(15),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(14),
+    getOwed(supabase, today),
   ]);
+  const owed = owedFor(owedAll, s.title, ses.map((x) => x.exercises?.name ?? ""));
 
   // Coach's call for each lift: the newest read that mentions it. Going up waits for a good night.
   const calls = new Map<string, LiftSignal>();
@@ -63,6 +68,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     name: x.exercises?.name ?? "",
     plan: `${x.target_sets} × ${x.rep_range ?? "?"}`,
     subFor: x.sub_for ? nameById.get(x.sub_for) ?? null : null,
+    skipped: x.skipped_reason ?? null,
+    skill: !!x.skill,
     last: last.get(x.exercise_id) ?? null,
     coach: coachFor(x.exercises?.name ?? ""),
     sets: ((x.session_sets ?? []) as any[])
@@ -84,6 +91,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
       initialOpen={typeof sp.open === "string" ? sp.open : null}
       exercises={exercises}
       candidates={candidates}
+      owed={owed}
       units={units}
     />
   );

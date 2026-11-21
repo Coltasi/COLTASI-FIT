@@ -2,13 +2,15 @@ import { BackHeader } from "@/components/ui";
 import { IconCheck } from "@/components/icons";
 import { fmtLong } from "@/lib/dates";
 import { unit, w, type Units } from "@/lib/units";
+import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 
 /** Read-only view of a finished (or skipped) session: every logged set per lift. */
 export function LoggedView({ title, date, status, units, lifts }: {
   title: string; date: string; status: string; units: Units;
-  lifts: { id: string; name: string; sets: { weight_kg: number | null; reps: number | null }[] }[];
+  lifts: { id: string; name: string; skipped: string | null; skill: boolean; sets: { weight_kg: number | null; reps: number | null }[] }[];
 }) {
   const logged = lifts.filter((l) => l.sets.length);
+  const skipped = lifts.filter((l) => !l.sets.length && l.skipped);
   return (
     <main className="screen">
       <BackHeader href="/train/history" label="History" eyebrow={`Logged · ${fmtLong(date)}`} title={title} />
@@ -22,14 +24,24 @@ export function LoggedView({ title, date, status, units, lifts }: {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "40px minmax(0,1fr) minmax(0,1fr)", gap: "6px 8px", fontSize: 14 }}>
             <span className="lab" style={{ fontSize: 10 }}>Set</span>
-            <span className="lab" style={{ fontSize: 10 }}>{unit(units)}</span>
-            <span className="lab" style={{ fontSize: 10 }}>Reps</span>
+            <span className="lab" style={{ fontSize: 10 }}>{l.skill ? "" : unit(units)}</span>
+            <span className="lab" style={{ fontSize: 10 }}>{l.skill ? "Secs" : "Reps"}</span>
             {l.sets.map((z, i) => (
-              <Row key={i} n={i + 1} kg={z.weight_kg ? w(z.weight_kg, units) : "BW"} reps={z.reps == null ? "?" : String(z.reps)} />
+              <Row key={i} n={i + 1} kg={l.skill ? "" : z.weight_kg ? w(z.weight_kg, units) : "BW"} reps={z.reps == null ? "?" : String(z.reps)} />
             ))}
           </div>
         </div>
       ))}
+      {skipped.length ? (
+        <div className="card clip">
+          {skipped.map((l) => (
+            <div key={l.id} className="row">
+              <p className="ln" style={{ flexGrow: 1, color: "var(--muted)" }}>{l.name}</p>
+              <span className="tag neutral">Skipped{l.skipped && SKIP_LABEL[l.skipped as SkipReason] ? ` · ${SKIP_LABEL[l.skipped as SkipReason]}` : ""}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </main>
   );
 }

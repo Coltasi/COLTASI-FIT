@@ -14,7 +14,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
   const { supabase, today } = await getContext();
   let q = supabase
     .from("sessions")
-    .select("id, kind, title, session_date, status, session_exercises(id, exercises(name), session_sets(done))")
+    .select("id, kind, title, session_date, status, session_exercises(id, skipped_reason, exercises(name), session_sets(done))")
     .neq("status", "in_progress")
     .order("session_date", { ascending: false })
     .order("started_at", { ascending: false })
@@ -46,14 +46,15 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
             {list.map((s) => {
               const ses = (s.session_exercises ?? []) as any[];
               const logged = ses.filter((x) => (x.session_sets ?? []).some((z: any) => z.done));
-              const all = ses.length;
+              const skipped = ses.filter((x) => x.skipped_reason).length;
+              const all = ses.length - skipped;
               const tag = s.status === "skipped" ? ["Skipped", "dashed"]
                 : s.kind === "custom" ? ["Custom", "ember"]
                 : s.kind === "kettlebell" ? ["Kettlebell", "cream"]
                 : logged.length < all ? ["Partial", "neutral"] : ["Done", "blue"];
               const meta = s.kind === "custom"
                 ? logged.slice(0, 2).map((x) => x.exercises?.name).join(", ") + (logged.length > 2 ? ` + ${logged.length - 2}` : "")
-                : `${logged.length} of ${all} lifts`;
+                : `${logged.length} of ${all} lifts${skipped ? ` · ${skipped} skipped` : ""}`;
               return (
                 <Link key={s.id} href={`/train/session/${s.id}`} className="row" style={{ paddingRight: 14 }}>
                   <div style={{ flexGrow: 1, minWidth: 0 }}>

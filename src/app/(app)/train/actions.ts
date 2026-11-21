@@ -20,7 +20,7 @@ async function ctx() {
 
 const WARMUPS = ["stairs", "elliptical", "treadmill", "rower"];
 type Supa = Awaited<ReturnType<typeof createClient>>;
-type NewLift = { exercise_id: string; target_sets: number; rep_range: string | null; sub_for?: string | null; added?: boolean };
+type NewLift = { exercise_id: string; target_sets: number; rep_range: string | null; sub_for?: string | null; added?: boolean; one_off?: boolean; skill?: boolean };
 
 /** Inserts lifts (and their empty sets) into a session, numbered from `fromPos`. Returns the new session_exercise ids. */
 async function insertLifts(supabase: Supa, sessionId: string, lifts: NewLift[], fromPos: number): Promise<string[]> {
@@ -29,7 +29,7 @@ async function insertLifts(supabase: Supa, sessionId: string, lifts: NewLift[], 
     .from("session_exercises")
     .insert(lifts.map((l, i) => ({
       session_id: sessionId, exercise_id: l.exercise_id, position: fromPos + i, target_sets: l.target_sets,
-      rep_range: l.rep_range, sub_for: l.sub_for ?? null, added: !!l.added,
+      rep_range: l.rep_range, sub_for: l.sub_for ?? null, added: !!l.added, one_off: !!l.one_off, skill: !!l.skill,
     })))
     .select("id, target_sets, position");
   if (error) throw new Error(error.message);
@@ -70,6 +70,8 @@ export async function startSession(formData: FormData) {
   const today = todayIn(await getTz());
   const dayId = String(formData.get("day_id") ?? "");
   const quick = formData.get("quick") === "1";
+  // Crow pose skill block: off unless picked. Quick start (Overview) suggests it on Push day.
+  let skill = formData.get("skill") === "on";
 
   await goToOpenSession(supabase);
 
@@ -85,6 +87,7 @@ export async function startSession(formData: FormData) {
   let finisher: string | null = null;
   let moves: { name: string; dose: string; done: boolean }[] | null = null;
   if (quick) {
+    skill = day.name === "Push";
     warmup = "stairs";
     cooldown = true;
     const f = ((fins ?? []) as any[]).find((x) => x.is_default) ?? (fins ?? [])[0];
@@ -115,9 +118,47 @@ export async function startSession(formData: FormData) {
     ? (over as any[]).map((o) => ({ exercise_id: o.exercise_id, target_sets: o.target_sets, rep_range: o.rep_range, sub_for: o.sub_for, added: o.added }))
     : ((day.program_exercises ?? []) as any[]).sort((a, b) => a.position - b.position)
         .map((pe) => ({ exercise_id: pe.exercise_id, target_sets: pe.target_sets, rep_range: pe.rep_range }));
+  if (skill) await insertLifts(supabase, session.id, [{ exercise_id: await crowId(supabase), target_sets: 3, rep_range: "3 holds · log seconds", one_off: true, skill: true }], 0);
   await insertLifts(supabase, session.id, plan, 1);
   revalidatePath("/", "layout");
   redirect(`/train/session/${session.id}`);
+}
+
+async function crowId(supabase: Supa) {
+  const { data } = await supabase.from("exercises").select("id").eq("name", "Crow Pose").is("created_by", null).limit(1);
+  if (!data?.length) throw new Error("Crow Pose is missing from the exercise list.");
+  return data[0].id as string;
+}
+
+/** Skip a lift for today (reason feeds the Coach's reminder), or undo the skip with reason null. */
+export async function skipLift(sessionExerciseId: string, reason: "sore" | "equipment" | "time" | null) {
+  const { supabase } = await ctx();
+  const { data: done } = await supabase.from("session_sets").select("id").eq("session_exercise_id", sessionExerciseId).eq("done", true).limit(1);
+  if (done?.length && reason) return; // a lift with logged sets isn't skipped
+  await supabase.from("session_exercises").update({ skipped_reason: reason, owed_cleared: false }).eq("id", sessionExerciseId);
+}
+
+/** Drop an owed lift: the Coach stops reminding you about it. */
+export async function dropOwed(owedId: string) {
+  const { supabase } = await ctx();
+  await supabase.from("session_exercises").update({ owed_cleared: true }).eq("id", owedId);
+  revalidatePath("/", "layout");
+}
+
+/** Add an owed lift to the open session, for today only (it doesn't join that day's plan). */
+export async function addOwed(sessionId: string, owedId: string): Promise<string | null> {
+  const { supabase, user } = await ctx();
+  const [{ data: o }, { data: last }] = await Promise.all([
+    supabase.from("session_exercises").select("id, exercises(name)").eq("id", owedId).single(),
+    supabase.from("session_exercises").select("position").eq("session_id", sessionId).order("position", { ascending: false }).limit(1),
+  ]);
+  const name = (o as any)?.exercises?.name as string | undefined;
+  if (!name) return null;
+  const picks = await liftsFromNames(supabase, user.id, [name]);
+  const ids = await insertLifts(supabase, sessionId, picks.map((p) => ({ ...p, one_off: true })), (last?.[0]?.position ?? 0) + 1);
+  await supabase.from("session_exercises").update({ owed_cleared: true }).eq("id", owedId);
+  revalidatePath(`/train/session/${sessionId}`);
+  return ids[0] ?? null;
 }
 
 export async function startCustom() {
@@ -243,7 +284,7 @@ export async function finishSession(sessionId: string) {
     .update({ status: "done", finished_at: new Date().toISOString() })
     .eq("id", sessionId)
     .eq("status", "in_progress")
-    .select("kind, day_id, session_exercises(exercise_id, position, target_sets, rep_range, sub_for, added, session_sets(id))")
+    .select("kind, day_id, session_exercises(exercise_id, position, target_sets, rep_range, sub_for, added, one_off, session_sets(id))")
     .maybeSingle();
   if (!s) {
     revalidatePath("/", "layout");
@@ -253,6 +294,7 @@ export async function finishSession(sessionId: string) {
   if (s?.kind === "split" && s.day_id) {
     try {
       await savePlanOverride(supabase, user.id, s.day_id, ((s.session_exercises ?? []) as any[])
+        .filter((x) => !x.one_off)
         .sort((a, b) => a.position - b.position)
         .map((x) => ({ exercise_id: x.exercise_id, target_sets: Math.min(10, Math.max(1, (x.session_sets ?? []).length || x.target_sets)), rep_range: x.rep_range, sub_for: x.sub_for, added: x.added })));
     } catch (e) {

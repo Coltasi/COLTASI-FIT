@@ -11,6 +11,7 @@ import { SleepCard } from "./sleep-card";
 import { StepsCard } from "./steps-card";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { WeighInForm } from "./progress/weigh-in-form";
+import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
 
@@ -19,13 +20,14 @@ export default async function OverviewPage() {
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [week, { data: read }, { data: sleeps }, { data: wis }, stepRows, { data: weekSessions }] = await Promise.all([
+  const [week, { data: read }, { data: sleeps }, { data: wis }, stepRows, { data: weekSessions }, owedAll] = await Promise.all([
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     getSteps(supabase, today, 14),
     supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
+    getOwed(supabase, today),
   ]);
   const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
   const stepAvg = stepSummary(stepRows, today).avg7;
@@ -71,8 +73,19 @@ export default async function OverviewPage() {
     </form>
   ) : null;
 
+  // Skipped lifts that suit the next workout: the Coach reminds you before you start.
+  const owed = !week.inProgress && !doneToday && day ? owedFor(owedAll, day.name, day.exercises.map((x) => x.name)) : [];
+  const owedNote = owed.length ? (
+    <p className="cap" style={{ fontSize: 13, lineHeight: 1.4, color: "var(--navy)" }}>
+      {owed.length === 1
+        ? `You still owe ${owed[0].name} from ${owed[0].from} (skipped, ${SKIP_LABEL[owed[0].reason]}). Fit it into ${day!.name} today: tap Add once you start.`
+        : `You still owe ${owed.length} skipped lifts: ${owed.map((o) => o.name).join(", ")}. Add them once you start ${day!.name}.`}
+    </p>
+  ) : null;
+
   const footer = (
     <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "10px 0 10px" }}>
+      {owedNote}
       {action}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
         <Link href="/train">{doneToday || week.inProgress ? "Train" : "Pick another workout"}</Link>
