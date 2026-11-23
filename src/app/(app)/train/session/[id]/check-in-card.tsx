@@ -7,11 +7,11 @@ import { FEELS, FEEL_LABEL, NOTE_MAX, PAIN_AREAS, PAIN_LABEL, type Feel, type Pa
  * Optional notes for the Coach, shown above Finish. All fields belong to the Finish form
  * (via `form=`), so nothing is saved until the workout is finished.
  */
-export function CheckInCard({ formId }: { formId: string }) {
+export function CheckInCard({ formId, initial }: { formId: string; initial?: { feel: string | null; pains: string[]; notes: string | null } }) {
   const [open, setOpen] = useState(false);
-  const [feel, setFeel] = useState<Feel | null>(null);
-  const [pains, setPains] = useState<PainArea[]>([]);
-  const [notes, setNotes] = useState("");
+  const [feel, setFeel] = useState<Feel | null>((initial?.feel as Feel | null) ?? null);
+  const [pains, setPains] = useState<PainArea[]>((initial?.pains ?? []) as PainArea[]);
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const togglePain = (p: PainArea) => setPains((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
   const filled = !!feel || pains.length > 0 || notes.trim().length > 0;
 
