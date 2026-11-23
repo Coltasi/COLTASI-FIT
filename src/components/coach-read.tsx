@@ -9,8 +9,8 @@ import type { Units } from "@/lib/units";
 export { PARTS, ReadText, type ReadParts };
 
 /** Cream Coach card whose headline collapses and expands the full read. Collapsed by default. */
-export function CoachRead({ label, read, footer, units = "metric", defaultOpen = false, padding = "16px 16px 6px" }: {
-  label: ReactNode; read: ReadParts & { signals?: PlanSignals | null }; footer?: ReactNode; units?: Units; defaultOpen?: boolean; padding?: string;
+export function CoachRead({ label, read, footer, lead, units = "metric", defaultOpen = false, padding = "16px 16px 6px" }: {
+  label: ReactNode; read: ReadParts & { signals?: PlanSignals | null }; footer?: ReactNode; lead?: ReactNode; units?: Units; defaultOpen?: boolean; padding?: string;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const plan = read.signals?.sleep && Array.isArray(read.signals.lifts) ? read.signals : null;
@@ -18,11 +18,17 @@ export function CoachRead({ label, read, footer, units = "metric", defaultOpen =
   return (
     <div className="card cream" style={{ padding }}>
       {label}
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? "Hide full read" : "Show full read"}
-        style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, width: "100%", background: "none", border: 0, padding: 0, margin: "8px 0 6px", textAlign: "left", cursor: "pointer", color: "var(--navy)" }}>
-        <span style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.45 }}>{read.headline}</span>
-        {parts.length || plan ? <IconDown style={{ flexShrink: 0, marginTop: 3, color: "var(--stone)", transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} /> : null}
-      </button>
+      <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 8px", display: "flex", flexDirection: "column", gap: 8, color: "var(--navy)" }}>
+        {lead ? <li style={bullet}><span style={dot} /><div style={{ minWidth: 0 }}>{lead}</div></li> : null}
+        {points(read.headline).map((t, i) => <li key={i} style={bullet}><span style={dot} /><span>{t}</span></li>)}
+      </ul>
+      {parts.length || plan ? (
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: 0, padding: "4px 0 8px", cursor: "pointer", color: "var(--kingfisher-text)", fontSize: 13, fontWeight: 600 }}>
+          {open ? "Hide the plan" : "Next session plan"}
+          <IconDown style={{ transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} />
+        </button>
+      ) : null}
       {open && plan ? <CoachPlan s={plan} weight={read.weight} units={units} /> : null}
       {open ? parts.map(([l, k, c]) => (
         <div key={k} style={{ display: "grid", gridTemplateColumns: "10px minmax(0,1fr)", gap: 10, padding: "10px 0", borderTop: "1px solid #e6dcc0" }}>
@@ -33,6 +39,14 @@ export function CoachRead({ label, read, footer, units = "metric", defaultOpen =
       {footer}
     </div>
   );
+}
+
+const bullet = { display: "grid", gridTemplateColumns: "8px minmax(0,1fr)", gap: 10, alignItems: "start", fontSize: 15, fontWeight: 500, lineHeight: 1.4 } as const;
+const dot = { width: 6, height: 6, borderRadius: "50%", background: "var(--kingfisher)", marginTop: 8 } as const;
+
+/** The headline split into short points: one sentence per bullet, at most three. */
+export function points(text: string) {
+  return text.split(/\n+|(?<=[.!?])\s+(?=[A-Z"'])/).map((t) => t.trim()).filter(Boolean).slice(0, 3);
 }
 
 /** A card whose header row toggles the rows below it. Collapsed by default. */

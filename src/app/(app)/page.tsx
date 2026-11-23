@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { BrandRow, CoachMark } from "@/components/ui";
 import { InstallCard } from "@/components/install-card";
 import { CoachRead } from "@/components/coach-read";
@@ -12,6 +13,8 @@ import { WorkoutCalendar, type CalSession } from "./workout-calendar";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 import { IntakeBars, leftLine } from "./food/bars";
+import { EffortTag } from "@/components/effort";
+import { effortCallout, gradeSession } from "@/lib/effort";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -23,7 +26,7 @@ export default async function OverviewPage() {
   const sunday = addDays(today, -new Date(today + "T12:00:00Z").getUTCDay());
   const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll, { data: calRows }, { data: foodRows }] = await Promise.all([
     getWeekState(supabase, today, programP),
-    supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
+    supabase.from("coach_reads").select("kind, source_id, headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     getSteps(supabase, today, 14),
     supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", sunday),
@@ -47,17 +50,30 @@ export default async function OverviewPage() {
 
   // A finished session today (custom or kettlebell included) counts as today's workout.
   const doneToday = !week.inProgress && week.doneToday.length ? week.doneToday : null;
-  const title = week.inProgress?.title ?? (doneToday ? doneToday.map((s) => s.title).join(" + ") : day?.name ?? "Workout");
-  const status = week.inProgress ? "In progress" : doneToday ? "Done" : null;
-
   const label = (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-      <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
-        <CoachMark />{doneToday ? "Done today" : "Today"} · {title}
-      </p>
-      {status ? <span className={`tag ${week.inProgress ? "ember" : "blue"}`}>{status}</span> : null}
-    </div>
+    <p className="lab" style={{ color: "var(--navy)", display: "flex", alignItems: "center", gap: 6 }}>
+      <CoachMark />Coach
+    </p>
   );
+
+  // After a workout, the Coach grades it honestly from the logs, next to your own rating.
+  let lead: ReactNode = null;
+  if (latest?.kind === "session" && latest.source_id) {
+    const { data: src } = await supabase.from("sessions").select("effort, feel, session_exercises(skipped_reason, skill)").eq("id", latest.source_id).maybeSingle();
+    const skipped = ((src?.session_exercises ?? []) as any[]).filter((x) => x.skipped_reason && !x.skill).length;
+    const v = gradeSession((latest.signals as any)?.lifts, skipped);
+    if (v) {
+      const callout = effortCallout((src?.effort as any) ?? null, v, src?.feel ?? null);
+      lead = (
+        <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+            Last workout <EffortTag grade={v.grade} />
+          </span>
+          <span className="cap" style={{ fontSize: 13, color: "var(--navy)", fontWeight: 400 }}>{v.line}{callout ? ` ${callout}` : ""}</span>
+        </span>
+      );
+    }
+  }
 
   const action = week.inProgress ? (
     <Link href={`/train/session/${week.inProgress.id}`} className="btn" style={{ height: 50, gap: 8, boxShadow: "none" }}>
@@ -87,16 +103,12 @@ export default async function OverviewPage() {
     </p>
   ) : null;
 
-  const footer = (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "10px 0 10px" }}>
+  const footer = action || owedNote ? (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "6px 0 10px" }}>
       {owedNote}
       {action}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
-        <Link href="/train">{doneToday || week.inProgress ? "Train" : "Pick another workout"}</Link>
-        <Link href="/coach">Ask Coach</Link>
-      </div>
     </div>
-  );
+  ) : null;
 
   return (
     <main className="screen">
@@ -106,7 +118,7 @@ export default async function OverviewPage() {
       <InstallCard />
 
       {latest ? (
-        <CoachRead padding="16px 16px 6px" read={latest} units={units} label={label} footer={footer} />
+        <CoachRead padding="16px 16px 6px" read={latest} units={units} label={label} lead={lead} footer={footer} />
       ) : (
         <div className="card cream" style={{ padding: "16px 16px 6px" }}>
           {label}
@@ -150,10 +162,10 @@ export default async function OverviewPage() {
             const done = trainedOn.has(date);
             const isToday = date === today;
             return (
-              <div key={date} style={{ textAlign: "center" }}>
+              <Link key={date} href={`/train/history?day=${date}`} aria-label={`${date}${done ? ", trained" : ""}`} style={{ textAlign: "center", padding: "4px 0", color: "inherit" }}>
                 <div style={{ height: 8, borderRadius: 4, background: done ? "var(--kingfisher)" : "var(--line-soft)", border: isToday && !done ? "1px dashed var(--ember)" : "none" }} />
                 <p className="cap" style={{ fontSize: 11, marginTop: 4, fontWeight: isToday ? 700 : 400, color: isToday ? "var(--navy)" : undefined }}>{d}</p>
-              </div>
+              </Link>
             );
           })}
         </div>

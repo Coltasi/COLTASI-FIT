@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { EFFORTS, EFFORT_LABEL, type Effort } from "@/lib/effort";
 import { FEELS, FEEL_LABEL, NOTE_MAX, PAIN_AREAS, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 
 /**
  * Optional notes for the Coach, shown above Finish. All fields belong to the Finish form
  * (via `form=`), so nothing is saved until the workout is finished.
  */
-export function CheckInCard({ formId, initial }: { formId: string; initial?: { feel: string | null; pains: string[]; notes: string | null } }) {
+export function CheckInCard({ formId, initial }: { formId: string; initial?: { feel: string | null; pains: string[]; notes: string | null; effort?: string | null } }) {
+  const [effort, setEffort] = useState<Effort | null>((initial?.effort as Effort | null) ?? null);
   const [open, setOpen] = useState(false);
   const [feel, setFeel] = useState<Feel | null>((initial?.feel as Feel | null) ?? null);
   const [pains, setPains] = useState<PainArea[]>((initial?.pains ?? []) as PainArea[]);
@@ -18,9 +20,24 @@ export function CheckInCard({ formId, initial }: { formId: string; initial?: { f
   return (
     <div className="card" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Hidden copies so the values submit with Finish even while the card is collapsed. */}
+      {effort ? <input type="hidden" name="effort" value={effort} form={formId} /> : null}
       {feel ? <input type="hidden" name="feel" value={feel} form={formId} /> : null}
       {pains.map((p) => <input key={p} type="hidden" name="pain" value={p} form={formId} />)}
       <input type="hidden" name="notes" value={notes} form={formId} />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div>
+          <p className="lab" style={{ color: "var(--navy)" }}>How hard did you go?</p>
+          <p className="cap">Be honest. Coach checks it against your numbers.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6 }}>
+          {EFFORTS.map((e) => (
+            <button key={e} type="button" className={`chip${effort === e ? " on" : ""}`} aria-pressed={effort === e}
+              onClick={() => setEffort(effort === e ? null : e)} style={{ justifyContent: "center", padding: "0 4px", fontSize: 13 }}>{EFFORT_LABEL[e]}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ borderTop: "1px solid var(--line-soft)" }} />
 
       <button type="button" onClick={() => setOpen((o) => !o)}
         style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: 0, padding: 0, cursor: "pointer", textAlign: "left", width: "100%" }}>
