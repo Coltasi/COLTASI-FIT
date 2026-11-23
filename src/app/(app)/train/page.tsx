@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandRow } from "@/components/ui";
 import { IconBook, IconCheck, IconClock } from "@/components/icons";
 import { getContext, getFinishers, getLastTimes, getProgram, getWeekState } from "@/lib/data";
-import { daysBetween, fmtDay, fmtDow, fmtShort, mondayOf as week0 } from "@/lib/dates";
+import { daysBetween, fmtDow, mondayOf as week0 } from "@/lib/dates";
 import { StartForm } from "./start-form";
 
 export default async function TrainPage({ searchParams }: PageProps<"/train">) {
@@ -100,28 +100,22 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
 
       {day ? (
         <>
-          <div className="card" style={{ padding: "18px 18px 16px" }}>
-            <p className="lab" style={{ color: "var(--rust)" }}>{day.id === week.nextDay?.id ? (week.doneToday.length ? "Up next in The Split" : `Today · ${fmtDay(today)}`) : fmtDay(today)}</p>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginTop: 4 }}>
-              <h2 className="disp" style={{ fontSize: 40, lineHeight: 1 }}>{day.name}</h2>
-              <Link href="/train/choose" style={{ fontSize: 14, fontWeight: 600, padding: "10px 0 4px 12px" }}>Change</Link>
+          <div className="card" style={{ padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ minWidth: 0 }}>
+                <p className="lab" style={{ color: "var(--rust)" }}>{suggested ? (week.doneToday.length ? "Up next" : "Today") : "Picked"}</p>
+                <h2 className="disp" style={{ fontSize: 34, lineHeight: 1.05, marginTop: 2 }}>{day.name}</h2>
+              </div>
+              <Link href="/train/choose" className="btn2" style={{ height: 36, padding: "0 14px", display: "inline-flex", alignItems: "center", fontSize: 13, flexShrink: 0 }}>Change</Link>
             </div>
-            <p className="cap" style={{ marginTop: 8 }}>
-              {day.program === "split" ? "The Split" : "Kettlebell"} · {day.exercises.length} lifts · {totalSets} sets
-              {lastOfDay?.[0] ? ` · last done ${fmtShort(lastOfDay[0].session_date)}` : ""}
-            </p>
-            {suggested ? (
-              <p style={{ fontSize: 13, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line-soft)", display: "flex", gap: 8, alignItems: "flex-start" }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/brand/coltasi-bird.svg" alt="" width={18} height={18} style={{ flexShrink: 0 }} />
-                <span>
-                  Suggested: next in The Split{lastOfDay?.[0] ? `, last done ${ago(daysBetween(lastOfDay[0].session_date, today))}` : ""}.
-                  {day.overridden ? " Includes your swaps from last time." : ""}
-                </span>
-              </p>
-            ) : week.nextDay ? (
-              <p className="cap" style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line-soft)" }}>
-                Suggested today is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 600 }}>Switch back</Link>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+              <span className="tag neutral">{day.exercises.length} lifts</span>
+              <span className="tag neutral">{totalSets} sets</span>
+              {lastOfDay?.[0] ? <span className="tag neutral">Last {ago(daysBetween(lastOfDay[0].session_date, today))}</span> : <span className="tag neutral">First time</span>}
+            </div>
+            {!suggested && week.nextDay ? (
+              <p className="cap" style={{ marginTop: 10 }}>
+                Next in The Split is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 600 }}>Switch back</Link>
               </p>
             ) : null}
           </div>

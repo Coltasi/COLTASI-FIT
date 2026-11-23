@@ -4,12 +4,15 @@ import { reopenSession } from "../../actions";
 import { fmtLong } from "@/lib/dates";
 import { unit, w, type Units } from "@/lib/units";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
+import { EffortCard } from "@/components/effort";
+import type { Verdict } from "@/lib/effort";
 import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 
 /** Read-only view of a finished (or skipped) session: every logged set per lift. */
-export function LoggedView({ id, saved, title, date, status, units, lifts, checkIn }: {
+export function LoggedView({ id, saved, title, date, status, units, lifts, checkIn, verdict }: {
   id: string; saved?: boolean; title: string; date: string; status: string; units: Units;
-  checkIn?: { feel: string | null; pains: string[]; notes: string | null };
+  checkIn?: { feel: string | null; pains: string[]; notes: string | null; effort?: string | null };
+  verdict?: Verdict | null;
   lifts: { id: string; name: string; skipped: string | null; skill: boolean; sets: { weight_kg: number | null; reps: number | null }[] }[];
 }) {
   const logged = lifts.filter((l) => l.sets.length);
@@ -29,6 +32,7 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
       </div>
       {saved ? <p className="cap" style={{ color: "var(--rust)", fontWeight: 600 }}>Changes saved. Coach will re-read this workout.</p> : null}
       {status === "skipped" ? <p className="cap">This session was skipped. Nothing was logged.</p> : null}
+      {status === "done" ? <EffortCard self={checkIn?.effort ?? null} verdict={verdict ?? null} feel={checkIn?.feel ?? null} /> : null}
       {status !== "skipped" && !logged.length ? <p className="cap">No sets were ticked in this session.</p> : null}
       {logged.map((l) => (
         <div key={l.id} className="card" style={{ padding: "14px 16px" }}>

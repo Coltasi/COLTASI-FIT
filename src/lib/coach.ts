@@ -196,8 +196,9 @@ function moves(s: Signals) {
 function painLine(ci: Signals["checkIn"]): string | null {
   if (!ci?.repeats.length) return null;
   const worst = [...ci.repeats].sort((a, b) => b.times30d - a.times30d)[0];
-  if (worst.times30d >= 3) return `That's ${worst.times30d} times this month you've flagged your ${worst.area.toLowerCase()}. Worth getting it looked at by a physio.`;
-  const areas = ci.pains.map((p) => p.toLowerCase());
+  if (worst.times30d >= 3) return `That's ${worst.times30d} times this month you've flagged ${worst.area === "Other" ? "that niggle" : `your ${worst.area.toLowerCase()}`}. Worth getting it looked at by a physio.`;
+  const areas = ci.pains.map((p) => p.toLowerCase()).filter((a) => a !== "other");
+  if (!areas.length) return "Go easy on whatever's niggling you next time. If it's still there, swap out whatever aggravates it.";
   const list = areas.length > 1 ? `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}` : areas[0];
   return `Go easy on your ${list} next time. If it's still there, swap out whatever aggravates it.`;
 }
@@ -291,7 +292,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
         ? "This read is after a workout: the headline must be about this workout or recovery and must not mention body weight, calories or the scale. Do not list every lift; pick the one or two things that matter most. "
         : "This read is after a weigh-in or body scan: the headline may mention weight, in one short sentence. ") +
       "Plain words, full exercise names, no gym shorthand, no hype, no emoji, no em dashes. " +
-      'Reply with JSON only: {"headline": the coach talking, two short sentences, under 35 words in total, "recovery": one or two sentences saying whether to push or ease off next session and why, keeping the same call as draftRecovery}.',
+      'Reply with JSON only: {"headline": the coach talking, two or three short sentences, each under 14 words, under 35 words in total, each sentence one separate point (they are shown as bullet points), "recovery": one or two sentences saying whether to push or ease off next session and why, keeping the same call as draftRecovery}.',
     messages: [{ role: "user", content: factsText }],
   });
   const m = text?.match(/\{[\s\S]*\}/);

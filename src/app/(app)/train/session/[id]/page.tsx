@@ -5,13 +5,14 @@ import { LoggedView } from "./logged-view";
 import { sleepSignal, type LiftSignal, type Night } from "@/lib/coach-signals";
 import { liftChange } from "@/components/coach-plan";
 import { getOwed, owedFor } from "@/lib/owed";
+import { gradeSession } from "@/lib/effort";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const { supabase, units, today } = await getContext();
   const { data: s } = await supabase
     .from("sessions")
-    .select("id, kind, title, status, session_date, feel, pain_areas, notes, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
+    .select("id, kind, title, status, session_date, feel, pain_areas, notes, effort, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
     .eq("id", id)
     .single();
   if (!s) notFound();
@@ -19,6 +20,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
 
   if (s.status !== "in_progress") {
+    const { data: rd } = await supabase.from("coach_reads").select("signals").eq("kind", "session").eq("source_id", s.id).order("created_at", { ascending: false }).limit(1);
+    const verdict = gradeSession((rd?.[0]?.signals as any)?.lifts, ses.filter((x) => x.skipped_reason && !x.skill).length);
     return (
       <LoggedView
         id={s.id}
@@ -27,7 +30,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
         date={s.session_date}
         status={s.status}
         units={units}
-        checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null }}
+        verdict={verdict}
+        checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null, effort: s.effort ?? null }}
         lifts={ses.map((x) => ({
           id: x.id,
           name: x.exercises?.name ?? "",
@@ -92,7 +96,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
         finisher: !!s.finisher, finisher_done: s.finisher_done,
         editing: s.edit_snapshot != null,
       }}
-      checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null }}
+      checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null, effort: s.effort ?? null }}
       initialOpen={typeof sp.open === "string" ? sp.open : null}
       exercises={exercises}
       candidates={candidates}

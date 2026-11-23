@@ -77,7 +77,7 @@ function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null
 
 export function SessionView({ session, exercises: initial, candidates, owed: initialOwed, initialOpen, units, checkIn }: {
   session: Session; exercises: SEx[]; candidates: Candidate[]; owed: Owed[]; initialOpen: string | null; units: Units;
-  checkIn?: { feel: string | null; pains: string[]; notes: string | null };
+  checkIn?: { feel: string | null; pains: string[]; notes: string | null; effort?: string | null };
 }) {
   const editing = !!session.editing;
   const router = useRouter();
