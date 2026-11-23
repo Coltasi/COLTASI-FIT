@@ -6,7 +6,7 @@ export default async function ScanPage() {
   const { user, today } = await getContext();
   return (
     <main className="screen">
-      <BackHeader href="/progress" label="Progress" eyebrow="Tanita · today" title="Add scan" />
+      <BackHeader href="/progress" label="Progress" eyebrow="Tanita" title="Add scan" />
       <ScanForm userId={user.id} today={today} />
     </main>
   );
