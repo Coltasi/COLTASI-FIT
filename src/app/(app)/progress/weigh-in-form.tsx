@@ -17,10 +17,10 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
   return (
     <form action={action} className="card" style={{ padding: "14px 16px", border: due ? "2px solid var(--ember)" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <p className="lab" style={{ color: due ? "var(--rust)" : undefined }}>Weekly weigh-in</p>
+        <p className="lab" style={{ color: due ? "var(--rust)" : undefined }}>Weigh-in</p>
         <p className="cap" style={{ fontSize: 12 }}>{label}</p>
       </div>
-      <p className="cap" style={{ marginTop: 4 }}>Monday morning, after the bathroom, before food.</p>
+      <p className="cap" style={{ marginTop: 4 }}>Mon, Wed and Fri mornings, after the bathroom, before you eat.</p>
       <input type="hidden" name="measured_on" value={today} />
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         <label style={{ flexGrow: 1, position: "relative", display: "block" }}>

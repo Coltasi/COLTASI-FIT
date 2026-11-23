@@ -63,3 +63,12 @@ export const IconPlay = ({ size = 18, ...p }: P) => (
 export const IconPen =({ size = 16, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M4 20h4L19 9l-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" /></svg>
 );
+export const IconFood = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M7 3v8" /><path d="M4.5 3v5a2.5 2.5 0 0 0 5 0V3" /><path d="M7 11v10" /><path d="M17 21V3c-2.2 0-3.5 2.7-3.5 6.5S15 14 17 14" /></svg>
+);
+export const IconCamera = ({ size = 22, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13.5" r="3.5" /></svg>
+);
+export const IconBarcode = ({ size = 22, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 6v12" /><path d="M7 6v12" /><path d="M11 6v12" /><path d="M14 6v12" /><path d="M17 6v12" /><path d="M20 6v12" /></svg>
+);
