@@ -4,13 +4,11 @@ import { InstallCard } from "@/components/install-card";
 import { CoachRead } from "@/components/coach-read";
 import { IconChevron, IconGear } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
-import { addDays, daysBetween, fmtLong, mondayOf } from "@/lib/dates";
-import { unit, w } from "@/lib/units";
+import { addDays, fmtLong, mondayOf } from "@/lib/dates";
 import { startSession } from "./train/actions";
 import { SleepCard } from "./sleep-card";
 import { StepsCard } from "./steps-card";
 import { getSteps, stepSummary } from "@/lib/steps";
-import { WeighInForm } from "./progress/weigh-in-form";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
@@ -20,11 +18,10 @@ export default async function OverviewPage() {
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [week, { data: read }, { data: sleeps }, { data: wis }, stepRows, { data: weekSessions }, owedAll] = await Promise.all([
+  const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll] = await Promise.all([
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
-    supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     getSteps(supabase, today, 14),
     supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
     getOwed(supabase, today),
@@ -37,9 +34,6 @@ export default async function OverviewPage() {
   const latest = read?.[0];
   const day = week.nextDay;
   const trainedOn = new Set(((weekSessions ?? []) as any[]).map((s) => s.session_date as string));
-
-  const lastWi = (wis ?? [])[0] as { measured_on: string; weight_kg: number } | undefined;
-  const wiDue = !lastWi || lastWi.measured_on < monday;
 
   // A finished session today (custom or kettlebell included) counts as today's workout.
   const doneToday = !week.inProgress && week.doneToday.length ? week.doneToday : null;
@@ -146,15 +140,6 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      {wiDue ? (
-        <WeighInForm
-          units={units}
-          today={today}
-          placeholder={lastWi ? w(Number(lastWi.weight_kg), units) : unit(units)}
-          due
-          label={daysBetween(monday, today) === 0 ? "due today" : "due this week"}
-        />
-      ) : null}
     </main>
   );
 }
