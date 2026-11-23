@@ -22,7 +22,7 @@ export type SEx = {
   id: string; exerciseId: string; name: string; plan: string; subFor: string | null; last: LastTime | null; coach?: CoachCall | null; sets: SSet[];
   /** Skipped today, and why. Counts as handled for progress, logs nothing. */
   skipped: SkipReason | null;
-  /** Warm-up skill block (crow pose): reps are seconds held, no weight. */
+  /** Old warm-up skill block (crow pose, now retired): reps are seconds held, no weight. Kept so past sessions still read right. */
   skill: boolean;
 };
 type Session = {
@@ -146,6 +146,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
     });
   }
 
+  // Ramp-up sets go on the first weighted lift of the day that's still to do (skips skill blocks, skipped lifts and bells).
+  const rampId = exs.find((e) => !e.skill && !e.skipped && !isBellLift(e.name))?.id ?? null;
+
   // Plan order: rows before the open lift (warm-up first), the open lift, rows after it.
   const openPos = exs.findIndex((e) => e.id === openId);
   const cut = openPos < 0 ? exs.length : openPos;
@@ -221,7 +224,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       {top.length ? <div className="card clip">{top}</div> : null}
 
       {open ? (
-        <ExerciseCard key={open.id} ex={open} units={units} sessionId={session.id}
+        <ExerciseCard key={open.id} ex={open} units={units} sessionId={session.id} ramp={open.id === rampId}
           onSwap={() => setSheet({ mode: "swap", ex: open })}
           onSkip={() => (open.skill ? skip(open, "time") : setSkipFor(open))}
           onPatch={patchSet}
@@ -390,8 +393,38 @@ function beat(kg: number | null, reps: number | null, last: { weight_kg: number 
   return null;
 }
 
-function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet }: {
-  ex: SEx; units: Units; sessionId: string;
+/**
+ * Ramp-up (warm-up) sets before the first lift: about 50%, 70% and 85% of the working weight, low reps.
+ * Rounded to 2 kg / 5 lb steps. Not logged as working sets.
+ */
+function rampSets(kg: number, units: Units): { w: string; reps: string }[] {
+  const step = units === "imperial" ? 5 : 2;
+  const shown = Number(w(kg, units));
+  return [[0.5, "8–10"], [0.7, "5"], [0.85, "2–3"]].map(([pct, reps]) => {
+    const v = Math.max(step, Math.round((shown * (pct as number)) / step) * step);
+    return { w: String(v), reps: reps as string };
+  });
+}
+
+function RampUp({ ex, units }: { ex: SEx; units: Units }) {
+  const kg = ex.coach?.kg ?? ex.last?.sets[0]?.weight_kg ?? ex.last?.top ?? null;
+  if (ex.last && kg == null) return null; // bodyweight lift: nothing to ramp
+  return (
+    <div style={{ marginTop: 10, background: "var(--tint-ember)", borderRadius: 12, padding: "10px 12px" }}>
+      <p className="lab" style={{ color: "var(--rust)", marginBottom: 4 }}>Ramp up first · not logged</p>
+      {kg != null ? (
+        <p className="cap" style={{ color: "var(--navy)" }}>
+          {rampSets(kg, units).map((r) => `${r.w} ${unit(units)} × ${r.reps}`).join("  ·  ")}
+        </p>
+      ) : (
+        <p className="cap" style={{ color: "var(--navy)" }}>2–3 light sets: about 50%, 70%, then 85% of your working weight, low reps.</p>
+      )}
+    </div>
+  );
+}
+
+function ExerciseCard({ ex, units, sessionId, ramp, onSwap, onSkip, onPatch, onAddSet }: {
+  ex: SEx; units: Units; sessionId: string; ramp?: boolean;
   onSwap: () => void;
   onSkip: () => void;
   onPatch: (exId: string, setId: string, patch: Partial<SSet>) => void;
@@ -459,6 +492,7 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
           </span> · {fmtShort(ex.last.date)}
         </p>
       ) : <p className="cap" style={{ marginTop: 4 }}>First time logging this one.</p>}
+      {ramp && !logged ? <RampUp ex={ex} units={units} /> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: "14px 0 6px" }}>
         <span className="lab" style={{ fontSize: 10 }}>Set</span>

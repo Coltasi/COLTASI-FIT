@@ -71,8 +71,6 @@ export async function startSession(formData: FormData) {
   const today = todayIn(await getTz());
   const dayId = String(formData.get("day_id") ?? "");
   const quick = formData.get("quick") === "1";
-  // Crow pose skill block: off unless picked. Quick start (Overview) suggests it on Push day.
-  let skill = formData.get("skill") === "on";
 
   await goToOpenSession(supabase);
 
@@ -88,7 +86,6 @@ export async function startSession(formData: FormData) {
   let finisher: string | null = null;
   let moves: { name: string; dose: string; done: boolean }[] | null = null;
   if (quick) {
-    skill = day.name === "Push";
     warmup = "stairs";
     cooldown = true;
     const f = ((fins ?? []) as any[]).find((x) => x.is_default) ?? (fins ?? [])[0];
@@ -119,16 +116,9 @@ export async function startSession(formData: FormData) {
     ? (over as any[]).map((o) => ({ exercise_id: o.exercise_id, target_sets: o.target_sets, rep_range: o.rep_range, sub_for: o.sub_for, added: o.added }))
     : ((day.program_exercises ?? []) as any[]).sort((a, b) => a.position - b.position)
         .map((pe) => ({ exercise_id: pe.exercise_id, target_sets: pe.target_sets, rep_range: pe.rep_range }));
-  if (skill) await insertLifts(supabase, session.id, [{ exercise_id: await crowId(supabase), target_sets: 3, rep_range: "3 holds · log seconds", one_off: true, skill: true }], 0);
   await insertLifts(supabase, session.id, plan, 1);
   revalidatePath("/", "layout");
   redirect(`/train/session/${session.id}`);
-}
-
-async function crowId(supabase: Supa) {
-  const { data } = await supabase.from("exercises").select("id").eq("name", "Crow Pose").is("created_by", null).limit(1);
-  if (!data?.length) throw new Error("Crow Pose is missing from the exercise list.");
-  return data[0].id as string;
 }
 
 /** Skip a lift for today (reason feeds the Coach's reminder), or undo the skip with reason null. */
