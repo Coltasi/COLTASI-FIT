@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { IconBack } from "@/components/icons";
 import { signup, type ActionState } from "./actions";
 
 export default function SignUpPage() {
   const [state, action, pending] = useActionState<ActionState, FormData>(signup, { error: null });
-  const [joining, setJoining] = useState(false);
   return (
     <main className="screen no-tabs" style={{ padding: "22px 24px 40px", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -28,17 +27,13 @@ export default function SignUpPage() {
         </div>
         <div className="card cream" style={{ padding: "14px 16px" }}>
           <p className="ln">Joining someone&apos;s household?</p>
-          {joining ? (
-            <label style={{ display: "block", marginTop: 10 }}>
-              <span className="flab">Invite code</span>
-              <input className="fld" name="invite_code" autoCapitalize="characters" placeholder="From their Settings" />
-            </label>
-          ) : (
-            <p className="cap" style={{ lineHeight: 1.45 }}>
-              Enter the invite code from their Settings. You still get your own data, not a shared login.{" "}
-              <button type="button" onClick={() => setJoining(true)} style={{ background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontWeight: 600, cursor: "pointer" }}>Add code</button>
-            </p>
-          )}
+          <label style={{ display: "block", marginTop: 10 }}>
+            <span className="flab">Invite code</span>
+            <input className="fld" name="invite_code" autoCapitalize="characters" placeholder="From their Settings" required />
+          </label>
+          <p className="cap" style={{ lineHeight: 1.45 }}>
+            Signups are invite only. You still get your own data, not a shared login.
+          </p>
         </div>
         {state.error ? <p className="err">{state.error}</p> : null}
         <button className="btn" type="submit" disabled={pending}>{pending ? "Creating…" : "Create account"}</button>
