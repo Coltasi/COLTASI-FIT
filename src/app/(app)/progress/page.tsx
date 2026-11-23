@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { BrandRow } from "@/components/ui";
-import { IconDoc } from "@/components/icons";
 import { getContext } from "@/lib/data";
 import { addDays, daysBetween, fmtDay, fmtShort, mondayOf } from "@/lib/dates";
 import { signed, unit, w } from "@/lib/units";
@@ -12,7 +11,8 @@ import { SessionCounts } from "./session-counts";
 import { SleepVsLifts } from "./sleep-vs-lifts";
 import { FoodTrend } from "./food-trend";
 
-export default async function ProgressBodyPage() {
+export default async function ProgressBodyPage({ searchParams }: PageProps<"/progress">) {
+  const showAll = (await searchParams).scans === "all";
   const { supabase, today, units, profile } = await getContext();
   const since = addDays(today, -1100);
   const [{ data: wiRows }, { data: scanRows }] = await Promise.all([
@@ -28,7 +28,6 @@ export default async function ProgressBodyPage() {
     ...scans.filter((s) => s.weight_kg != null).map((s) => ({ d: s.scanned_on, kg: s.weight_kg as number, src: "scan" })),
   ].sort((a, b) => (a.d < b.d ? -1 : 1));
   const latest = series.at(-1);
-  const first = series[0];
   const rate = weeklyRate(weighIns.slice(-9));
 
   // Weigh-in days are Mon, Wed and Fri.
@@ -36,10 +35,10 @@ export default async function ProgressBodyPage() {
   const WEIGH_DAYS = [0, 2, 4];
   const dowToday = daysBetween(monday, today);
   const loggedToday = weighIns.find((p) => p.measured_on === today);
-  const lastWeigh = weighIns.at(-1);
   const nextIdx = WEIGH_DAYS.find((d) => d > dowToday);
   const nextWeigh = nextIdx != null ? addDays(monday, nextIdx) : addDays(monday, 7);
   const due = WEIGH_DAYS.includes(dowToday) && !loggedToday;
+  const nextLabelDay = loggedToday || !WEIGH_DAYS.includes(dowToday) ? nextWeigh : today;
 
   // Overlay series, all as mass in kg so they share one axis.
   const num = (v: unknown) => (v == null ? null : Number(v));
@@ -62,64 +61,39 @@ export default async function ProgressBodyPage() {
       <BrandRow />
       <h1 className="disp" style={{ fontSize: 30 }}>Progress</h1>
       <ProgressTabs active="body" />
-      <SessionCounts supabase={supabase} today={today} />
-
-      {latest ? (
-        <div>
-          <p className="lab">Weight · {latest.src} {fmtShort(latest.d)}</p>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 4 }}>
-            <span className="disp" style={{ fontSize: 52, lineHeight: 1 }}>{w(latest.kg, units)}</span>
-            <span style={{ fontSize: 18, fontWeight: 600, color: "var(--muted)" }}>{unit(units)}</span>
-          </div>
-          <p className="cap" style={{ marginTop: 6 }}>
-            {first && first.d !== latest.d ? (
-              <><span style={{ color: "var(--kingfisher-text)", fontWeight: 700 }}>{latest.kg <= first.kg ? "▼" : "▲"} {w(Math.abs(latest.kg - first.kg), units)} {unit(units)}</span> since {fmtShort(first.d)}</>
-            ) : "First entry. The trend starts next week."}
-            {rate != null ? <> · <span style={{ color: "var(--navy)", fontWeight: 600 }}>{signed(units === "imperial" ? rate * 2.20462 : rate)} {unit(units)}/week</span> lately</> : null}
-          </p>
-        </div>
-      ) : (
-        <div>
-          <p className="lab">Weight</p>
-          <p className="cap" style={{ marginTop: 6 }}>Log your first weigh-in below to start the trend.</p>
-        </div>
-      )}
-
       <WeighInForm
         units={units}
         today={today}
         placeholder={latest ? w(latest.kg, units) : units === "imperial" ? "lb" : "kg"}
         due={due}
-        label={due ? "due today" : `${lastWeigh ? `last ${fmtDay(lastWeigh.measured_on)} · ` : ""}next ${fmtDay(loggedToday || !WEIGH_DAYS.includes(dowToday) ? nextWeigh : today)}`}
+        label={due ? "due today" : rate != null ? `${signed(units === "imperial" ? rate * 2.20462 : rate)} ${unit(units)}/wk · next ${fmtDay(nextLabelDay)}` : `next ${fmtDay(nextLabelDay)}`}
       />
 
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
 
-      <FoodTrend supabase={supabase} today={today} units={units} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null}
-        weights={series.map((p) => ({ d: p.d, kg: p.kg }))} />
+      <SessionCounts supabase={supabase} today={today} />
+
+      <FoodTrend supabase={supabase} today={today} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
 
       <SleepVsLifts supabase={supabase} />
 
       <div className="card clip">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
-          <p className="lab">Tanita scans</p>
-          <Link href="/progress/scan" className="btn2" style={{ height: 36 }}>+ Add scan</Link>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px" }}>
+          <p className="sec">Scans</p>
+          <Link href="/progress/scan" style={{ fontSize: 14, fontWeight: 600 }}>+ Add</Link>
         </div>
-        {scans.map((s) => (
-          <div key={s.id} className="row">
-            <span style={{ width: 40, height: 40, borderRadius: 10, background: "var(--tint-neutral)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--stone)", flexShrink: 0 }}><IconDoc /></span>
-            <div style={{ flexGrow: 1 }}>
-              <p style={{ fontSize: 15, fontWeight: 600 }}>{fmtShort(s.scanned_on)}</p>
-              <p className="cap">{[s.body_fat_pct != null ? `${s.body_fat_pct}% fat` : null, s.muscle_mass_kg != null ? `${w(s.muscle_mass_kg, units)} ${unit(units)} muscle` : null].filter(Boolean).join(" · ")}</p>
-            </div>
-            <span className="num" style={{ fontSize: 16 }}>{s.weight_kg != null ? w(s.weight_kg, units) : ""}</span>
+        {scans.slice(0, showAll ? undefined : 4).map((s) => (
+          <div key={s.id} className="row" style={{ padding: "12px 18px" }}>
+            <span style={{ flexGrow: 1, fontSize: 15, fontWeight: 600 }}>{fmtShort(s.scanned_on)}</span>
+            <span className="cap" style={{ fontSize: 14 }}>{s.body_fat_pct != null ? `${s.body_fat_pct}%` : ""}</span>
+            <span className="num" style={{ fontSize: 15, width: 64, textAlign: "right" }}>{s.weight_kg != null ? `${w(s.weight_kg, units)} ${unit(units)}` : ""}</span>
           </div>
         ))}
-        {!scans.length ? <p className="cap" style={{ padding: "0 16px 14px" }}>No scans yet.</p> : null}
+        {scans.length > 4 && !showAll ? (
+          <Link href="/progress?scans=all" className="row" style={{ justifyContent: "center", fontSize: 14, fontWeight: 600, color: "var(--kingfisher-text)" }}>Show all {scans.length}</Link>
+        ) : null}
+        {!scans.length ? <p className="cap" style={{ padding: "0 18px 16px", fontSize: 14 }}>No scans yet.</p> : null}
       </div>
-      {profile.target_rate_kg_week == null ? (
-        <p className="cap">Set your target rate in <Link href="/settings">Settings</Link> so Coach can tell you if you&apos;re on pace.</p>
-      ) : null}
     </main>
   );
 }

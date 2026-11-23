@@ -90,9 +90,9 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
   };
 
   return (
-    <div className="card" style={{ padding: "14px 14px 12px" }}>
+    <div className="card" style={{ padding: "16px 16px 12px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <p className="lab">Body composition</p>
+        <p className="sec">Body</p>
         <div role="group" aria-label="Time range" style={{ display: "flex", gap: 2, background: "var(--tint-neutral)", borderRadius: 9, padding: 3 }}>
           {RANGES.map((r) => (
             <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setPick(null); }}
@@ -109,39 +109,36 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
           const isSel = m.key === sel.key;
           if (!p.length) {
             return (
-              <div key={m.key} style={{ padding: "10px 12px", borderRadius: 12, border: "1px solid var(--line-soft)", opacity: 0.5 }}>
-                <p className="cap">{m.label}</p><p className="cap" style={{ marginTop: 6 }}>No data yet</p>
+              <div key={m.key} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--tint-neutral)", opacity: 0.5 }}>
+                <p className="cap" style={{ fontSize: 14 }}>{m.label}</p><p className="cap" style={{ marginTop: 4 }}>No data</p>
               </div>
             );
           }
           const d = conv(p.at(-1)!.kg) - conv(p[0].kg);
           return (
             <button key={m.key} type="button" role="radio" aria-checked={isSel} onClick={() => select(m.key)}
-              style={{ textAlign: "left", padding: isSel ? "9px 11px" : "10px 12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", background: "#fff", minWidth: 0,
-                border: isSel ? `2px solid ${m.color}` : "1px solid var(--line-strong)" }}>
-              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, minWidth: 0 }}>
-                <span className="cap" style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--navy)", fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />{m.label}
-                </span>
-                {p.length > 1 ? <span style={{ fontSize: 12, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}</span> : null}
+              style={{ textAlign: "left", padding: "12px 14px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit", minWidth: 0,
+                background: isSel ? "#fff" : "var(--tint-neutral)", border: `2px solid ${isSel ? m.color : "transparent"}` }}>
+              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>{m.label}</span>
+                {p.length > 1 ? <span style={{ fontSize: 13, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}</span> : null}
               </span>
-              <span className="num" style={{ display: "block", fontSize: 19, color: "var(--navy)", whiteSpace: "nowrap", marginTop: 4 }}>
-                {w(p.at(-1)!.kg, units)}<span className="cap" style={{ marginLeft: 3 }}>{unit(units)}</span>
+              <span className="num" style={{ display: "block", fontSize: 24, fontWeight: 800, color: "var(--navy)", whiteSpace: "nowrap", marginTop: 2, letterSpacing: "-0.02em" }}>
+                {w(p.at(-1)!.kg, units)}<span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)", marginLeft: 4 }}>{unit(units)}</span>
               </span>
-              <Spark points={p.map((x) => ({ d: x.d, v: conv(x.kg) }))} color={m.color} />
             </button>
           );
         })}
       </div>
 
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 20 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span className="num" style={{ fontSize: 28, color: "var(--navy)" }}>{w(active.kg, units)} <span className="cap">{unit(units)}</span></span>
           {active.d !== first.d ? (
             <span style={{ fontSize: 13, fontWeight: 700, color: goodColor(change, sel.goodDown) }}>{signed(change)} {unit(units)} since {fmtShort(first.d)}</span>
           ) : null}
         </div>
-        <p className="cap" style={{ marginTop: 2 }}>{sel.label} · {fmtShort(active.d)} · {active.src === "scan" ? "Tanita scan" : "weigh-in"} · tap the chart</p>
+        <p className="cap" style={{ marginTop: 2, fontSize: 14 }}>{sel.label} · {fmtShort(active.d)}{active.src === "scan" ? " · scan" : ""}</p>
 
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
           aria-label={`${sel.label} over time, ${unit(units)}. Tap to see a date.`}
@@ -170,19 +167,5 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
         </svg>
       </div>
     </div>
-  );
-}
-
-/** Mini trend line that always fits its tile: stretches to the tile's width, fixed height. */
-function Spark({ points, color }: { points: { d: string; v: number }[]; color: string }) {
-  const w = 100, h = 22;
-  if (points.length < 2) return <span style={{ display: "block", height: h, marginTop: 6 }} />;
-  const lo = Math.min(...points.map((p) => p.v)), hi = Math.max(...points.map((p) => p.v));
-  const span = daysBetween(points[0].d, points.at(-1)!.d) || 1;
-  const pts = points.map((p) => `${((daysBetween(points[0].d, p.d) / span) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((p.v - lo) / (hi - lo || 1)) * (h - 4)).toFixed(1)}`).join(" ");
-  return (
-    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden style={{ display: "block", marginTop: 6, overflow: "hidden" }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
