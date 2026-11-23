@@ -8,6 +8,7 @@ import { addDays, fmtLong, mondayOf } from "@/lib/dates";
 import { startSession } from "./train/actions";
 import { SleepCard } from "./sleep-card";
 import { StepsCard } from "./steps-card";
+import { WorkoutCalendar, type CalSession } from "./workout-calendar";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 
@@ -18,14 +19,17 @@ export default async function OverviewPage() {
   const { supabase, today, units } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll] = await Promise.all([
+  const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll, { data: calRows }] = await Promise.all([
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     getSteps(supabase, today, 14),
     supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
     getOwed(supabase, today),
+    supabase.from("sessions").select("id, session_date, kind, title").eq("status", "done").gte("session_date", addDays(today, -400)).order("session_date"),
   ]);
+  const calSessions: CalSession[] = ((calRows ?? []) as { id: string; session_date: string; kind: string; title: string }[])
+    .map((r) => ({ id: r.id, date: r.session_date, kind: r.kind, title: r.title }));
   const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
   const stepAvg = stepSummary(stepRows, today).avg7;
   const night = addDays(today, -1);
@@ -140,6 +144,7 @@ export default async function OverviewPage() {
         </div>
       </div>
 
+      <WorkoutCalendar sessions={calSessions} today={today} />
     </main>
   );
 }

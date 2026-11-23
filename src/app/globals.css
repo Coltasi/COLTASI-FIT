@@ -134,3 +134,9 @@ textarea.fld { height: 88px; padding: 12px 14px; resize: none; line-height: 1.4;
 .tab.on:hover { color: var(--rust); }
 
 .err { font-size: 13px; color: var(--rust); font-weight: 600; }
+
+/* Train: a set that beats the same set last time */
+@keyframes beatFlash { 0% { background: rgba(217,107,41,.35); } 100% { background: transparent; } }
+.beat-flash { animation: beatFlash 1.4s ease-out; }
+.beat-badge { position: absolute; top: -8px; left: 22px; background: var(--ember); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .beat-flash { animation: none; } }

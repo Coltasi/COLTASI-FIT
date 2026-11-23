@@ -376,6 +376,20 @@ function summary(e: SEx, units: Units) {
   return ws.length ? `${ws.join(" · ")} ${unit(units)} · ${reps}` : `${reps} reps`;
 }
 
+/** Bells you own (kg). Tap one to fill the current set's weight on kettlebell lifts. */
+const BELLS_KG = [8, 12, 16, 20, 24, 30];
+const isBellLift = (name: string) => /kettlebell|\bkb\b|goblet|swing|turkish|farmer|snatch|windmill|halo/i.test(name);
+
+/** How a logged set compares with the same set last time: more weight wins, then more reps at the same weight. */
+function beat(kg: number | null, reps: number | null, last: { weight_kg: number | null; reps: number | null } | undefined, units: Units): string | null {
+  if (!last || reps == null) return null;
+  const lk = last.weight_kg, lr = last.reps;
+  if (kg != null && lk != null && kg > lk + 0.01) return `+${w(kg - lk, units)} ${unit(units)}`;
+  const sameWeight = (kg == null && lk == null) || (kg != null && lk != null && Math.abs(kg - lk) < 0.01);
+  if (sameWeight && lr != null && reps > lr) return `+${reps - lr} rep${reps - lr > 1 ? "s" : ""}`;
+  return null;
+}
+
 function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet }: {
   ex: SEx; units: Units; sessionId: string;
   onSwap: () => void;
@@ -387,7 +401,10 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
     Object.fromEntries(ex.sets.map((s) => [s.id, { w: s.weight_kg == null ? "" : w(s.weight_kg, units), r: s.reps == null ? "" : String(s.reps) }])),
   );
   const [, start] = useTransition();
+  const [flash, setFlash] = useState<string | null>(null);
   const current = ex.sets.find((s) => !s.done)?.id;
+  const bells = !ex.skill && isBellLift(ex.name);
+  const lastFor = (s: SSet) => ex.last?.sets[s.set_no - 1];
   const logged = ex.sets.some((s) => s.done);
 
   const placeholder = useMemo(() => {
@@ -410,6 +427,7 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
     const reps = rStr ? Number(rStr) : null;
     const done = !s.done;
     if (done) setVals({ ...vals, [s.id]: { w: wStr, r: rStr } });
+    if (done && beat(kg, reps, lastFor(s), units)) { setFlash(s.id); setTimeout(() => setFlash((f) => (f === s.id ? null : f)), 1400); }
     onPatch(ex.id, s.id, { done, weight_kg: kg, reps });
     start(() => saveSet(s.id, kg, reps, done));
   }
@@ -453,9 +471,11 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
           const v = vals[s.id] ?? { w: "", r: "" };
           const ph = placeholder(s);
           const active = s.id === current;
+          const won = s.done ? beat(s.weight_kg, s.reps, lastFor(s), units) : null;
           return (
-            <div key={s.id} style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center" }}>
+            <div key={s.id} className={flash === s.id ? "beat-flash" : undefined} style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", position: "relative", borderRadius: 12 }}>
               <span className="num" style={{ color: active ? "var(--rust)" : "var(--muted)" }}>{s.set_no}</span>
+              {won ? <span className="beat-badge" aria-label={`Beat last time by ${won}`}>{won}</span> : null}
               {ex.skill ? <span /> : (
                 <label><span className="sr-only">Set {s.set_no} weight in {unit(units)}</span>
                   <input inputMode="decimal" value={v.w} placeholder={ph.w} style={fld(active, s.done)}
@@ -473,6 +493,27 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
           );
         })}
       </div>
+      {bells && current ? (
+        <div style={{ marginTop: 12 }}>
+          <p className="cap" style={{ marginBottom: 6 }}>Tap a bell for set {ex.sets.find((z) => z.id === current)?.set_no}</p>
+          <div role="group" aria-label="Your kettlebells" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0,1fr))", gap: 6 }}>
+            {BELLS_KG.map((kg) => {
+              const v = vals[current] ?? { w: "", r: "" };
+              const shown = w(kg, units);
+              const on = (v.w || placeholder(ex.sets.find((z) => z.id === current)!).w) === shown;
+              return (
+                <button key={kg} type="button" aria-pressed={on}
+                  onClick={() => setVals({ ...vals, [current]: { ...v, w: shown } })}
+                  style={{ height: 40, borderRadius: 10, border: `1.5px solid ${on ? "var(--navy)" : "var(--line-strong)"}`, background: on ? "var(--navy)" : "#fff",
+                    color: on ? "#fff" : "var(--navy)", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+                  {kg}
+                </button>
+              );
+            })}
+          </div>
+          {units === "imperial" ? <p className="cap" style={{ marginTop: 4, fontSize: 11 }}>Bells are kg. The set saves as {unit(units)}.</p> : null}
+        </div>
+      ) : null}
       <button type="button" className="btn2" style={{ marginTop: 12, width: "100%" }}
         onClick={() => start(async () => { const s = await addSet(ex.id); onAddSet({ ...s, weight_kg: null, reps: null, done: false }); setVals((p) => ({ ...p, [s.id]: { w: "", r: "" } })); })}>
         + Add set
