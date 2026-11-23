@@ -10,6 +10,7 @@ import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 import { SleepVsLifts } from "./sleep-vs-lifts";
+import { FoodTrend } from "./food-trend";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -93,6 +94,9 @@ export default async function ProgressBodyPage() {
       />
 
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
+
+      <FoodTrend supabase={supabase} today={today} units={units} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null}
+        weights={series.map((p) => ({ d: p.d, kg: p.kg }))} />
 
       <SleepVsLifts supabase={supabase} />
 
