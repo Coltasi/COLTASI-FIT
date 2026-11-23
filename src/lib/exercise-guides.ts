@@ -245,10 +245,40 @@ export const GUIDES: Record<string, Guide> = {
     steps: ["Squat, hands flat shoulder-width, fingers spread.","Bend elbows, put knees high on the backs of your upper arms.","Lean forward until your feet float, eyes ahead, and hold."],
     mistake: "Looking down at your feet, which tips you back out of it.",
   },
+  "Kettlebell Front Squat": {
+    primary: ["Quads","Glutes"],
+    secondary: ["Core","Upper back"],
+    steps: ["Clean the bell(s) to the rack, elbows tucked, wrists straight.","Sit down between your heels, chest tall.","Drive up through the whole foot to standing."],
+    mistake: "Letting the elbows drop and the chest fold forward.",
+  },
+  "Single-Leg Kettlebell RDL": {
+    primary: ["Hamstrings","Glutes"],
+    secondary: ["Lower back","Core"],
+    steps: ["Bell in the opposite hand to your standing leg, soft knee.","Hinge at the hip, back leg rising in line with your spine.","Squeeze the glute to stand back up, hips square."],
+    mistake: "Rounding the back or letting the hips open to the side.",
+  },
+  "Push-Ups": {
+    primary: ["Chest"],
+    secondary: ["Triceps","Front delts","Core"],
+    steps: ["Hands just outside shoulders, body in one straight line.","Lower until your chest nearly touches, elbows about 45°.","Press back up without letting the hips sag."],
+    mistake: "Sagging hips or flaring elbows straight out.",
+  },
+  "Single-Arm Iso DB Press": {
+    primary: ["Chest"],
+    secondary: ["Triceps","Core"],
+    steps: ["Lie on the bench, one dumbbell held locked out, the other pressing.","Hold one arm still at the top while the other does its reps.","Switch arms and repeat."],
+    mistake: "Letting the held arm drift down or the torso twist.",
+  },
+  "Hanging Bicep Curls": {
+    primary: ["Biceps"],
+    secondary: ["Forearms"],
+    steps: ["Let the dumbbells hang straight down, palms forward.","Curl up without moving your elbows forward.","Lower slowly to a full stretch."],
+    mistake: "Swinging the body to get the weight up.",
+  },
 };
 
 /** Library sections: one per program day, plus Kettlebell. */
-export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry"]]];
+export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat"]]];
 
 export const guideFor = (name: string): Guide | null => GUIDES[name] ?? null;
 
