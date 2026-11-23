@@ -5,10 +5,11 @@ import { getLiftHistory, type ExHistory } from "@/lib/lifts";
 import { fmtShort } from "@/lib/dates";
 import { unit, w } from "@/lib/units";
 import { ProgressTabs, Sparkline } from "../parts";
+import { SessionCounts } from "../session-counts";
 
 export default async function LiftingPage({ searchParams }: PageProps<"/progress/lifting">) {
   const sp = await searchParams;
-  const { supabase, units } = await getContext();
+  const { supabase, units, today } = await getContext();
   const [program, hist] = await Promise.all([getProgram(supabase), getLiftHistory(supabase)]);
   const dayOf = new Map<string, string>();
   for (const d of program) for (const e of d.exercises) if (!dayOf.has(e.exercise_id)) dayOf.set(e.exercise_id, d.program === "kettlebell" ? "Kettlebell" : d.name);
@@ -40,6 +41,7 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
       <BrandRow />
       <h1 className="disp" style={{ fontSize: 30 }}>Progress</h1>
       <ProgressTabs active="lifting" />
+      <SessionCounts supabase={supabase} today={today} />
       <div className="chips">
         {["All", ...groupsOrder.filter((g) => g !== "Other")].map((g) => (
           <Link key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>

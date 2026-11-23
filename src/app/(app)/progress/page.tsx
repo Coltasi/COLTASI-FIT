@@ -7,6 +7,7 @@ import { signed, unit, w } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
 import { LineChart, ProgressTabs } from "./parts";
 import { WeighInForm } from "./weigh-in-form";
+import { SessionCounts } from "./session-counts";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -49,6 +50,7 @@ export default async function ProgressBodyPage() {
       <BrandRow />
       <h1 className="disp" style={{ fontSize: 30 }}>Progress</h1>
       <ProgressTabs active="body" />
+      <SessionCounts supabase={supabase} today={today} />
 
       {latest ? (
         <div>
