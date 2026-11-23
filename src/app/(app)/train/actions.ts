@@ -333,29 +333,6 @@ async function savePlanOverride(supabase: Supa, userId: string, dayId: string, l
   if (error) throw new Error(error.message);
 }
 
-/** Undo on Train: a swap goes back to the template lift (at the first replacement's position); an added lift is removed. */
-export async function undoPlanChange(dayId: string, position: number) {
-  const { supabase, user } = await ctx();
-  const [{ data: ov }, { data: tpl }] = await Promise.all([
-    supabase.from("plan_overrides").select("exercise_id, position, target_sets, rep_range, sub_for, added").eq("day_id", dayId).order("position"),
-    supabase.from("program_exercises").select("exercise_id, target_sets, rep_range").eq("day_id", dayId),
-  ]);
-  let list: NewLift[] = ((ov ?? []) as any[]).map((o) => ({ exercise_id: o.exercise_id, target_sets: o.target_sets, rep_range: o.rep_range, sub_for: o.sub_for, added: o.added }));
-  const i = ((ov ?? []) as any[]).findIndex((o) => o.position === position);
-  if (i < 0) return;
-  const row = list[i];
-  if (row.sub_for) {
-    const orig = ((tpl ?? []) as any[]).find((p) => p.exercise_id === row.sub_for);
-    const first = list.findIndex((l) => l.sub_for === row.sub_for);
-    list = list.filter((l) => l.sub_for !== row.sub_for);
-    if (orig) list.splice(first, 0, { exercise_id: orig.exercise_id, target_sets: orig.target_sets, rep_range: orig.rep_range });
-  } else {
-    list.splice(i, 1);
-  }
-  await savePlanOverride(supabase, user.id, dayId, list);
-  revalidatePath("/", "layout");
-}
-
 /** Defaults for a lift picked from the swap/add sheet: set count and rep range from its last session. */
 async function liftsFromNames(supabase: Supa, userId: string, names: string[]) {
   const ids = [];

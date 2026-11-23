@@ -28,7 +28,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
         </div>
         <Link href={`/train/session/${s.id}`} className="btn small" style={{ marginTop: 6 }}>Done</Link>
       </div>
-      <p className="cap">Reorder with the arrows. Logged lifts are locked so history stays intact.</p>
+      <p className="cap">Tap the red minus to remove a lift, or reorder with the arrows. Logged lifts are locked so history stays intact.</p>
 
       <div className="card clip">
         {ses.map((x, i) => {

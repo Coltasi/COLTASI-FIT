@@ -135,7 +135,6 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
               position: e.position,
               name: e.name,
               plan: `${e.target_sets} × ${e.rep_range}${e.sub_for ? ` · swapped in for ${e.sub_for.name}` : e.added ? " · added last time" : ""}`,
-              undo: day.overridden && (e.sub_for || e.added) ? (e.sub_for ? `Undo swap, back to ${e.sub_for.name}` : "Remove from this day") : null,
               lastKg: last.get(e.exercise_id)?.top ?? null,
               hasLast: last.has(e.exercise_id),
             }))}

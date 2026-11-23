@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { startSession, undoPlanChange } from "./actions";
+import { startSession } from "./actions";
 import { unit, w, type Units } from "@/lib/units";
 import type { Finisher } from "@/lib/data";
-import { linkBtn } from "@/components/sheet";
 
 const WARMUPS = [
   { v: "stairs", l: "Stairs" },
@@ -25,14 +24,13 @@ function StartButton({ label, disabled }: { label: string; disabled: boolean }) 
 
 export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }: {
   dayId: string; dayName: string; units: Units; disabled: boolean; finishers: Finisher[];
-  lifts: { key: string; position: number; name: string; plan: string; undo: string | null; lastKg: number | null; hasLast: boolean }[];
+  lifts: { key: string; position: number; name: string; plan: string; lastKg: number | null; hasLast: boolean }[];
 }) {
   const [warmup, setWarmup] = useState("stairs");
   const [finisherOn, setFinisherOn] = useState(true);
   const [cooldown, setCooldown] = useState(true);
   // Crow pose isn't every day: suggested on Push, off elsewhere.
   const [skill, setSkill] = useState(dayName === "Push");
-  const [pending, start] = useTransition();
   const fin = (finishers.find((f) => f.is_default) ?? finishers[0]) as Finisher | undefined;
 
   return (
@@ -88,12 +86,6 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
             <div style={{ minWidth: 0 }}>
               <p className="ln" style={{ marginBottom: 2 }}>{l.name}</p>
               <p className="cap">{l.plan}</p>
-              {l.undo ? (
-                <button type="button" disabled={pending} style={{ ...linkBtn, fontSize: 13, marginTop: 2 }}
-                  onClick={() => start(() => undoPlanChange(dayId, l.position))}>
-                  {l.undo}
-                </button>
-              ) : null}
             </div>
             <div style={{ textAlign: "right", flexShrink: 0 }}>
               {l.lastKg != null ? (
