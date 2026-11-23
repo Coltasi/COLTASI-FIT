@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { IconDoc } from "@/components/icons";
 import { CoachMark } from "@/components/ui";
 import { readScan, saveScan, type FormState, type ScanValues } from "../actions";
+import { photoDate } from "@/lib/photo-date";
 
 const FIELDS = [
   { name: "weight_kg", label: "Weight", unit: "kg" },
@@ -31,7 +32,9 @@ async function shrink(file: File): Promise<Blob> {
   }
 }
 
-const MAX = 6;
+const MAX = 8;
+
+const fmtDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export function ScanForm({ userId, today }: { userId: string; today: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveScan, { error: null });
@@ -43,6 +46,9 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
   const [vals, setVals] = useState<Record<string, string>>({});
   const [filled, setFilled] = useState<Record<string, boolean>>({});
   const fileRef = useRef<HTMLInputElement>(null);
+  const [day, setDay] = useState(today);
+  const [dayNote, setDayNote] = useState<{ text: string; warn: boolean } | null>(null);
+  const [photoDays, setPhotoDays] = useState<{ day: string; from: string }[]>([]);
 
   async function onFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -50,7 +56,10 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
     setMsg(null);
     const supabase = createClient();
     const added: { path: string; url: string }[] = [];
+    const dates: { day: string; from: string }[] = [];
     for (const f of Array.from(files).slice(0, MAX - photos.length)) {
+      const taken = await photoDate(f); // before shrinking: the shrunk copy has no camera data
+      if (taken && taken.day <= today) dates.push(taken);
       const blob = await shrink(f);
       const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
       const { error } = await supabase.storage.from("scan-photos").upload(path, blob, { contentType: blob.type || "image/jpeg" });
@@ -58,6 +67,17 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
     }
     setPhotos((p) => [...p, ...added]);
     setUploading(false);
+    const allDays = [...photoDays, ...dates];
+    setPhotoDays(allDays);
+    const distinct = [...new Set(allDays.map((d) => d.day))].sort();
+    if (distinct.length === 1) {
+      setDay(distinct[0]);
+      const sure = allDays.some((d) => d.from === "camera");
+      setDayNote({ text: sure ? `Photos taken ${fmtDay(distinct[0])}.` : `Date guessed from the file (${fmtDay(distinct[0])}). Check it's right.`, warn: !sure });
+    } else if (distinct.length > 1) {
+      setDay(distinct[distinct.length - 1]);
+      setDayNote({ text: `These photos are from different days (${distinct.map(fmtDay).join(", ")}). Add one scan at a time, or set the right date below.`, warn: true });
+    }
     if (!added.length) { setMsg({ text: "Couldn't upload the photo. Type the values in below.", err: true }); return; }
 
     setReading(true);
@@ -75,7 +95,12 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <input type="hidden" name="scanned_on" value={today} />
+      <div className="card" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 16px", minHeight: 56 }}>
+        <label htmlFor="f-day" className="ln" style={{ flexGrow: 1 }}>Scan date</label>
+        <input id="f-day" type="date" name="scanned_on" value={day} max={today} required onChange={(e) => { setDay(e.target.value); setDayNote(null); }}
+          style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--field)", border: "1px solid transparent" }} />
+      </div>
+      {dayNote ? <p role="status" style={{ fontSize: 13, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
       {photos.map((p) => <input key={p.path} type="hidden" name="photo_path" value={p.path} />)}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
         {photos.map((p) => (
@@ -90,7 +115,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         ) : null}
         {photos.length === 0 ? (
           <div style={{ height: 96, borderRadius: 14, background: "var(--tint-neutral)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", gridColumn: "span 2", padding: 10, textAlign: "center" }}>
-            <IconDoc size={22} /><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>Add one photo per screen: Fat, Muscle, Water, Visceral, BMR. Coach reads them.</span>
+            <IconDoc size={22} /><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>One photo per screen: Fat, Muscle, Water, Visceral, BMR. The date comes from the photos.</span>
           </div>
         ) : null}
       </div>
@@ -98,7 +123,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
 
       {reading ? (
         <div className="card cream" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }} role="status">
-          <CoachMark /><span style={{ fontSize: 14, fontWeight: 600 }}>Reading your printout…</span>
+          <CoachMark /><span style={{ fontSize: 14, fontWeight: 600 }}>Reading your scan…</span>
         </div>
       ) : null}
       {msg ? <p role="status" style={{ fontSize: 13, marginTop: -6, fontWeight: 600, color: msg.err ? "var(--rust)" : "var(--kingfisher-text)" }}>{msg.text}</p> : null}
