@@ -2,17 +2,14 @@ import Link from "next/link";
 import { BrandRow } from "@/components/ui";
 import { getContext } from "@/lib/data";
 import { addDays, daysBetween, fmtDay, fmtShort, mondayOf } from "@/lib/dates";
-import { signed, unit, w } from "@/lib/units";
-import { weeklyRate } from "@/lib/coach";
+import { unit, w } from "@/lib/units";
 import { ProgressTabs } from "./parts";
 import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart";
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
-import { SleepVsLifts } from "./sleep-vs-lifts";
 import { FoodTrend } from "./food-trend";
 
-export default async function ProgressBodyPage({ searchParams }: PageProps<"/progress">) {
-  const showAll = (await searchParams).scans === "all";
+export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
   const since = addDays(today, -1100);
   const [{ data: wiRows }, { data: scanRows }] = await Promise.all([
@@ -28,7 +25,6 @@ export default async function ProgressBodyPage({ searchParams }: PageProps<"/pro
     ...scans.filter((s) => s.weight_kg != null).map((s) => ({ d: s.scanned_on, kg: s.weight_kg as number, src: "scan" })),
   ].sort((a, b) => (a.d < b.d ? -1 : 1));
   const latest = series.at(-1);
-  const rate = weeklyRate(weighIns.slice(-9));
 
   // Weigh-in days are Mon, Wed and Fri.
   const monday = mondayOf(today);
@@ -66,7 +62,7 @@ export default async function ProgressBodyPage({ searchParams }: PageProps<"/pro
         today={today}
         placeholder={latest ? w(latest.kg, units) : units === "imperial" ? "lb" : "kg"}
         due={due}
-        label={due ? "due today" : rate != null ? `${signed(units === "imperial" ? rate * 2.20462 : rate)} ${unit(units)}/wk · next ${fmtDay(nextLabelDay)}` : `next ${fmtDay(nextLabelDay)}`}
+        label={due ? "Due today" : `Next: ${fmtDay(nextLabelDay)}`}
       />
 
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
@@ -75,25 +71,31 @@ export default async function ProgressBodyPage({ searchParams }: PageProps<"/pro
 
       <FoodTrend supabase={supabase} today={today} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
 
-      <SleepVsLifts supabase={supabase} />
-
-      <div className="card clip">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px" }}>
-          <p className="sec">Scans</p>
-          <Link href="/progress/scan" style={{ fontSize: 14, fontWeight: 600 }}>+ Add</Link>
-        </div>
-        {scans.slice(0, showAll ? undefined : 4).map((s) => (
-          <div key={s.id} className="row" style={{ padding: "12px 18px" }}>
-            <span style={{ flexGrow: 1, fontSize: 15, fontWeight: 600 }}>{fmtShort(s.scanned_on)}</span>
-            <span className="cap" style={{ fontSize: 14 }}>{s.body_fat_pct != null ? `${s.body_fat_pct}%` : ""}</span>
-            <span className="num" style={{ fontSize: 15, width: 64, textAlign: "right" }}>{s.weight_kg != null ? `${w(s.weight_kg, units)} ${unit(units)}` : ""}</span>
+      <details className="card clip scans">
+        <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", cursor: "pointer", listStyle: "none" }}>
+          <span className="sec">Tanita scans <span className="cap" style={{ fontSize: 15, fontWeight: 600 }}>{scans.length}</span></span>
+          <span aria-hidden className="chev" style={{ color: "var(--muted)", fontSize: 18, transition: "transform .15s" }}>⌄</span>
+        </summary>
+        {scans.length ? (
+          <div style={{ padding: "0 18px 8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+              <span>Date</span><span style={{ textAlign: "right" }}>Body fat</span><span style={{ textAlign: "right" }}>Muscle</span><span style={{ textAlign: "right" }}>Weight</span>
+            </div>
+            {scans.map((s) => (
+              <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "12px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 15, color: "var(--navy)" }}>
+                <span style={{ fontWeight: 600 }}>{fmtShort(s.scanned_on)}</span>
+                <span className="num" style={{ textAlign: "right" }}>{s.body_fat_pct != null ? `${s.body_fat_pct}%` : "–"}</span>
+                <span className="num" style={{ textAlign: "right" }}>{s.muscle_mass_kg != null ? w(s.muscle_mass_kg, units) : "–"}</span>
+                <span className="num" style={{ textAlign: "right" }}>{s.weight_kg != null ? w(s.weight_kg, units) : "–"}</span>
+              </div>
+            ))}
+            <p className="cap" style={{ padding: "8px 0 4px", fontSize: 13 }}>Muscle and weight in {unit(units)}</p>
           </div>
-        ))}
-        {scans.length > 4 && !showAll ? (
-          <Link href="/progress?scans=all" className="row" style={{ justifyContent: "center", fontSize: 14, fontWeight: 600, color: "var(--kingfisher-text)" }}>Show all {scans.length}</Link>
-        ) : null}
-        {!scans.length ? <p className="cap" style={{ padding: "0 18px 16px", fontSize: 14 }}>No scans yet.</p> : null}
-      </div>
+        ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 14 }}>No scans yet.</p>}
+        <div style={{ padding: "4px 18px 16px" }}>
+          <Link href="/progress/scan" className="btn2" style={{ width: "100%", height: 44, fontSize: 14 }}>+ Add scan</Link>
+        </div>
+      </details>
     </main>
   );
 }
