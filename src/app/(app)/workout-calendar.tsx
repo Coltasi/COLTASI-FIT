@@ -11,7 +11,7 @@ const KIND: Record<string, { label: string; color: string }> = {
   kettlebell: { label: "Kettlebell", color: "var(--lagoon)" },
   custom: { label: "Custom", color: "var(--ember)" },
 };
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 const monthName = (y: number, m: number) => new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m, 15)));
 const iso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d, 12)).toISOString().slice(0, 10);
 
@@ -24,7 +24,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
   for (const s of sessions) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
 
   const first = iso(ym.y, ym.m, 1);
-  const lead = (new Date(first + "T12:00:00Z").getUTCDay() + 6) % 7; // Mon = 0
+  const lead = new Date(first + "T12:00:00Z").getUTCDay(); // Sun = 0
   const daysIn = new Date(Date.UTC(ym.y, ym.m + 1, 0)).getUTCDate();
   const cells: (string | null)[] = [...Array(lead).fill(null), ...Array.from({ length: daysIn }, (_, i) => iso(ym.y, ym.m, i + 1))];
   while (cells.length % 7) cells.push(null);
@@ -32,9 +32,9 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
   const inMonth = sessions.filter((s) => s.date.startsWith(first.slice(0, 7)));
   const trainedDays = new Set(inMonth.map((s) => s.date)).size;
   // Current streak of weeks with at least one workout, ending this week.
-  const weeks = new Set(sessions.map((s) => { const d = new Date(s.date + "T12:00:00Z"); return addDays(s.date, -((d.getUTCDay() + 6) % 7)); }));
+  const weeks = new Set(sessions.map((s) => { const d = new Date(s.date + "T12:00:00Z"); return addDays(s.date, -d.getUTCDay()); }));
   let streak = 0;
-  for (let wk = addDays(today, -((new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7)); weeks.has(wk); wk = addDays(wk, -7)) streak++;
+  for (let wk = addDays(today, -new Date(today + "T12:00:00Z").getUTCDay()); weeks.has(wk); wk = addDays(wk, -7)) streak++;
 
   const earliest = sessions.map((s) => s.date).sort()[0] ?? today;
   const canBack = first > earliest.slice(0, 7) + "-01";

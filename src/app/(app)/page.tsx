@@ -4,7 +4,7 @@ import { InstallCard } from "@/components/install-card";
 import { CoachRead } from "@/components/coach-read";
 import { IconChevron, IconGear } from "@/components/icons";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
-import { addDays, fmtLong, mondayOf } from "@/lib/dates";
+import { addDays, fmtLong } from "@/lib/dates";
 import { startSession } from "./train/actions";
 import { SleepCard } from "./sleep-card";
 import { StepsCard } from "./steps-card";
@@ -13,19 +13,20 @@ import { getSteps, stepSummary } from "@/lib/steps";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 import { IntakeBars, leftLine } from "./food/bars";
 
-const DOW = ["M", "T", "W", "T", "F", "S", "S"];
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
 /** Today: the Coach's note and today's workout in one card, then quick check-ins and the week. */
 export default async function OverviewPage() {
   const { supabase, today, units, profile } = await getContext();
   const programP = getProgram(supabase);
-  const monday = mondayOf(today);
+  // The week strip runs Sunday to Saturday.
+  const sunday = addDays(today, -new Date(today + "T12:00:00Z").getUTCDay());
   const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll, { data: calRows }, { data: foodRows }] = await Promise.all([
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
     getSteps(supabase, today, 14),
-    supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
+    supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", sunday),
     getOwed(supabase, today),
     supabase.from("sessions").select("id, session_date, kind, title").eq("status", "done").gte("session_date", addDays(today, -400)).order("session_date"),
     supabase.from("food_logs").select("kcal, protein_g").eq("day", today),
@@ -41,6 +42,7 @@ export default async function OverviewPage() {
   const byNight = new Map(((sleeps ?? []) as any[]).map((s) => [s.night_of, Number(s.hours)]));
   const latest = read?.[0];
   const day = week.nextDay;
+  const weekCount = (weekSessions ?? []).length;
   const trainedOn = new Set(((weekSessions ?? []) as any[]).map((s) => s.session_date as string));
 
   // A finished session today (custom or kettlebell included) counts as today's workout.
@@ -140,11 +142,11 @@ export default async function OverviewPage() {
       <div className="card" style={{ padding: "12px 14px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="lab">This week</p>
-          <p className="cap" style={{ fontSize: 12 }}>{week.doneThisWeek} {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
+          <p className="cap" style={{ fontSize: 12 }}>{weekCount} {weekCount === 1 ? "workout" : "workouts"}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 5, marginTop: 8 }}>
           {DOW.map((d, i) => {
-            const date = addDays(monday, i);
+            const date = addDays(sunday, i);
             const done = trainedOn.has(date);
             const isToday = date === today;
             return (
