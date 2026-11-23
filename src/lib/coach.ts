@@ -5,6 +5,7 @@ import { getSteps, stepSummary } from "@/lib/steps";
 import { fetchAll } from "@/lib/fetch-all";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
+import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
@@ -48,6 +49,8 @@ export type Signals = {
   /** Whose lifts the "Next session" calls are for: the session just finished, or the most overdue split day. */
   liftsFor: string | null;
   lifts: LiftSignal[];
+  /** What the user told the Coach at the end of the session just finished (all optional). */
+  checkIn?: { feel: Feel | null; pains: string[]; note: string | null; repeats: { area: string; times30d: number }[] } | null;
   /** Lifts skipped in the session just finished, and why. */
   skipped?: { lift: string; reason: string }[];
   splitDue: DayDue[];
@@ -94,20 +97,37 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   const due = splitDue(program.filter((d) => d.program === "split"), lastDone, today);
 
   const sleep = sleepSignal(((nights ?? []) as any[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today);
-  const ease = sleep.call === "ease";
+  let ease = sleep.call === "ease";
 
   // Which lifts get a call: the session just finished, or the most overdue split day.
   let sessionTitle: string | null = null;
   let liftsFor: string | null = null;
   let plan: { exercise_id: string; name: string; rep_range: string | null }[] = [];
   let skipped: { lift: string; reason: string }[] = [];
+  let checkIn: Signals["checkIn"] = null;
+  let easeWhy: "sleep" | "sick" = "sleep";
   if (kind === "session" && sourceId) {
     const { data: s } = await supabase
       .from("sessions")
-      .select("title, session_exercises(exercise_id, position, rep_range, skipped_reason, skill, exercises(name))")
+      .select("title, feel, pain_areas, notes, session_exercises(exercise_id, position, rep_range, skipped_reason, skill, exercises(name))")
       .eq("id", sourceId)
       .single();
     sessionTitle = s?.title ?? null;
+    const pains = ((s?.pain_areas ?? []) as string[]);
+    if (s?.feel || pains.length || s?.notes) {
+      // Same niggle flagged again in the last 30 days (this session included)?
+      let repeats: { area: string; times30d: number }[] = [];
+      if (pains.length) {
+        const since = new Date(new Date(today + "T12:00:00Z").getTime() - 30 * 864e5).toISOString().slice(0, 10);
+        const { data: recent } = await supabase.from("sessions").select("pain_areas").eq("status", "done").gte("session_date", since).overlaps("pain_areas", pains);
+        repeats = pains.map((p) => ({
+          area: PAIN_LABEL[p as PainArea] ?? p,
+          times30d: Math.max(1, ((recent ?? []) as any[]).filter((r) => (r.pain_areas ?? []).includes(p)).length),
+        }));
+      }
+      checkIn = { feel: (s?.feel as Feel | null) ?? null, pains: pains.map((p) => PAIN_LABEL[p as PainArea] ?? p), note: s?.notes ?? null, repeats };
+      if (s?.feel === "sick") { ease = true; easeWhy = "sick"; }
+    }
     liftsFor = sessionTitle;
     const rows = ((s?.session_exercises ?? []) as any[]).filter((x) => !x.skill);
     skipped = rows.filter((x) => x.skipped_reason).map((x) => ({ lift: x.exercises?.name ?? "", reason: SKIP_LABEL[x.skipped_reason as SkipReason] ?? x.skipped_reason }));
@@ -119,7 +139,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     plan = (day?.exercises ?? []).map((x) => ({ exercise_id: x.exercise_id, name: x.name, rep_range: x.rep_range || null }));
   }
   const lifts = plan
-    .map((p) => liftSignal({ name: p.name, modality: modality.get(p.exercise_id) ?? null, repRange: p.rep_range, history: perfs.get(keyOf(p.exercise_id)) ?? [] }, kettlebells, ease))
+    .map((p) => liftSignal({ name: p.name, modality: modality.get(p.exercise_id) ?? null, repRange: p.rep_range, history: perfs.get(keyOf(p.exercise_id)) ?? [] }, kettlebells, ease, easeWhy))
     .filter((x): x is LiftSignal => x != null);
 
   // Weight: only on weigh-in and scan reads.
@@ -151,7 +171,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     weight = { lines, latestKg: pts[0]?.weight_kg ?? null, rateKgWeek: rate == null ? null : r1(rate), targetKgWeek: target, behind };
   }
 
-  return { kind, today, sessionTitle, liftsFor, lifts, skipped, splitDue: due.slice(0, 4), sleep, weight };
+  return { kind, today, sessionTitle, liftsFor, lifts, skipped, checkIn, splitDue: due.slice(0, 4), sleep, weight };
 }
 
 export type Read = { headline: string; next_session: string | null; recovery: string | null; weight: string | null };
@@ -171,14 +191,31 @@ function moves(s: Signals) {
   };
 }
 
+/** One sentence on a flagged niggle; a repeat in the last month gets a nudge to have it checked. */
+function painLine(ci: Signals["checkIn"]): string | null {
+  if (!ci?.repeats.length) return null;
+  const worst = [...ci.repeats].sort((a, b) => b.times30d - a.times30d)[0];
+  if (worst.times30d >= 3) return `That's ${worst.times30d} times this month you've flagged your ${worst.area.toLowerCase()}. Worth getting it looked at by a physio.`;
+  const areas = ci.pains.map((p) => p.toLowerCase());
+  const list = areas.length > 1 ? `${areas.slice(0, -1).join(", ")} and ${areas[areas.length - 1]}` : areas[0];
+  return `Go easy on your ${list} next time. If it's still there, swap out whatever aggravates it.`;
+}
+
 /** Two short coach-voice sentences reacting to the session, built in code. */
 function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string | null {
   if (s.kind !== "session") return null;
   const { heavier, lighter } = moves(s);
   const first: string[] = [];
+  const ci = s.checkIn;
+  const offDay = ci?.feel === "sick" || ci?.feel === "low";
+  if (ci?.feel === "sick") first.push("Good job showing up while sick. Rest up, and don't chase weights until you're over it.");
+  else if (ci?.feel === "low") first.push("Low-energy day, and you still got it done. That counts.");
+  const pain = painLine(ci);
+  if (pain) first.push(pain);
+  if (first.length >= 2) return first.slice(0, 2).join(" ");
   if (heavier.length) first.push(`Great work. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
   else if (up.length) first.push(`Solid session. You're ready to go up on ${up[0].name}.`);
-  if (lighter.length) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
+  if (lighter.length && !offDay) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
   else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Come on, let's break through it.`);
   const sk = s.skipped ?? [];
   if (first.length < 2 && sk.length) first.push(sk.length === 1
@@ -207,7 +244,9 @@ export function ruleRead(s: Signals): Read {
   return {
     headline,
     next_session: next || null,
-    recovery: s.sleep.line,
+    recovery: s.checkIn?.feel === "sick"
+      ? "Ease off next session until you're better: keep the same weights, drop one set per lift, no PR attempts. Skip it entirely if it's in your chest."
+      : s.sleep.line,
     weight: s.kind !== "session" && s.weight?.lines.length ? s.weight.lines.join(" ") : null,
   };
 }
@@ -230,10 +269,12 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     liftCalls: s.lifts.map((l) => ({ lift: l.name, call: l.call, instruction: l.line })),
     ...(s.kind === "session" ? moves(s) : {}),
     skipped: s.skipped ?? [],
+    checkIn: s.checkIn ? { feel: s.checkIn.feel ? FEEL_LABEL[s.checkIn.feel] : null, pains: s.checkIn.pains, note: s.checkIn.note, painRepeats: s.checkIn.repeats } : null,
     nextUp: nextUpLine(s),
     sleep: { call: s.sleep.call, reasons: s.sleep.reasons, advice: s.sleep.line },
     weight: s.kind === "session" ? null : s.weight?.lines ?? null,
     draftHeadline: base.headline,
+    draftRecovery: base.recovery,
   };
   const factsText = JSON.stringify(facts);
   const text = await callClaude({
@@ -241,14 +282,15 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     system:
       "You are the coach in a personal training app, talking to one person you train. Warm, direct and human, like a good personal trainer: praise real wins (\"Great work\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
       "If `skipped` has lifts, say briefly that you'll remind them to come back to it (if sore, tell them to let it recover first). " +
-      "If a lift is in `lighter`, ask about it kindly, e.g. \"I noticed you went lighter on Seated Row today. Everything okay?\". If lifts are in `heavier`, call out the best one. " +
+      "`checkIn` is what they told you at the end of this workout (how they felt, any pain, a note). If they were sick or low on energy, acknowledge it warmly, praise them for showing up, and do NOT ask why a lift was lighter: you already know. If they flagged pain, name the area and tell them to go easy on it; if painRepeats shows 3 or more times in 30 days, suggest a physio or doctor. Never diagnose. Respond to anything specific in the note. " +
+      "If a lift is in `lighter` and they didn't explain it in checkIn, ask about it kindly, e.g. \"I noticed you went lighter on Seated Row today. Everything okay?\". If lifts are in `heavier`, call out the best one. " +
       "You are given conclusions that are already worked out. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
       "Priorities: training first, then sleep and recovery, then body weight. " +
       (s.kind === "session"
         ? "This read is after a workout: the headline must be about this workout or recovery and must not mention body weight, calories or the scale. Do not list every lift; pick the one or two things that matter most. "
         : "This read is after a weigh-in or body scan: the headline may mention weight, in one short sentence. ") +
       "Plain words, full exercise names, no gym shorthand, no hype, no emoji, no em dashes. " +
-      'Reply with JSON only: {"headline": the coach talking, two short sentences, under 35 words in total, "recovery": one or two sentences saying whether to push or ease off next session and why}.',
+      'Reply with JSON only: {"headline": the coach talking, two short sentences, under 35 words in total, "recovery": one or two sentences saying whether to push or ease off next session and why, keeping the same call as draftRecovery}.',
     messages: [{ role: "user", content: factsText }],
   });
   const m = text?.match(/\{[\s\S]*\}/);
@@ -280,7 +322,7 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return "Coach can't answer questions yet: the Anthropic API key hasn't been added to the app's settings on Vercel.";
   const signals = await gatherSignals(supabase, "weigh_in");
-  const { data: recent } = await supabase.from("sessions").select("title, session_date, status").order("started_at", { ascending: false }).limit(8);
+  const { data: recent } = await supabase.from("sessions").select("title, session_date, status, feel, pain_areas, notes").order("started_at", { ascending: false }).limit(8);
   const text = await callClaude({
     max_tokens: 500,
     system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",

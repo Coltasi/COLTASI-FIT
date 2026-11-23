@@ -11,7 +11,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const { supabase, units, today } = await getContext();
   const { data: s } = await supabase
     .from("sessions")
-    .select("id, kind, title, status, session_date, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
+    .select("id, kind, title, status, session_date, feel, pain_areas, notes, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
     .eq("id", id)
     .single();
   if (!s) notFound();
@@ -25,6 +25,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
         date={s.session_date}
         status={s.status}
         units={units}
+        checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null }}
         lifts={ses.map((x) => ({
           id: x.id,
           name: x.exercises?.name ?? "",

@@ -12,6 +12,7 @@ import type { Candidate, LastTime } from "@/lib/data";
 import { exerciseKey } from "@/lib/exercise-match";
 import { lastLine, searchCandidates } from "@/components/exercise-search";
 import { addLifts, addOwed, addSet, dropOwed, finishSession, saveSet, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
+import { CheckInCard } from "./check-in-card";
 import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
 
 export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
@@ -225,7 +226,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       </button>
       {session.kind === "custom" ? <p className="cap">Saves to History and Lifting Progress like any other session.</p> : null}
 
-      <form action={finishSession.bind(null, session.id)} className="dock">
+      <CheckInCard formId="finish-form" />
+
+      <form id="finish-form" action={finishSession.bind(null, session.id)} className="dock">
         <div><button className="btn" type="submit" disabled={pending}>Finish workout</button></div>
       </form>
 

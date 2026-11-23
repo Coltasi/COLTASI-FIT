@@ -3,10 +3,12 @@ import { IconCheck } from "@/components/icons";
 import { fmtLong } from "@/lib/dates";
 import { unit, w, type Units } from "@/lib/units";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
+import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 
 /** Read-only view of a finished (or skipped) session: every logged set per lift. */
-export function LoggedView({ title, date, status, units, lifts }: {
+export function LoggedView({ title, date, status, units, lifts, checkIn }: {
   title: string; date: string; status: string; units: Units;
+  checkIn?: { feel: string | null; pains: string[]; notes: string | null };
   lifts: { id: string; name: string; skipped: string | null; skill: boolean; sets: { weight_kg: number | null; reps: number | null }[] }[];
 }) {
   const logged = lifts.filter((l) => l.sets.length);
@@ -32,6 +34,18 @@ export function LoggedView({ title, date, status, units, lifts }: {
           </div>
         </div>
       ))}
+      {checkIn && (checkIn.feel || checkIn.pains.length || checkIn.notes) ? (
+        <div className="card cream" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <p className="lab" style={{ color: "var(--navy)" }}>Notes for Coach</p>
+          {checkIn.feel || checkIn.pains.length ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {checkIn.feel ? <span className="tag neutral">{FEEL_LABEL[checkIn.feel as Feel] ?? checkIn.feel}</span> : null}
+              {checkIn.pains.map((p) => <span key={p} className="tag neutral">Pain · {PAIN_LABEL[p as PainArea] ?? p}</span>)}
+            </div>
+          ) : null}
+          {checkIn.notes ? <p className="cap" style={{ whiteSpace: "pre-wrap", color: "var(--navy)" }}>{checkIn.notes}</p> : null}
+        </div>
+      ) : null}
       {skipped.length ? (
         <div className="card clip">
           {skipped.map((l) => (

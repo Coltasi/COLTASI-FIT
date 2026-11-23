@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
 import { writeCoachRead } from "@/lib/coach";
+import { parseCheckIn } from "@/lib/check-in";
 import { currentUser } from "@/lib/supabase/user";
 import { getLastTimes } from "@/lib/data";
 import { exerciseKey, groupExercises, type ExerciseRow } from "@/lib/exercise-match";
@@ -274,14 +275,15 @@ export async function moveExercise(sessionId: string, sessionExerciseId: string,
   revalidatePath(`/train/session/${sessionId}`);
 }
 
-export async function finishSession(sessionId: string) {
+export async function finishSession(sessionId: string, fd?: FormData) {
   const { supabase, user } = await ctx();
+  const checkIn = parseCheckIn(fd);
   // Unticked sets stay in the session but never count as logged (only done sets feed history).
   // Only an open session can be finished. A second tap on Finish (or a retry) would otherwise
   // re-stamp the finish time and write a duplicate Coach read.
   const { data: s } = await supabase
     .from("sessions")
-    .update({ status: "done", finished_at: new Date().toISOString() })
+    .update({ status: "done", finished_at: new Date().toISOString(), ...checkIn })
     .eq("id", sessionId)
     .eq("status", "in_progress")
     .select("kind, day_id, session_exercises(exercise_id, position, target_sets, rep_range, sub_for, added, one_off, session_sets(id))")

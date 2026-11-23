@@ -80,7 +80,7 @@ function stepDown(top: number, modality: string | null, kettlebells: number[]): 
   return Math.max(step, Math.floor((top * 0.9) / step) * step);
 }
 
-export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean): LiftSignal | null {
+export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean, easeWhy: "sleep" | "sick" = "sleep"): LiftSignal | null {
   const bodyweight = l.modality === "bodyweight" || !l.history.some((p) => p.sets.some((s) => Number(s.weight_kg ?? 0) > 0 && (s.reps ?? 0) > 0));
   const S = l.history.map((p) => summarise(p, bodyweight, l.repRange)).filter((x): x is Summary => x != null);
   if (!S.length) return null;
@@ -124,8 +124,8 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
   let line: string;
   if (call === "up" && easeOff) {
     line = bodyweight
-      ? `${l.name}: ready to add reps, but sleep says ease off. Repeat ${repsTxt} for now.`
-      : `${l.name}: ready for ${kg(nextKg!)}, but sleep says ease off. Stay at ${w} until you've had a good night.`;
+      ? `${l.name}: ready to add reps, but ${easeWhy === "sick" ? "you're under the weather" : "sleep says ease off"}. Repeat ${repsTxt} for now.`
+      : `${l.name}: ready for ${kg(nextKg!)}, but ${easeWhy === "sick" ? "you're under the weather" : "sleep says ease off"}. Stay at ${w} until ${easeWhy === "sick" ? "you're feeling better" : "you've had a good night"}.`;
   } else if (call === "up") {
     line = bodyweight
       ? `${l.name}: go up. Add 2 reps to every set, or add weight. You hit ${target} two sessions running.`
