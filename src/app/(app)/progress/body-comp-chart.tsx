@@ -119,18 +119,16 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
             <button key={m.key} type="button" role="radio" aria-checked={isSel} onClick={() => select(m.key)}
               style={{ textAlign: "left", padding: isSel ? "9px 11px" : "10px 12px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit", background: "#fff", minWidth: 0,
                 border: isSel ? `2px solid ${m.color}` : "1px solid var(--line-strong)" }}>
-              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
-                <span className="cap" style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--navy)", fontWeight: 600 }}>
+              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6, minWidth: 0 }}>
+                <span className="cap" style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--navy)", fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />{m.label}
                 </span>
                 {p.length > 1 ? <span style={{ fontSize: 12, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}</span> : null}
               </span>
-              <span style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 6, gap: 6 }}>
-                <span className="num" style={{ fontSize: 19, color: "var(--navy)", whiteSpace: "nowrap" }}>
-                  {w(p.at(-1)!.kg, units)}<span className="cap" style={{ marginLeft: 3 }}>{unit(units)}</span>
-                </span>
-                <Spark points={p.map((x) => ({ d: x.d, v: conv(x.kg) }))} color={m.color} />
+              <span className="num" style={{ display: "block", fontSize: 19, color: "var(--navy)", whiteSpace: "nowrap", marginTop: 4 }}>
+                {w(p.at(-1)!.kg, units)}<span className="cap" style={{ marginLeft: 3 }}>{unit(units)}</span>
               </span>
+              <Spark points={p.map((x) => ({ d: x.d, v: conv(x.kg) }))} color={m.color} />
             </button>
           );
         })}
@@ -175,15 +173,16 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
   );
 }
 
+/** Mini trend line that always fits its tile: stretches to the tile's width, fixed height. */
 function Spark({ points, color }: { points: { d: string; v: number }[]; color: string }) {
-  const w = 56, h = 22;
-  if (points.length < 2) return <svg width={w} height={h} aria-hidden />;
+  const w = 100, h = 22;
+  if (points.length < 2) return <span style={{ display: "block", height: h, marginTop: 6 }} />;
   const lo = Math.min(...points.map((p) => p.v)), hi = Math.max(...points.map((p) => p.v));
   const span = daysBetween(points[0].d, points.at(-1)!.d) || 1;
   const pts = points.map((p) => `${((daysBetween(points[0].d, p.d) / span) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((p.v - lo) / (hi - lo || 1)) * (h - 4)).toFixed(1)}`).join(" ");
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden style={{ flexShrink: 0 }}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden style={{ display: "block", marginTop: 6, overflow: "hidden" }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth={1.8} vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
