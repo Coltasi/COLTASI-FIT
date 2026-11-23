@@ -1,16 +1,21 @@
 import type { Supa } from "@/lib/data";
 import { fetchAll } from "@/lib/fetch-all";
+import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 
 export type ExHistory = { exercise_id: string; name: string; sessions: { date: string; top: number | null; sets: { weight_kg: number | null; reps: number | null }[] }[] };
 
-/** Every finished-session performance, grouped by exercise, oldest first. */
+/** Every finished-session performance, grouped by exercise (spellings of the same lift merged), oldest first. */
 export async function getLiftHistory(supabase: Supa, exerciseId?: string): Promise<ExHistory[]> {
+  const { data: exRows } = await supabase.from("exercises").select("id, name, created_by, created_at");
+  const { keyById, byKey } = groupExercises((exRows ?? []) as ExerciseRow[]);
+  const keyOf = (id: string) => keyById.get(id) ?? id;
+  const ids = exerciseId ? byKey.get(keyOf(exerciseId))?.ids ?? [exerciseId] : null;
   const data = await fetchAll<any>((a, b) => {
     let q = supabase
       .from("session_exercises")
       .select("id, exercise_id, exercises(name), sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
       .eq("sessions.status", "done");
-    if (exerciseId) q = q.eq("exercise_id", exerciseId);
+    if (ids) q = q.in("exercise_id", ids);
     return q.order("id").range(a, b);
   });
   const map = new Map<string, ExHistory>();
@@ -19,8 +24,10 @@ export async function getLiftHistory(supabase: Supa, exerciseId?: string): Promi
       .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps }));
     if (!sets.length) continue;
     const ws = sets.map((s: any) => Number(s.weight_kg)).filter((x: number) => x > 0); // 0 kg = bodyweight
-    if (!map.has(r.exercise_id)) map.set(r.exercise_id, { exercise_id: r.exercise_id, name: r.exercises?.name ?? "", sessions: [] });
-    map.get(r.exercise_id)!.sessions.push({ date: r.sessions.session_date, top: ws.length ? Math.max(...ws) : null, sets });
+    const k = keyOf(r.exercise_id);
+    const rep = byKey.get(k)?.rep;
+    if (!map.has(k)) map.set(k, { exercise_id: exerciseId ?? rep?.id ?? r.exercise_id, name: rep?.name ?? r.exercises?.name ?? "", sessions: [] });
+    map.get(k)!.sessions.push({ date: r.sessions.session_date, top: ws.length ? Math.max(...ws) : null, sets });
   }
   return [...map.values()];
 }
