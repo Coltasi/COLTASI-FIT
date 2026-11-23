@@ -26,13 +26,13 @@ export function weeklyRate(points: { measured_on: string; weight_kg: number }[])
 }
 
 /** One Messages API call with the app's key. Returns the reply text, or null when there's no key or the call fails. */
-export async function callClaude(body: { system?: string; max_tokens: number; messages: unknown[] }): Promise<string | null> {
+export async function callClaude(body: { system?: string; max_tokens: number; messages: unknown[]; model?: string }): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({ model: COACH_MODEL, ...body }),
+    body: JSON.stringify({ ...body, model: body.model ?? COACH_MODEL }),
   });
   if (!res.ok) return null;
   const j = await res.json();
@@ -40,6 +40,7 @@ export async function callClaude(body: { system?: string; max_tokens: number; me
 }
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
+const daysAgo = (iso: string, n: number) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
 
 /** Everything the Coach knows, already computed. Stored with each read (coach_reads.signals). */
 export type Signals = {
@@ -323,10 +324,20 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
   if (!key) return "Coach can't answer questions yet: the Anthropic API key hasn't been added to the app's settings on Vercel.";
   const signals = await gatherSignals(supabase, "weigh_in");
   const { data: recent } = await supabase.from("sessions").select("title, session_date, status, feel, pain_areas, notes").order("started_at", { ascending: false }).limit(8);
+  const { data: food } = await supabase.from("food_logs").select("day, kcal, protein_g").gte("day", daysAgo(signals.today, 7));
+  const me = await currentUser(supabase);
+  const { data: prof } = await supabase.from("profiles").select("target_kcal, protein_g, tdee_kcal").eq("id", me?.id ?? "").maybeSingle();
+  const byDay = new Map<string, { kcal: number; protein_g: number }>();
+  for (const r of (food ?? []) as any[]) {
+    const t = byDay.get(r.day) ?? { kcal: 0, protein_g: 0 };
+    t.kcal += Number(r.kcal); t.protein_g += Math.round(Number(r.protein_g));
+    byDay.set(r.day, t);
+  }
+  const foodLast7 = { targets: prof ?? null, days: [...byDay].sort().map(([day, t]) => ({ day, ...t })) };
   const text = await callClaude({
     max_tokens: 500,
     system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
-    messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...signals, recentSessions: recent })}\n\nQuestion: ${question}` }],
+    messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...signals, recentSessions: recent, foodLast7 })}\n\nQuestion: ${question}` }],
   });
   return text ?? "Coach couldn't answer just now. Try again in a minute.";
 }

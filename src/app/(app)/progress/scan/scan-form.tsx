@@ -31,12 +31,15 @@ async function shrink(file: File): Promise<Blob> {
   }
 }
 
+const MAX = 6;
+
 export function ScanForm({ userId, today }: { userId: string; today: string }) {
   const [state, action, pending] = useActionState<FormState, FormData>(saveScan, { error: null });
   const [photos, setPhotos] = useState<{ path: string; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [reading, setReading] = useState(false);
   const [msg, setMsg] = useState<{ text: string; err: boolean } | null>(null);
+  const [problems, setProblems] = useState<string[]>([]);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [filled, setFilled] = useState<Record<string, boolean>>({});
   const fileRef = useRef<HTMLInputElement>(null);
@@ -47,7 +50,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
     setMsg(null);
     const supabase = createClient();
     const added: { path: string; url: string }[] = [];
-    for (const f of Array.from(files).slice(0, 3 - photos.length)) {
+    for (const f of Array.from(files).slice(0, MAX - photos.length)) {
       const blob = await shrink(f);
       const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
       const { error } = await supabase.storage.from("scan-photos").upload(path, blob, { contentType: blob.type || "image/jpeg" });
@@ -58,14 +61,16 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
     if (!added.length) { setMsg({ text: "Couldn't upload the photo. Type the values in below.", err: true }); return; }
 
     setReading(true);
-    let read: ScanValues | null = null;
+    let read: { values: ScanValues; problems: string[] } | null = null;
     try { read = await readScan([...photos, ...added].map((p) => p.path)); } catch {}
     setReading(false);
-    const got = Object.entries(read ?? {}).filter(([, v]) => v != null);
+    setProblems(read?.problems ?? []);
+    const got = Object.entries(read?.values ?? {}).filter(([, v]) => v != null);
     if (!got.length) { setMsg({ text: "Couldn't read the photo. Type the values in below.", err: true }); return; }
     setVals((v) => ({ ...v, ...Object.fromEntries(got.map(([k, v]) => [k, String(v)])) }));
     setFilled(Object.fromEntries(got.map(([k]) => [k, true])));
-    setMsg({ text: `Filled ${got.length} of ${FIELDS.length} fields from your photo.`, err: false });
+    const missing = FIELDS.filter((f) => !got.some(([k]) => k === f.name)).map((f) => f.label);
+    setMsg({ text: `Filled ${got.length} of ${FIELDS.length} fields.${missing.length ? ` Not found: ${missing.join(", ")}. Add a photo of that screen or type it.` : ""}`, err: false });
   }
 
   return (
@@ -77,7 +82,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img key={p.path} src={p.url} alt="Scan printout" style={{ height: 96, width: "100%", objectFit: "cover", borderRadius: 14 }} />
         ))}
-        {photos.length < 3 ? (
+        {photos.length < MAX ? (
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading || reading}
             style={{ height: 96, borderRadius: 14, border: "1.5px dashed var(--mist)", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", cursor: "pointer" }}>
             {uploading ? <span className="cap">Uploading…</span> : <><span style={{ fontSize: 22, lineHeight: 1 }}>+</span><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>Add photo</span></>}
@@ -85,7 +90,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         ) : null}
         {photos.length === 0 ? (
           <div style={{ height: 96, borderRadius: 14, background: "var(--tint-neutral)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", gridColumn: "span 2", padding: 10, textAlign: "center" }}>
-            <IconDoc size={22} /><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>Pick a photo of the printout from your library. Coach reads it for you.</span>
+            <IconDoc size={22} /><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>Add one photo per screen: Fat, Muscle, Water, Visceral, BMR. Coach reads them.</span>
           </div>
         ) : null}
       </div>
@@ -103,7 +108,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
           <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 16px", minHeight: 56, borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
             <label htmlFor={`f-${f.name}`} className="ln" style={{ flexGrow: 1 }}>{f.label}</label>
             <input id={`f-${f.name}`} name={f.name} inputMode="decimal" className="num" value={vals[f.name] ?? ""}
-              onChange={(e) => { const v = e.target.value.replace(",", "."); setVals((x) => ({ ...x, [f.name]: v })); setFilled((x) => ({ ...x, [f.name]: false })); }}
+              onChange={(e) => { setProblems([]); const v = e.target.value.replace(",", "."); setVals((x) => ({ ...x, [f.name]: v })); setFilled((x) => ({ ...x, [f.name]: false })); }}
               style={{
                 width: 86, height: 40, borderRadius: 10, textAlign: "right", padding: "0 10px", fontSize: 16, color: "var(--navy)",
                 border: `1px solid ${filled[f.name] ? "var(--kingfisher)" : "transparent"}`, background: filled[f.name] ? "var(--tint-blue)" : "var(--field)",
@@ -112,6 +117,11 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
           </div>
         ))}
       </div>
+      {problems.length ? (
+        <div className="card" style={{ padding: "10px 14px", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 13, fontWeight: 600, display: "grid", gap: 4 }} role="alert">
+          {problems.map((p) => <p key={p}>{p}</p>)}
+        </div>
+      ) : null}
       <p className="cap">Check the numbers before saving. You can edit any field.</p>
       {state.error ? <p className="err">{state.error}</p> : null}
       <div className="dock"><div><button className="btn" type="submit" disabled={pending || uploading || reading}>{pending ? "Saving…" : "Save scan"}</button></div></div>

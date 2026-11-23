@@ -121,7 +121,7 @@ export default async function CoachPage() {
         ) : (
           <div className="card cream" style={{ padding: 16, display: "flex", gap: 10 }}>
             <CoachMark />
-            <p style={{ fontSize: 15, lineHeight: 1.45 }}>Finish a session or log a Monday weigh-in and your first read appears here.</p>
+            <p style={{ fontSize: 15, lineHeight: 1.45 }}>Finish a session or log a weigh-in and your first read appears here.</p>
           </div>
         )}
       </div>

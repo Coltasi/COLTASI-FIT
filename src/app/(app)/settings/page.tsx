@@ -90,8 +90,8 @@ export default async function SettingsPage() {
             <PrefToggle field="notify_sleep" on={profile.notify_sleep ?? true} label="Daily sleep log reminder" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Weekly weigh-in</p><p className="cap">Mondays at {profile.weigh_in_time?.slice(0, 5) ?? "08:45"}</p></div>
-            <PrefToggle field="notify_weigh_in" on={profile.notify_weigh_in} label="Weekly weigh-in reminder" />
+            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Weigh-ins</p><p className="cap">Mon, Wed, Fri at {profile.weigh_in_time?.slice(0, 5) ?? "08:45"}</p></div>
+            <PrefToggle field="notify_weigh_in" on={profile.notify_weigh_in} label="Weigh-in reminders" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
             <div><p style={{ fontSize: 15, fontWeight: 600 }}>Workout day</p><p className="cap">Split days at {profile.workout_time?.slice(0, 5) ?? "08:00"}</p></div>

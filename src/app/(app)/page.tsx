@@ -11,15 +11,16 @@ import { StepsCard } from "./steps-card";
 import { WorkoutCalendar, type CalSession } from "./workout-calendar";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
+import { IntakeBars, leftLine } from "./food/bars";
 
 const DOW = ["M", "T", "W", "T", "F", "S", "S"];
 
 /** Today: the Coach's note and today's workout in one card, then quick check-ins and the week. */
 export default async function OverviewPage() {
-  const { supabase, today, units } = await getContext();
+  const { supabase, today, units, profile } = await getContext();
   const programP = getProgram(supabase);
   const monday = mondayOf(today);
-  const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll, { data: calRows }] = await Promise.all([
+  const [week, { data: read }, { data: sleeps }, stepRows, { data: weekSessions }, owedAll, { data: calRows }, { data: foodRows }] = await Promise.all([
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("headline, next_session, lifting, weight, recovery, signals").order("created_at", { ascending: false }).limit(1),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags, note").gte("night_of", addDays(today, -7)).order("night_of"),
@@ -27,7 +28,10 @@ export default async function OverviewPage() {
     supabase.from("sessions").select("session_date").eq("status", "done").gte("session_date", monday),
     getOwed(supabase, today),
     supabase.from("sessions").select("id, session_date, kind, title").eq("status", "done").gte("session_date", addDays(today, -400)).order("session_date"),
+    supabase.from("food_logs").select("kcal, protein_g").eq("day", today),
   ]);
+  const foodKcal = ((foodRows ?? []) as any[]).reduce((s, r) => s + Number(r.kcal), 0);
+  const foodProtein = ((foodRows ?? []) as any[]).reduce((s, r) => s + Number(r.protein_g), 0);
   const calSessions: CalSession[] = ((calRows ?? []) as { id: string; session_date: string; kind: string; title: string }[])
     .map((r) => ({ id: r.id, date: r.session_date, kind: r.kind, title: r.title }));
   const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
@@ -108,6 +112,15 @@ export default async function OverviewPage() {
           {footer}
         </div>
       )}
+
+      <Link href="/food" className="card" style={{ padding: "12px 14px", display: "grid", gap: 8, color: "var(--navy)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <p className="lab">Food today</p>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--kingfisher-text)" }}>{foodRows?.length ? "Add" : "Log food"} →</span>
+        </div>
+        <IntakeBars compact kcal={foodKcal} protein={foodProtein} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
+        <p className="cap" style={{ fontSize: 12 }}>{leftLine(foodKcal, foodProtein, profile.target_kcal ?? null, profile.protein_g ?? null)}</p>
+      </Link>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <SleepCard

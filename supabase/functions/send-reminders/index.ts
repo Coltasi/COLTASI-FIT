@@ -1,4 +1,4 @@
-// Sends the daily sleep and weekly weigh-in push reminders.
+// Sends the daily sleep and Mon/Wed/Fri weigh-in push reminders.
 // Called every 15 minutes by pg_cron (see the push_reminders migration).
 // Only sends when the thing is not already logged, and at most once per day per kind.
 // A reminder only counts as sent (reminder_log) when at least one device accepted it.
@@ -32,17 +32,13 @@ function addDays(iso: string, n: number) {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
-function mondayOf(iso: string) {
-  const dow = (new Date(iso + "T12:00:00Z").getUTCDay() + 6) % 7;
-  return addDays(iso, -dow);
-}
 const toMin = (t: string) => { const [h, m] = t.split(":"); return Number(h) * 60 + Number(m); };
 const due = (now: number, at: number) => now >= at && now < at + CATCH_UP_MIN;
 
 type Kind = "sleep" | "weigh_in" | "weigh_in_nudge";
 const MESSAGES: Record<Kind, { title: string; body: string; url: string }> = {
   sleep: { title: "Log last night's sleep", body: "Ten seconds: hours and how you woke up.", url: "/sleep" },
-  weigh_in: { title: "Weekly weigh-in", body: "Step on the scale, then log it.", url: "/progress" },
+  weigh_in: { title: "Weigh-in day", body: "Before you eat or drink: step on the scale, then log it.", url: "/progress" },
   weigh_in_nudge: { title: "No weigh-in logged this week", body: "Log it now so the trend stays honest.", url: "/progress" },
 };
 
@@ -102,13 +98,12 @@ Deno.serve(async (req) => {
       // The most recently seen device decides the time zone, so travel just works.
       const tz = [...userSubs].sort((a, b) => +new Date(b.last_seen) - +new Date(a.last_seen))[0].timezone;
       const { date, minutes, dow } = localParts(tz);
-      const monday = mondayOf(date);
 
       const kinds: Kind[] = [];
       if (p.notify_sleep && due(minutes, toMin(p.sleep_time))) kinds.push("sleep");
       if (p.notify_weigh_in && due(minutes, toMin(p.weigh_in_time))) {
-        if (dow === "Mon") kinds.push("weigh_in");
-        if (dow === "Tue") kinds.push("weigh_in_nudge");
+        // Three a week (Mon, Wed, Fri) so the food log can measure TDEE from a real trend.
+        if (dow === "Mon" || dow === "Wed" || dow === "Fri") kinds.push("weigh_in");
       }
 
       for (const kind of kinds) {
@@ -118,8 +113,8 @@ Deno.serve(async (req) => {
           if (data) continue;
         } else {
           const [w, s] = await Promise.all([
-            admin.from("weigh_ins").select("id").eq("user_id", p.id).gte("measured_on", monday).limit(1),
-            admin.from("scans").select("id").eq("user_id", p.id).gte("scanned_on", monday).not("weight_kg", "is", null).limit(1),
+            admin.from("weigh_ins").select("id").eq("user_id", p.id).eq("measured_on", date).limit(1),
+            admin.from("scans").select("id").eq("user_id", p.id).eq("scanned_on", date).not("weight_kg", "is", null).limit(1),
           ]);
           if (w.data?.length || s.data?.length) continue;
         }

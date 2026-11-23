@@ -10,6 +10,7 @@ import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 import { SleepVsLifts } from "./sleep-vs-lifts";
+import { FoodTrend } from "./food-trend";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -28,12 +29,17 @@ export default async function ProgressBodyPage() {
   ].sort((a, b) => (a.d < b.d ? -1 : 1));
   const latest = series.at(-1);
   const first = series[0];
-  const rate = weeklyRate(weighIns.slice(-4));
+  const rate = weeklyRate(weighIns.slice(-9));
 
+  // Weigh-in days are Mon, Wed and Fri.
   const monday = mondayOf(today);
-  const thisWeek = weighIns.find((p) => p.measured_on >= monday);
-  const nextMonday = addDays(monday, 7);
-  const due = !thisWeek;
+  const WEIGH_DAYS = [0, 2, 4];
+  const dowToday = daysBetween(monday, today);
+  const loggedToday = weighIns.find((p) => p.measured_on === today);
+  const lastWeigh = weighIns.at(-1);
+  const nextIdx = WEIGH_DAYS.find((d) => d > dowToday);
+  const nextWeigh = nextIdx != null ? addDays(monday, nextIdx) : addDays(monday, 7);
+  const due = WEIGH_DAYS.includes(dowToday) && !loggedToday;
 
   // Overlay series, all as mass in kg so they share one axis.
   const num = (v: unknown) => (v == null ? null : Number(v));
@@ -84,10 +90,13 @@ export default async function ProgressBodyPage() {
         today={today}
         placeholder={latest ? w(latest.kg, units) : units === "imperial" ? "lb" : "kg"}
         due={due}
-        label={due ? (daysBetween(monday, today) === 0 ? "due today" : "due this week") : `logged ${fmtDay(thisWeek!.measured_on)} · next ${fmtShort(nextMonday)}`}
+        label={due ? "due today" : `${lastWeigh ? `last ${fmtDay(lastWeigh.measured_on)} · ` : ""}next ${fmtDay(loggedToday || !WEIGH_DAYS.includes(dowToday) ? nextWeigh : today)}`}
       />
 
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
+
+      <FoodTrend supabase={supabase} today={today} units={units} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null}
+        weights={series.map((p) => ({ d: p.d, kg: p.kg }))} />
 
       <SleepVsLifts supabase={supabase} />
 
