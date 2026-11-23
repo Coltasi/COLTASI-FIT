@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { daysBetween, fmtMonth, fmtShort } from "@/lib/dates";
+import { addDays, daysBetween, fmtMonth, fmtShort } from "@/lib/dates";
 import { signed, unit, w, type Units } from "@/lib/units";
 
 export type MetricKey = "weight" | "muscle" | "water" | "fat";
@@ -16,13 +16,25 @@ const METRICS: { key: MetricKey; label: string; color: string; goodDown: boolean
 ];
 const STORE_KEY = "coltasi.bodycomp.metrics";
 const DEFAULT_ON: MetricKey[] = ["weight", "muscle", "water", "fat"];
+const RANGES = [{ k: "3m", l: "3M", days: 91 }, { k: "6m", l: "6M", days: 183 }, { k: "all", l: "All", days: null }] as const;
+type RangeKey = (typeof RANGES)[number]["k"];
 
 /**
  * Body comp overlay chart. Every series is a mass in kg (shown in kg or lb),
  * so they share one honest y-axis. Water and fat come off the Tanita % readings
  * multiplied by that scan's weight when the scan didn't store the mass itself.
  */
-export function BodyCompChart({ series, units }: { series: Record<MetricKey, CompPoint[]>; units: Units }) {
+export function BodyCompChart({ series: full, units }: { series: Record<MetricKey, CompPoint[]>; units: Units }) {
+  const [range, setRange] = useState<RangeKey>("all");
+  const lastDate = useMemo(() => METRICS.flatMap((m) => full[m.key].map((p) => p.d)).sort().at(-1), [full]);
+  const series = useMemo(() => {
+    const days = RANGES.find((r) => r.k === range)?.days;
+    if (!days || !lastDate) return full;
+    const cut = addDays(lastDate, -days);
+    const cutSeries = Object.fromEntries(METRICS.map((m) => [m.key, full[m.key].filter((p) => p.d >= cut)])) as Record<MetricKey, CompPoint[]>;
+    // Nothing logged in that window: fall back to everything rather than an empty chart.
+    return METRICS.some((m) => cutSeries[m.key].length) ? cutSeries : full;
+  }, [full, range, lastDate]);
   const [on, setOn] = useState<MetricKey[]>(DEFAULT_ON);
   const [sel, setSel] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -84,12 +96,22 @@ export function BodyCompChart({ series, units }: { series: Record<MetricKey, Com
 
   return (
     <div className="card" style={{ padding: "14px 16px 12px" }}>
-      <p className="lab" style={{ marginBottom: 10 }}>Body composition · {unit(units)}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+        <p className="lab">Body composition · {unit(units)}</p>
+        <div role="group" aria-label="Time range" style={{ display: "flex", gap: 4, background: "var(--tint-neutral)", borderRadius: 9, padding: 3 }}>
+          {RANGES.map((r) => (
+            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setSel(null); }}
+              style={{ height: 26, minWidth: 34, borderRadius: 7, border: 0, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                background: range === r.k ? "#fff" : "transparent", color: range === r.k ? "var(--navy)" : "var(--muted)",
+                boxShadow: range === r.k ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}>{r.l}</button>
+          ))}
+        </div>
+      </div>
 
       <div role="group" aria-label="Metrics to show" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6, marginBottom: 12 }}>
         {METRICS.map((m) => {
           const isOn = on.includes(m.key);
-          const empty = !series[m.key].length;
+          const empty = !full[m.key].length;
           return (
             <button
               key={m.key}

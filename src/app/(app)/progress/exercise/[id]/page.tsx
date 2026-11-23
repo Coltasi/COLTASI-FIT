@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { BackHeader } from "@/components/ui";
 import { getContext } from "@/lib/data";
-import { daysBetween, fmtMonth, fmtShort } from "@/lib/dates";
+import { fmtShort } from "@/lib/dates";
 import { unit, w } from "@/lib/units";
 import { getLiftHistory } from "@/lib/lifts";
-import { LineChart } from "../../parts";
+import { LiftChart } from "./lift-chart";
 
 export default async function ExercisePage({ params, searchParams }: PageProps<"/progress/exercise/[id]">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -22,7 +22,6 @@ export default async function ExercisePage({ params, searchParams }: PageProps<"
   let runningBest = -Infinity;
   const prDates = new Set<string>();
   for (const s of tops) if (s.top > runningBest) { if (runningBest !== -Infinity) prDates.add(s.date); runningBest = s.top; }
-  const x0 = tops[0]?.date;
   // Logged, but never with a weight: a bodyweight lift.
   const bw = best == null && sessions.length > 0;
   const kg = (v: number | null) => (v != null ? <>{w(v, units)}<span style={{ fontSize: 13 }}> {unit(units)}</span></> : bw ? "BW" : "–");
@@ -41,17 +40,7 @@ export default async function ExercisePage({ params, searchParams }: PageProps<"
       </div>
 
       {tops.length > 1 ? (
-        <div className="card" style={{ padding: "16px 16px 12px" }}>
-          <p className="lab" style={{ marginBottom: 10 }}>Top set weight</p>
-          <LineChart
-            ariaLabel={`Top set weight from ${w(first, units)} to ${w(tops.at(-1)!.top, units)} ${unit(units)}`}
-            unitLabel={unit(units)}
-            points={tops.map((s) => ({ x: daysBetween(x0!, s.date), y: Number(w(s.top, units)) }))}
-            markers={tops.map((s) => ({ x: daysBetween(x0!, s.date), y: Number(w(s.top, units)), kind: s.top === best && s === tops.at(-1) ? "accent" as const : "big" as const }))}
-            height={140}
-            xLabels={[...new Set(tops.map((s) => fmtMonth(s.date)))]}
-          />
-        </div>
+        <LiftChart units={units} points={tops.map((s) => ({ date: s.date, top: s.top, reps: (s.sets as { reps: number | null }[]).map((z) => z.reps), pr: prDates.has(s.date) }))} />
       ) : bw ? (
         <div className="card" style={{ padding: "16px 16px 12px" }}>
           <p className="lab" style={{ marginBottom: 10 }}>Top set weight</p>

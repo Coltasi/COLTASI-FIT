@@ -9,10 +9,11 @@ import { ProgressTabs } from "./parts";
 import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart";
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
+import { SleepVsLifts } from "./sleep-vs-lifts";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
-  const since = addDays(today, -200);
+  const since = addDays(today, -1100);
   const [{ data: wiRows }, { data: scanRows }] = await Promise.all([
     supabase.from("weigh_ins").select("measured_on, weight_kg").gte("measured_on", since).order("measured_on"),
     supabase.from("scans").select("id, scanned_on, weight_kg, body_fat_pct, fat_mass_kg, muscle_mass_kg, water_pct").order("scanned_on", { ascending: false }).limit(40),
@@ -49,14 +50,6 @@ export default async function ProgressBodyPage() {
     water: scanSeries((s) => (s.water_pct != null && s.weight_kg != null ? (Number(s.water_pct) * s.weight_kg) / 100 : null)),
     fat: scanSeries((s) => num(s.fat_mass_kg) ?? (s.body_fat_pct != null && s.weight_kg != null ? (Number(s.body_fat_pct) * s.weight_kg) / 100 : null)),
   };
-
-  const [s0, s1] = scans;
-  const delta = (a: number | null | undefined, b: number | null | undefined) => (a != null && b != null ? Number(a) - Number(b) : null);
-  const comp = [
-    { l: "Body fat", v: s0?.body_fat_pct, u: "%", d: delta(s0?.body_fat_pct, s1?.body_fat_pct), goodDown: true },
-    { l: "Muscle", v: s0?.muscle_mass_kg == null ? null : w(s0.muscle_mass_kg, units), u: ` ${unit(units)}`, d: delta(s0?.muscle_mass_kg, s1?.muscle_mass_kg), goodDown: false },
-    { l: "Water", v: s0?.water_pct, u: "%", d: delta(s0?.water_pct, s1?.water_pct), goodDown: null },
-  ];
 
   return (
     <main className="screen">
@@ -96,24 +89,7 @@ export default async function ProgressBodyPage() {
 
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
 
-      {s0 ? (
-        <div>
-          <p className="lab" style={{ marginBottom: 8 }}>Composition{s1 ? ` · vs ${fmtShort(s1.scanned_on)}` : ""}</p>
-          <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))" }}>
-            {comp.map((c, i) => (
-              <div key={c.l} style={{ padding: "14px 12px", borderLeft: i ? "1px solid var(--line-soft)" : undefined }}>
-                <div className="num" style={{ fontSize: 22 }}>{c.v ?? "–"}<span style={{ fontSize: 14 }}>{c.v != null ? c.u : ""}</span></div>
-                <p className="cap">{c.l}</p>
-                {c.d != null ? (
-                  <p style={{ margin: "4px 0 0", fontSize: 12, fontWeight: 700, color: c.goodDown == null ? "var(--muted)" : (c.d < 0) === c.goodDown ? "var(--kingfisher-text)" : "var(--rust)" }}>
-                    {c.d < 0 ? "▼" : c.d > 0 ? "▲" : "±"} {Math.abs(Math.round(c.d * 10) / 10)}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <SleepVsLifts supabase={supabase} />
 
       <div className="card clip">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
