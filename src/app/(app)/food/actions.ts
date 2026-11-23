@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@/lib/supabase/user";
 import { getContext } from "@/lib/data";
 import { addDays } from "@/lib/dates";
+import { FOOD_DAYS_BACK } from "@/lib/energy";
 import { callClaude } from "@/lib/coach";
 
 type Source = "manual" | "saved" | "barcode" | "photo" | "text";
@@ -20,7 +21,7 @@ async function ctx() {
 
 async function okDay(day: string) {
   const { today } = await getContext();
-  return /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today && day >= addDays(today, -14) ? day : today;
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) && day <= today && day >= addDays(today, -FOOD_DAYS_BACK) ? day : today;
 }
 
 const clampKcal = (n: number) => Math.max(0, Math.min(5000, Math.round(n)));
@@ -142,4 +143,24 @@ export async function lookupBarcode(code: string): Promise<Product | { error: st
   } catch {
     return { error: "Couldn't reach the food database. Enter it yourself below." };
   }
+}
+
+export type FoodEdit = { id: string; name: string; kcal: number; protein_g: number; day: string; remove?: boolean };
+
+/** Saves every change made in Food's edit mode at once: renames, new numbers, moves to another day, removals. */
+export async function updateFoods(edits: FoodEdit[]): Promise<{ error: string | null }> {
+  const { supabase } = await ctx();
+  const { today } = await getContext();
+  for (const e of edits.slice(0, 200)) {
+    if (e.remove) { await supabase.from("food_logs").delete().eq("id", e.id); continue; }
+    const name = e.name.trim().slice(0, 80);
+    if (!name) return { error: "Every entry needs a name." };
+    if (!Number.isFinite(e.kcal) || e.kcal < 0 || e.kcal > 5000) return { error: `${name}: calories should be between 0 and 5,000.` };
+    if (!Number.isFinite(e.protein_g) || e.protein_g < 0 || e.protein_g > 500) return { error: `${name}: protein should be between 0 and 500 g.` };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.day) || e.day > today || e.day < addDays(today, -FOOD_DAYS_BACK)) return { error: `${name}: pick a day in the last ${FOOD_DAYS_BACK} days.` };
+    const { error } = await supabase.from("food_logs").update({ name, kcal: clampKcal(e.kcal), protein_g: clampP(e.protein_g), day: e.day }).eq("id", e.id);
+    if (error) return { error: error.message };
+  }
+  revalidatePath("/", "layout");
+  return { error: null };
 }

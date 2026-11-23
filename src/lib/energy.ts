@@ -7,6 +7,8 @@ export const KCAL_PER_KG = 7716;
 /** A logged day under this is treated as incomplete and left out of the TDEE math. */
 const MIN_DAY_KCAL = 1000;
 const WINDOW_DAYS = 21;
+/** How far back food can be logged or edited. */
+export const FOOD_DAYS_BACK = 60;
 const MIN_LOGGED_DAYS = 14;
 
 export type DayTotal = { day: string; kcal: number; protein: number };

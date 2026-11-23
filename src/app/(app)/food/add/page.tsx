@@ -1,12 +1,13 @@
 import { BackHeader } from "@/components/ui";
 import { getContext } from "@/lib/data";
 import { addDays } from "@/lib/dates";
+import { FOOD_DAYS_BACK } from "@/lib/energy";
 import { AddFood } from "./add-food";
 
 export default async function AddFoodPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
   const { supabase, today } = await getContext();
   const sp = await searchParams;
-  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -14) ? sp.day : today;
+  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -FOOD_DAYS_BACK) ? sp.day : today;
   const { data: saved } = await supabase.from("saved_foods").select("id, name, kcal, protein_g").order("use_count", { ascending: false }).order("name").limit(30);
   return (
     <main className="screen">

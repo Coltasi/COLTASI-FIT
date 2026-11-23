@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { BrandRow } from "@/components/ui";
-import { IconPlus } from "@/components/icons";
+import { IconPen, IconPlus } from "@/components/icons";
 import { getContext } from "@/lib/data";
 import { addDays, fmtLong } from "@/lib/dates";
-import { getEnergy, dayTotals } from "@/lib/energy";
-import { deleteFood, applySuggestedTarget } from "./actions";
+import { getEnergy, dayTotals, FOOD_DAYS_BACK } from "@/lib/energy";
+import { applySuggestedTarget } from "./actions";
+import { DayNav } from "./day-nav";
+import { EditFoods } from "./edit-foods";
 import { IntakeBars, leftLine } from "./bars";
 
-export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
+export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string }> }) {
   const { supabase, today, profile } = await getContext();
   const sp = await searchParams;
-  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -14) ? sp.day : today;
+  const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -FOOD_DAYS_BACK) ? sp.day : today;
   const [{ data: rows }, energy, { data: week }] = await Promise.all([
     supabase.from("food_logs").select("id, name, kcal, protein_g, source").eq("day", day).order("created_at"),
     getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week)),
@@ -24,35 +26,49 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   const maxK = Math.max(tK ?? 2500, ...[...totals.values()].map((d) => d.kcal));
 
   const yesterday = addDays(today, -1);
+  const edit = sp.edit === "1";
+  const min = addDays(today, -FOOD_DAYS_BACK);
+  const dayQ = day === today ? "" : `day=${day}`;
+  const viewHref = `/food${dayQ ? `?${dayQ}` : ""}`;
+  const editHref = `/food?${dayQ ? `${dayQ}&` : ""}edit=1`;
   const showSuggest = energy.source === "measured" && energy.suggestedTarget != null && tK != null && Math.abs(energy.suggestedTarget - tK) >= 100;
 
   return (
     <main className="screen">
       <BrandRow />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8 }}>
-        <h1 className="disp" style={{ fontSize: 30, lineHeight: 1.1 }}>{day === today ? "Today" : day === yesterday ? "Yesterday" : fmtLong(day)}</h1>
-        <div style={{ display: "flex", gap: 6 }}>
-          <Link href="/food" className={`chip${day === today ? " on" : ""}`}>Today</Link>
-          <Link href={`/food?day=${yesterday}`} className={`chip${day === yesterday ? " on" : ""}`}>Yesterday</Link>
+        <div>
+          {edit ? <p className="lab" style={{ color: "var(--rust)" }}>Editing</p> : null}
+          <h1 className="disp" style={{ fontSize: 30, lineHeight: 1.1 }}>{day === today ? "Today" : day === yesterday ? "Yesterday" : fmtLong(day)}</h1>
         </div>
+        {edit ? null : <Link href={editHref} className="btn2" style={{ display: "flex", alignItems: "center", gap: 6 }}><IconPen size={15} />Edit</Link>}
       </div>
+
+      <DayNav day={day} today={today} min={min} edit={edit} />
+
+      {edit ? (
+        <div style={{ background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center", color: "var(--rust)" }}>
+          <IconPen size={18} />
+          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Change names, numbers or the day, or remove entries. Use the arrows to edit other days.</p>
+        </div>
+      ) : null}
 
       <div className="card" style={{ padding: "14px 16px", display: "grid", gap: 10 }}>
         <IntakeBars kcal={kcal} protein={protein} targetKcal={tK} targetProtein={tP} />
         <p className="cap" style={{ fontSize: 13 }}>{leftLine(kcal, protein, tK, tP)}</p>
       </div>
 
+      {edit ? (
+        <EditFoods key={day} items={items} day={day} today={today} min={min} exitHref={viewHref} />
+      ) : (
+      <>
       <div className="card clip">
         {items.length ? items.map((r, i) => (
-          <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 10px 16px", borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
+          <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
             <div style={{ flexGrow: 1, minWidth: 0 }}>
               <p style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</p>
               <p className="cap" style={{ fontSize: 12 }}>{Number(r.kcal).toLocaleString("en-US")} kcal · {Math.round(Number(r.protein_g))} g protein</p>
             </div>
-            <form action={deleteFood}>
-              <input type="hidden" name="id" value={r.id} />
-              <button type="submit" aria-label={`Remove ${r.name}`} style={{ background: "none", border: 0, color: "var(--stone)", fontSize: 20, lineHeight: 1, padding: 8, cursor: "pointer" }}>×</button>
-            </form>
           </div>
         )) : (
           <p style={{ padding: "16px", fontSize: 14 }} className="cap">Nothing logged {day === today ? "yet today" : "this day"}. Add what you eat as you go: shakes are one tap once saved.</p>
@@ -107,6 +123,8 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
           })}
         </div>
       </div>
+      </>
+      )}
     </main>
   );
 }
