@@ -2,10 +2,11 @@ import Link from "next/link";
 import { BrandRow } from "@/components/ui";
 import { IconDoc } from "@/components/icons";
 import { getContext } from "@/lib/data";
-import { addDays, daysBetween, fmtDay, fmtMonth, fmtShort, mondayOf } from "@/lib/dates";
+import { addDays, daysBetween, fmtDay, fmtShort, mondayOf } from "@/lib/dates";
 import { signed, unit, w } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
-import { LineChart, ProgressTabs } from "./parts";
+import { ProgressTabs } from "./parts";
+import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart";
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 
@@ -14,7 +15,7 @@ export default async function ProgressBodyPage() {
   const since = addDays(today, -200);
   const [{ data: wiRows }, { data: scanRows }] = await Promise.all([
     supabase.from("weigh_ins").select("measured_on, weight_kg").gte("measured_on", since).order("measured_on"),
-    supabase.from("scans").select("id, scanned_on, weight_kg, body_fat_pct, muscle_mass_kg, water_pct").order("scanned_on", { ascending: false }).limit(40),
+    supabase.from("scans").select("id, scanned_on, weight_kg, body_fat_pct, fat_mass_kg, muscle_mass_kg, water_pct").order("scanned_on", { ascending: false }).limit(40),
   ]);
   const weighIns = ((wiRows ?? []) as any[]).map((r) => ({ measured_on: r.measured_on as string, weight_kg: Number(r.weight_kg) }));
   const scans = ((scanRows ?? []) as any[]).map((r) => ({ ...r, weight_kg: r.weight_kg == null ? null : Number(r.weight_kg) }));
@@ -33,9 +34,21 @@ export default async function ProgressBodyPage() {
   const nextMonday = addDays(monday, 7);
   const due = !thisWeek;
 
-  const x0 = first?.d ?? today;
-  const scanSet = new Set(scans.map((s) => s.scanned_on));
-  const months = [...new Set(series.map((p) => fmtMonth(p.d)))];
+  // Overlay series, all as mass in kg so they share one axis.
+  const num = (v: unknown) => (v == null ? null : Number(v));
+  const asc = [...scans].reverse();
+  const scanSet = new Set(scans.map((s) => s.scanned_on as string));
+  const scanSeries = (pick: (s: (typeof scans)[number]) => number | null): CompPoint[] =>
+    asc.map((s) => ({ d: s.scanned_on as string, kg: pick(s), src: "scan" as CompPoint["src"] }))
+      .filter((p): p is CompPoint => p.kg != null && !Number.isNaN(p.kg));
+  const compSeries: Record<MetricKey, CompPoint[]> = {
+    weight: series
+      .filter((p) => p.src === "scan" || !scanSet.has(p.d))
+      .map((p) => ({ d: p.d, kg: p.kg, src: p.src as CompPoint["src"] })),
+    muscle: scanSeries((s) => num(s.muscle_mass_kg)),
+    water: scanSeries((s) => (s.water_pct != null && s.weight_kg != null ? (Number(s.water_pct) * s.weight_kg) / 100 : null)),
+    fat: scanSeries((s) => num(s.fat_mass_kg) ?? (s.body_fat_pct != null && s.weight_kg != null ? (Number(s.body_fat_pct) * s.weight_kg) / 100 : null)),
+  };
 
   const [s0, s1] = scans;
   const delta = (a: number | null | undefined, b: number | null | undefined) => (a != null && b != null ? Number(a) - Number(b) : null);
@@ -81,21 +94,7 @@ export default async function ProgressBodyPage() {
         label={due ? (daysBetween(monday, today) === 0 ? "due today" : "due this week") : `logged ${fmtDay(thisWeek!.measured_on)} · next ${fmtShort(nextMonday)}`}
       />
 
-      {series.length > 1 ? (
-        <div className="card" style={{ padding: "16px 16px 12px" }}>
-          <div className="cap" style={{ display: "flex", gap: 14, marginBottom: 8 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#9FCBDF" }} />Weigh-in</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: "50%", background: "var(--kingfisher)" }} />Tanita scan</span>
-          </div>
-          <LineChart
-            ariaLabel={`Weight from ${w(first!.kg, units)} to ${w(latest!.kg, units)} ${unit(units)}`}
-            unitLabel={unit(units)}
-            points={series.map((p) => ({ x: daysBetween(x0, p.d), y: Number(w(p.kg, units)) }))}
-            markers={series.map((p) => ({ x: daysBetween(x0, p.d), y: Number(w(p.kg, units)), kind: p.src === "scan" || scanSet.has(p.d) ? "big" as const : "small" as const }))}
-            xLabels={months}
-          />
-        </div>
-      ) : null}
+      {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
 
       {s0 ? (
         <div>
