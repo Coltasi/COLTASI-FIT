@@ -19,6 +19,12 @@ function ago(iso: string) {
   return `${Math.round(h / 24)} d ago`;
 }
 
+const KIND = {
+  session: { label: "Workout", color: "var(--kingfisher)", bg: "var(--tint-blue)", fg: "var(--kingfisher-text)" },
+  weigh_in: { label: "Weigh-in", color: "var(--ember)", bg: "var(--tint-ember)", fg: "var(--rust)" },
+  scan: { label: "Body scan", color: "var(--lagoon)", bg: "var(--tint-neutral)", fg: "var(--navy)" },
+} as const;
+
 export default async function CoachPage() {
   const { supabase, today, units, profile, tz } = await getContext();
   const programP = getProgram(supabase);
@@ -39,7 +45,14 @@ export default async function CoachPage() {
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
   const latest = ((reads ?? []) as any[])[0];
   const dayIso = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
-  const dayFmt = (iso: string) => fmtDay(dayIso(iso));
+  const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  // Reads grouped by the day they were written, newest day first.
+  const days: [string, any[]][] = [];
+  for (const r of (reads ?? []) as any[]) {
+    const d = dayIso(r.created_at);
+    if (days.length && days[days.length - 1][0] === d) days[days.length - 1][1].push(r);
+    else days.push([d, [r]]);
+  }
 
   return (
     <main className="screen" style={{ paddingBottom: 260 }}>
@@ -70,21 +83,39 @@ export default async function CoachPage() {
           {latest ? <RefreshRead /> : null}
         </div>
         {reads?.length ? (
-          <div className="card clip">
-            {((reads ?? []) as any[]).map((r, i) => (
-              <details key={r.id} className="row" style={{ display: "block", borderTop: i ? undefined : 0 }} open={i === 0}>
-                <summary style={{ listStyle: "none", cursor: "pointer" }}>
-                  <p className="cap" style={{ fontSize: 12, fontWeight: 600 }}>
-                    {r.kind === "session" ? "After a session" : r.kind === "scan" ? "Body scan" : "Weigh-in"} · {i === 0 ? ago(r.created_at) : dayFmt(r.created_at)}
-                  </p>
-                  <p style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginTop: 2 }}>{r.headline}</p>
-                </summary>
-                {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
-                  <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
-                ) : PARTS.filter(([, k]) => r[k]).map(([l, k]) => (
-                  <div key={k} style={{ marginTop: 8 }}><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[k]} /></div>
-                ))}
-              </details>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 6 }}>
+            {days.map(([day, rs]) => (
+              <section key={day}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span className="disp" style={{ fontSize: 17, color: "var(--navy)", whiteSpace: "nowrap" }}>
+                    {day === today ? "Today" : day === addDays(today, -1) ? "Yesterday" : fmtDay(day)}
+                  </span>
+                  {day === today || day === addDays(today, -1) ? <span className="cap" style={{ fontSize: 12 }}>{fmtDay(day)}</span> : null}
+                  <span style={{ flexGrow: 1, height: 1, background: "var(--line-strong)" }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {rs.map((r) => {
+                    const k = KIND[r.kind as keyof typeof KIND] ?? KIND.weigh_in;
+                    const first = r.id === latest?.id;
+                    return (
+                      <details key={r.id} className="card" open={first} style={{ padding: "12px 14px", borderLeft: `4px solid ${k.color}` }}>
+                        <summary style={{ listStyle: "none", cursor: "pointer" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span className="tag" style={{ background: k.bg, color: k.fg }}>{k.label}</span>
+                            <span className="cap" style={{ fontSize: 12 }}>{first ? ago(r.created_at) : time(r.created_at)}</span>
+                          </div>
+                          <p style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginTop: 6 }}>{r.headline}</p>
+                        </summary>
+                        {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
+                          <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
+                        ) : PARTS.filter(([, key]) => r[key]).map(([l, key]) => (
+                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
+                        ))}
+                      </details>
+                    );
+                  })}
+                </div>
+              </section>
             ))}
           </div>
         ) : (
