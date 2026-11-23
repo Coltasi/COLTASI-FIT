@@ -245,10 +245,124 @@ export const GUIDES: Record<string, Guide> = {
     steps: ["Squat, hands flat shoulder-width, fingers spread.","Bend elbows, put knees high on the backs of your upper arms.","Lean forward until your feet float, eyes ahead, and hold."],
     mistake: "Looking down at your feet, which tips you back out of it.",
   },
+  "Kettlebell Front Squat": {
+    primary: ["Quads","Glutes"],
+    secondary: ["Core","Upper back"],
+    steps: ["Clean the bell(s) to the rack, elbows tucked, wrists straight.","Sit down between your heels, chest tall.","Drive up through the whole foot to standing."],
+    mistake: "Letting the elbows drop and the chest fold forward.",
+  },
+  "Single-Leg Kettlebell RDL": {
+    primary: ["Hamstrings","Glutes"],
+    secondary: ["Lower back","Core"],
+    steps: ["Bell in the opposite hand to your standing leg, soft knee.","Hinge at the hip, back leg rising in line with your spine.","Squeeze the glute to stand back up, hips square."],
+    mistake: "Rounding the back or letting the hips open to the side.",
+  },
+  "Push-Ups": {
+    primary: ["Chest"],
+    secondary: ["Triceps","Front delts","Core"],
+    steps: ["Hands just outside shoulders, body in one straight line.","Lower until your chest nearly touches, elbows about 45°.","Press back up without letting the hips sag."],
+    mistake: "Sagging hips or flaring elbows straight out.",
+  },
+  "Single-Arm Iso DB Press": {
+    primary: ["Chest"],
+    secondary: ["Triceps","Core"],
+    steps: ["Lie on the bench, one dumbbell held locked out, the other pressing.","Hold one arm still at the top while the other does its reps.","Switch arms and repeat."],
+    mistake: "Letting the held arm drift down or the torso twist.",
+  },
+  "Hanging Bicep Curls": {
+    primary: ["Biceps"],
+    secondary: ["Forearms"],
+    steps: ["Let the dumbbells hang straight down, palms forward.","Curl up without moving your elbows forward.","Lower slowly to a full stretch."],
+    mistake: "Swinging the body to get the weight up.",
+  },
+  "Zanetti Press": {
+    primary: ["Shoulders"],
+    secondary: ["Triceps", "Upper back", "Core"],
+    steps: ["Sit on the floor, legs straight out, weights at your shoulders.", "Brace your core and press straight overhead without leaning back.", "Lower under control back to the shoulders."],
+    mistake: "Leaning back or rounding the lower back to finish the rep.",
+  },
+  "Seated Overhead Press": {
+    primary: ["Shoulders"],
+    secondary: ["Triceps", "Upper chest"],
+    steps: ["Sit tall on an upright bench, dumbbells at shoulder height.", "Press up until arms are straight, bells over your head.", "Lower slowly back to the shoulders."],
+    mistake: "Arching off the back pad to push more weight.",
+  },
+  "Triceps Dips": {
+    primary: ["Triceps"],
+    secondary: ["Chest", "Front delts"],
+    steps: ["Support yourself on the bars or bench, arms straight.", "Lower until your upper arms are about parallel to the floor.", "Press back up to straight arms."],
+    mistake: "Dropping too deep and loading the front of the shoulder.",
+  },
+  "Chest Flies": {
+    primary: ["Chest"],
+    secondary: ["Front delts"],
+    steps: ["Lie on a bench, dumbbells above your chest, slight bend in the elbows.", "Open your arms wide until you feel a chest stretch.", "Squeeze them back together over your chest."],
+    mistake: "Bending the elbows so it turns into a press.",
+  },
+  "Skull Crushers": {
+    primary: ["Triceps"],
+    secondary: [],
+    steps: ["Lie on a bench, weight above your chest, arms straight.", "Bend only at the elbows to lower it toward your forehead.", "Extend back up to straight arms."],
+    mistake: "Letting the elbows flare out wide.",
+  },
+  "Standing Iso Dumbbell Curls": {
+    primary: ["Biceps"],
+    secondary: ["Forearms"],
+    steps: ["Stand holding both dumbbells, curl one to 90\u00b0 and hold it there.", "Do your reps with the other arm.", "Switch arms and repeat."],
+    mistake: "Letting the held arm sag below 90\u00b0.",
+  },
+  "Hamstring Machine Curl": {
+    primary: ["Hamstrings"],
+    secondary: ["Calves"],
+    steps: ["Set the pad just above your heels, knees lined up with the machine's pivot.", "Curl your heels toward your glutes.", "Return slowly to straight legs."],
+    mistake: "Lifting the hips off the seat or pad to finish the rep.",
+  },
+  "Single-Leg Press": {
+    primary: ["Quads", "Glutes"],
+    secondary: ["Hamstrings"],
+    steps: ["One foot in the middle of the platform, the other off.", "Lower until your knee is at about 90\u00b0.", "Press back up without locking the knee."],
+    mistake: "Letting the knee cave in or the hips lift off the seat.",
+  },
+  "Single-Leg Lunge": {
+    primary: ["Quads", "Glutes"],
+    secondary: ["Hamstrings", "Core"],
+    steps: ["Hold the bell(s), step one foot back.", "Drop the back knee toward the floor, front shin near vertical.", "Drive through the front foot to stand."],
+    mistake: "Front knee collapsing inward.",
+  },
+  "Clean Front Squat": {
+    primary: ["Quads", "Glutes"],
+    secondary: ["Hamstrings", "Upper back", "Core"],
+    steps: ["Swing the bell back and clean it to the rack.", "Front squat with the bell racked, chest tall.", "Stand, lower the bell and repeat the clean."],
+    mistake: "Letting the bell flop onto the forearm on the clean.",
+  },
+  "Round the World": {
+    primary: ["Shoulders", "Core"],
+    secondary: ["Upper back"],
+    steps: ["Hold the bell by the handle at your chest.", "Pass it around your body or head in a smooth circle.", "Switch direction halfway through."],
+    mistake: "Arching the lower back as the bell passes behind you.",
+  },
+  "Kettlebell Overhead March": {
+    primary: ["Shoulders", "Core"],
+    secondary: ["Hip flexors"],
+    steps: ["Press the bell overhead and lock the arm out.", "March in place, knees up to hip height.", "Keep the bell stacked over your shoulder the whole time."],
+    mistake: "Letting the arm drift forward or the torso lean.",
+  },
+  "Kettlebell Dead Bug": {
+    primary: ["Core"],
+    secondary: ["Hip flexors", "Shoulders"],
+    steps: ["Lie on your back, bell pressed above your chest, knees bent at 90\u00b0.", "Lower one leg toward the floor, keeping your lower back down.", "Bring it back and switch legs."],
+    mistake: "Lower back lifting off the floor.",
+  },
+  "Kneeling Woodchopper": {
+    primary: ["Obliques", "Core"],
+    secondary: ["Shoulders"],
+    steps: ["Kneel side-on to the cable or bell, set high.", "Pull diagonally down across your body, turning through the torso.", "Return slowly to the start."],
+    mistake: "Pulling with the arms instead of rotating through the trunk.",
+  },
 };
 
 /** Library sections: one per program day, plus Kettlebell. */
-export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry"]]];
+export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers","Seated Overhead Press","Shoulder Press + Overhead Superset"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL","Hamstring Machine Curl","Single-Leg Press","Single-Leg Lunge"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press","Zanetti Press","Chest Flies","Skull Crushers","Triceps Dips"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls","Standing Iso Dumbbell Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL","Clean Front Squat","Round the World","Kettlebell Side Lifts","Kettlebell Overhead March"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat","Bosu Round the World"]],["Core",["Kettlebell Dead Bug","Kneeling Woodchopper","Cable Oblique Extensions","Seated Linear Leg Lift"]]];
 
 export const guideFor = (name: string): Guide | null => GUIDES[name] ?? null;
 

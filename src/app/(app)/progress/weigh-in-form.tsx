@@ -15,14 +15,13 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
   }, { error: null });
 
   return (
-    <form action={action} className="card" style={{ padding: "14px 16px", border: due ? "2px solid var(--ember)" : undefined }}>
+    <form action={action} className="card" style={{ padding: "16px 18px", border: due ? "2px solid var(--ember)" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-        <p className="lab" style={{ color: due ? "var(--rust)" : undefined }}>Weigh-in</p>
-        <p className="cap" style={{ fontSize: 12 }}>{label}</p>
+        <p className="sec" style={{ color: due ? "var(--rust)" : undefined }}>Weigh-in</p>
+        <p className="cap" style={{ fontSize: 14 }}>{label}</p>
       </div>
-      <p className="cap" style={{ marginTop: 4 }}>Mon, Wed and Fri mornings, after the bathroom, before you eat.</p>
       <input type="hidden" name="measured_on" value={today} />
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <label style={{ flexGrow: 1, position: "relative", display: "block" }}>
           <span className="sr-only">Weight in {unit(units)}</span>
           <input name="weight" inputMode="decimal" placeholder={placeholder} className="fld num"
@@ -32,7 +31,7 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
         <button type="submit" className="btn small" style={{ height: 48 }} disabled={pending}>{pending ? "…" : "Log"}</button>
       </div>
       {state.error ? <p className="err" style={{ marginTop: 8 }}>{state.error}</p> : null}
-      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--kingfisher-text)", fontWeight: 600 }}>Logged. Coach is writing your read.</p> : null}
+      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--kingfisher-text)", fontWeight: 600 }}>Logged.</p> : null}
     </form>
   );
 }

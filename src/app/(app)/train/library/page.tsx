@@ -10,6 +10,10 @@ export default async function LibraryPage() {
   const groups = LIBRARY_GROUPS
     .map(([g, names]) => ({ name: g, items: names.filter((n) => idByName.has(n)).map((n) => ({ id: idByName.get(n)!, name: n })) }))
     .filter((g) => g.items.length);
+  // Library exercises not placed in a section above still show, so nothing in the library is hidden.
+  const placed = new Set(LIBRARY_GROUPS.flatMap(([, names]) => names));
+  const more = [...idByName].filter(([n]) => !placed.has(n)).sort(([a], [b]) => a.localeCompare(b)).map(([name, id]) => ({ id, name }));
+  if (more.length) groups.push({ name: "More", items: more });
 
   return (
     <main className="screen">
