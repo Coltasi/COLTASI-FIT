@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { IconCheck, IconPlus } from "@/components/icons";
+import { IconCheck, IconPlus, IconPen } from "@/components/icons";
 import { Ring, Sheet, linkBtn } from "@/components/sheet";
 import { toKg, unit, w, type Units } from "@/lib/units";
 import { fmtShort } from "@/lib/dates";
@@ -11,7 +11,7 @@ import { GUIDES } from "@/lib/exercise-guides";
 import type { Candidate, LastTime } from "@/lib/data";
 import { exerciseKey } from "@/lib/exercise-match";
 import { lastLine, searchCandidates } from "@/components/exercise-search";
-import { addLifts, addOwed, addSet, dropOwed, finishSession, saveSet, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
+import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, saveSet, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
 import { CheckInCard } from "./check-in-card";
 import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
 
@@ -29,6 +29,8 @@ type Session = {
   id: string; kind: string; title: string;
   warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
   finisher: boolean; finisher_done: boolean;
+  /** A finished workout reopened to fix it: Save keeps its date, Cancel puts it back. */
+  editing?: boolean;
 };
 
 const WARMUP_LABEL: Record<string, string> = { stairs: "Stairs", elliptical: "Elliptical", treadmill: "Treadmill", rower: "Rower" };
@@ -73,9 +75,11 @@ function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null
   );
 }
 
-export function SessionView({ session, exercises: initial, candidates, owed: initialOwed, initialOpen, units }: {
+export function SessionView({ session, exercises: initial, candidates, owed: initialOwed, initialOpen, units, checkIn }: {
   session: Session; exercises: SEx[]; candidates: Candidate[]; owed: Owed[]; initialOpen: string | null; units: Units;
+  checkIn?: { feel: string | null; pains: string[]; notes: string | null };
 }) {
+  const editing = !!session.editing;
   const router = useRouter();
   const [exs, setExs] = useState(initial);
   const [extras, setExtras] = useState({ warmup_done: session.warmup_done, finisher_done: session.finisher_done, cooldown_done: session.cooldown_done });
@@ -171,12 +175,19 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
     <main className="screen">
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <p className="lab" style={{ color: "var(--rust)" }}>In progress · {label}</p>
+          <p className="lab" style={{ color: "var(--rust)" }}>{editing ? "Editing" : "In progress"} · {label}</p>
           <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>{session.title}</h1>
           {session.kind === "custom" ? <p className="cap" style={{ marginTop: 4 }}>No plan. Build it as you go.</p> : null}
         </div>
         <Link href={`/train/session/${session.id}/edit`} className="btn2" style={{ marginTop: 6 }}>Edit</Link>
       </div>
+
+      {editing ? (
+        <div style={{ background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center", color: "var(--rust)" }}>
+          <IconPen size={18} />
+          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Editing a finished workout. Changes save to the original date.</p>
+        </div>
+      ) : null}
 
       {exs.length ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -222,14 +233,21 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       <button type="button" onClick={() => setSheet({ mode: "add" })} className="card flat"
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", border: "1.5px dashed var(--mist)", background: "transparent", cursor: "pointer", textAlign: "left", width: "100%", color: "var(--navy)" }}>
         <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconPlus /></span>
-        <span><span className="ln" style={{ display: "block" }}>Add exercise</span><span className="cap">{session.kind === "split" ? "Kept for next time" : "Add a lift to this session"}</span></span>
+        <span><span className="ln" style={{ display: "block" }}>Add exercise</span><span className="cap">{session.kind === "split" && !editing ? "Kept for next time" : "Add a lift to this session"}</span></span>
       </button>
       {session.kind === "custom" ? <p className="cap">Saves to History and Lifting Progress like any other session.</p> : null}
 
-      <CheckInCard formId="finish-form" />
+      <CheckInCard formId="finish-form" initial={editing ? checkIn : undefined} />
 
       <form id="finish-form" action={finishSession.bind(null, session.id)} className="dock">
-        <div><button className="btn" type="submit" disabled={pending}>Finish workout</button></div>
+        {editing ? (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="ghost" type="submit" formAction={cancelEdit.bind(null, session.id)} disabled={pending} style={{ flex: 1 }}>Cancel</button>
+            <button className="btn" type="submit" disabled={pending} style={{ flex: 2 }}>Save changes</button>
+          </div>
+        ) : (
+          <div><button className="btn" type="submit" disabled={pending}>Finish workout</button></div>
+        )}
       </form>
 
       {sheet ? (

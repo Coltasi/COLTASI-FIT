@@ -278,6 +278,31 @@ export async function moveExercise(sessionId: string, sessionExerciseId: string,
 export async function finishSession(sessionId: string, fd?: FormData) {
   const { supabase, user } = await ctx();
   const checkIn = parseCheckIn(fd);
+  // Saving an edit of a finished workout: keep its original finish time, don't touch next time's plan.
+  const { data: cur } = await supabase.from("sessions").select("edit_snapshot").eq("id", sessionId).maybeSingle();
+  const snap = (cur?.edit_snapshot ?? null) as { finished_at?: string | null } | null;
+  if (snap) {
+    const { data: saved } = await supabase
+      .from("sessions")
+      .update({ status: "done", finished_at: snap.finished_at ?? new Date().toISOString(), edit_snapshot: null, ...checkIn })
+      .eq("id", sessionId)
+      .eq("status", "in_progress")
+      .select("id")
+      .maybeSingle();
+    if (saved) {
+      // Coach re-reads the corrected workout, replacing its earlier read of it.
+      after(async () => {
+        try {
+          await supabase.from("coach_reads").delete().eq("kind", "session").eq("source_id", sessionId);
+          await writeCoachRead(supabase, { kind: "session", sourceId: sessionId });
+        } catch (e) {
+          console.error("Coach re-read failed", e);
+        }
+      });
+    }
+    revalidatePath("/", "layout");
+    redirect(`/train/session/${sessionId}?saved=1`);
+  }
   // Unticked sets stay in the session but never count as logged (only done sets feed history).
   // Only an open session can be finished. A second tap on Finish (or a retry) would otherwise
   // re-stamp the finish time and write a duplicate Coach read.
@@ -433,7 +458,27 @@ export async function saveFinisher(id: string, moves: { name: string; dose: stri
 
 export async function discardSession(sessionId: string) {
   const { supabase } = await ctx();
-  await supabase.from("sessions").delete().eq("id", sessionId).eq("status", "in_progress");
+  // Never deletes a finished workout that's open for editing (that's Cancel's job).
+  await supabase.from("sessions").delete().eq("id", sessionId).eq("status", "in_progress").is("edit_snapshot", null);
   revalidatePath("/", "layout");
   redirect("/train");
+}
+
+/** Reopens a finished workout so you can fix it. Cancel puts it back exactly as it was. */
+export async function reopenSession(sessionId: string) {
+  const { supabase } = await ctx();
+  await goToOpenSession(supabase); // only one workout can be open at a time
+  const { error } = await supabase.rpc("reopen_session", { p_session: sessionId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+  redirect(`/train/session/${sessionId}`);
+}
+
+/** Throws away edits to a finished workout. */
+export async function cancelEdit(sessionId: string) {
+  const { supabase } = await ctx();
+  const { error } = await supabase.rpc("cancel_session_edit", { p_session: sessionId });
+  if (error) throw new Error(error.message);
+  revalidatePath("/", "layout");
+  redirect(`/train/session/${sessionId}`);
 }

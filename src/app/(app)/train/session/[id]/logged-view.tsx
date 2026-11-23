@@ -1,21 +1,33 @@
 import { BackHeader } from "@/components/ui";
-import { IconCheck } from "@/components/icons";
+import { IconCheck, IconPen } from "@/components/icons";
+import { reopenSession } from "../../actions";
 import { fmtLong } from "@/lib/dates";
 import { unit, w, type Units } from "@/lib/units";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 
 /** Read-only view of a finished (or skipped) session: every logged set per lift. */
-export function LoggedView({ title, date, status, units, lifts, checkIn }: {
-  title: string; date: string; status: string; units: Units;
+export function LoggedView({ id, saved, title, date, status, units, lifts, checkIn }: {
+  id: string; saved?: boolean; title: string; date: string; status: string; units: Units;
   checkIn?: { feel: string | null; pains: string[]; notes: string | null };
   lifts: { id: string; name: string; skipped: string | null; skill: boolean; sets: { weight_kg: number | null; reps: number | null }[] }[];
 }) {
   const logged = lifts.filter((l) => l.sets.length);
   const skipped = lifts.filter((l) => !l.sets.length && l.skipped);
+  const missed = lifts.filter((l) => !l.sets.length && !l.skipped);
   return (
     <main className="screen">
-      <BackHeader href="/train/history" label="History" eyebrow={`Logged · ${fmtLong(date)}`} title={title} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <BackHeader href="/train/history" label="History" eyebrow={`Logged · ${fmtLong(date)}`} title={title} />
+        {status === "done" ? (
+          <form action={reopenSession.bind(null, id)}>
+            <button type="submit" className="btn2" style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <IconPen size={14} />Edit
+            </button>
+          </form>
+        ) : null}
+      </div>
+      {saved ? <p className="cap" style={{ color: "var(--rust)", fontWeight: 600 }}>Changes saved. Coach will re-read this workout.</p> : null}
       {status === "skipped" ? <p className="cap">This session was skipped. Nothing was logged.</p> : null}
       {status !== "skipped" && !logged.length ? <p className="cap">No sets were ticked in this session.</p> : null}
       {logged.map((l) => (
@@ -44,6 +56,17 @@ export function LoggedView({ title, date, status, units, lifts, checkIn }: {
             </div>
           ) : null}
           {checkIn.notes ? <p className="cap" style={{ whiteSpace: "pre-wrap", color: "var(--navy)" }}>{checkIn.notes}</p> : null}
+        </div>
+      ) : null}
+      {missed.length ? (
+        <div className="card clip" style={{ borderStyle: "dashed" }}>
+          {missed.map((l) => (
+            <div key={l.id} className="row">
+              <span style={{ width: 22, height: 22, borderRadius: "50%", border: "1.5px solid var(--mist)", flexShrink: 0 }} />
+              <p className="ln" style={{ flexGrow: 1, color: "var(--muted)" }}>{l.name}</p>
+              <span className="tag neutral">Not logged</span>
+            </div>
+          ))}
         </div>
       ) : null}
       {skipped.length ? (

@@ -11,7 +11,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
   const [{ data: s }, candidates] = await Promise.all([
     supabase
       .from("sessions")
-      .select("id, title, status, session_exercises(id, position, target_sets, rep_range, exercises(name), session_sets(done))")
+      .select("id, title, status, edit_snapshot, session_exercises(id, position, target_sets, rep_range, exercises(name), session_sets(done))")
       .eq("id", id)
       .single(),
     getCandidates(supabase),
@@ -23,7 +23,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
     <main className="screen">
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
         <div>
-          <p className="lab">{s.title} · in progress</p>
+          <p className="lab" style={s.edit_snapshot ? { color: "var(--rust)" } : undefined}>{s.title} · {s.edit_snapshot ? "editing" : "in progress"}</p>
           <h1 className="disp" style={{ fontSize: 28, marginTop: 2 }}>Edit lifts</h1>
         </div>
         <Link href={`/train/session/${s.id}`} className="btn small" style={{ marginTop: 6 }}>Done</Link>
@@ -62,9 +62,11 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
 
       <AddExerciseRow sessionId={s.id} candidates={candidates} units={units} />
 
-      <form action={discardSession.bind(null, s.id)} style={{ marginTop: 8 }}>
-        <button type="submit" className="ghost" style={{ color: "var(--rust)" }}>Discard this session</button>
-      </form>
+      {s.edit_snapshot ? null : (
+        <form action={discardSession.bind(null, s.id)} style={{ marginTop: 8 }}>
+          <button type="submit" className="ghost" style={{ color: "var(--rust)" }}>Discard this session</button>
+        </form>
+      )}
     </main>
   );
 }
