@@ -37,6 +37,7 @@ const WARMUP_LABEL: Record<string, string> = { stairs: "Stairs", elliptical: "El
 const WARMUP_KEYS = Object.keys(WARMUP_LABEL);
 const isDone = (e: SEx) => !!e.skipped || (e.sets.length > 0 && e.sets.every((s) => s.done));
 const SKIP_REASONS: SkipReason[] = ["sore", "equipment", "time"];
+const actBtn: CSSProperties = { flex: 1, height: 48, fontSize: 16, borderRadius: 12, textDecoration: "none" };
 const rowBtn: CSSProperties = { width: "100%", background: "none", borderLeft: 0, borderRight: 0, borderBottom: 0, textAlign: "left", cursor: "pointer" };
 
 function Dot({ done, dashed }: { done: boolean; dashed?: boolean }) {
@@ -491,12 +492,12 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
         <h2 className="disp" style={{ fontSize: 22 }}>{ex.name}</h2>
         {ex.coach ? <span className={`tag ${ex.coach.tone === "up" ? "blue" : "ember"}`} title="Coach's call for today">{ex.coach.text}</span> : null}
       </div>
-      <p className="cap" style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "baseline", marginTop: 2 }}>
-        {ex.plan}
-        {logged || ex.skill ? null : <button type="button" onClick={onSwap} style={linkBtn}>Swap</button>}
-        {logged ? null : <button type="button" onClick={onSkip} style={linkBtn}>Skip</button>}
-        <Link href={`/train/library/${ex.exerciseId}?from=${sessionId}`} style={{ fontWeight: 600 }}>How to</Link>
-      </p>
+      <p className="cap" style={{ marginTop: 2 }}>{ex.plan}</p>
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        {logged || ex.skill ? null : <button type="button" className="btn2" onClick={onSwap} style={actBtn}>Swap</button>}
+        {logged ? null : <button type="button" className="btn2" onClick={onSkip} style={actBtn}>Skip</button>}
+        <Link href={`/train/library/${ex.exerciseId}?from=${sessionId}`} className="btn2" style={actBtn}>How to</Link>
+      </div>
       {ex.skill ? <p style={{ marginTop: 6 }}><span className="tag cream">Skill · warm-up</span></p> : null}
       {ex.subFor ? <p style={{ marginTop: 6 }}><span className="tag ember">Swapped in for {ex.subFor}</span></p> : null}
       {ex.last ? (
