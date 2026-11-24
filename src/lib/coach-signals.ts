@@ -4,7 +4,10 @@
  * Pure functions, no database access, so they can be checked against real data offline.
  */
 
-export type SetRow = { weight_kg: number | null; reps: number | null };
+/** effort: how hard the set felt, if it was rated (easy = 3+ reps left, hard = 1-2, failed = 0). */
+import { isBosu, isGetUp } from "./placement";
+
+export type SetRow = { weight_kg: number | null; reps: number | null; effort?: "easy" | "hard" | "failed" | null };
 export type Perf = { date: string; sets: SetRow[] };
 export type LiftInput = {
   name: string;
@@ -53,7 +56,7 @@ function working(sets: SetRow[], bodyweight: boolean) {
   return sets.filter((s) => (s.reps ?? 0) > 0 && (bodyweight || Number(s.weight_kg ?? 0) > 0));
 }
 
-type Summary = { date: string; top: number | null; reps: number[]; repsAtTop: number; hitTop: boolean; score: number };
+type Summary = { date: string; top: number | null; reps: number[]; repsAtTop: number; hitTop: boolean; score: number; allEasy: boolean; anyHard: boolean };
 
 function summarise(p: Perf, bodyweight: boolean, range: string | null): Summary | null {
   const ws = working(p.sets, bodyweight);
@@ -65,7 +68,10 @@ function summarise(p: Perf, bodyweight: boolean, range: string | null): Summary 
     const r = rangeForSet(range, i);
     return r != null && (s.reps as number) >= r.hi;
   });
-  return { date: p.date, top, reps, repsAtTop, hitTop, score: (top ?? 0) * 1000 + repsAtTop };
+  const rated = ws.filter((s) => s.effort);
+  const allEasy = rated.length > 0 && rated.every((s) => s.effort === "easy");
+  const anyHard = ws.some((s) => s.effort === "hard" || s.effort === "failed");
+  return { date: p.date, top, reps, repsAtTop, hitTop, score: (top ?? 0) * 1000 + repsAtTop, allEasy, anyHard };
 }
 
 const STEP: Record<string, number> = { dumbbell: 2, barbell: 2.5, cable: 2.5, machine: 2.5 };
@@ -98,8 +104,17 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
   let call: Call = "hold";
   let nextKg: number | null = null;
   let stalledFor = 0;
+  /** Why it's going up, when it isn't the usual "hit the top of the range twice". */
+  let upWhy: "easy" | "flat" | null = null;
+  let flatFor = 0;
+  // Balance work (Bosu, Turkish Get-Ups) is about control, not grinding reps: no "go heavier" pushes from effort.
+  const balance = isBosu(l.name) || isGetUp(l.name);
+  // Rated Easy two sessions running: the weight is too light, whatever the reps say.
+  const easyUp = prev && !bodyweight && !balance && last.allEasy && prev.allEasy ? stepUp(last.top as number, l.modality, kettlebells) : null;
   if (!prev) call = "new";
-  else if (last.hitTop && prev.hitTop && last.top === prev.top) {
+  else if (easyUp != null && !(last.hitTop && prev.hitTop && last.top === prev.top)) {
+    call = "up"; upWhy = "easy"; nextKg = easyUp;
+  } else if (last.hitTop && prev.hitTop && last.top === prev.top) {
     call = "up";
     nextKg = bodyweight ? null : stepUp(last.top as number, l.modality, kettlebells);
     if (!bodyweight && nextKg == null) call = "hold"; // already on the heaviest kettlebell
@@ -109,11 +124,22 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
       if (S[i].score <= Math.max(...S.slice(0, i).map((s) => s.score))) stalledFor++;
       else break;
     }
-    if (stalledFor >= 3) {
+    // Same weight and the same reps on every set, session after session, with no set rated Hard:
+    // that's stopping at a number, not at your limit. Go heavier instead of backing off.
+    const same = (a: Summary, b: Summary) => a.top === b.top && a.reps.length === b.reps.length && a.reps.every((r, i) => r === b.reps[i]);
+    for (let i = S.length - 1; i >= 1 && same(S[i], S[i - 1]); i--) flatFor = flatFor ? flatFor + 1 : 2;
+    const flatUp = !bodyweight && !balance && flatFor >= 3 && new Set(last.reps).size === 1
+      && !S.slice(-flatFor).some((x) => x.anyHard) ? stepUp(last.top as number, l.modality, kettlebells) : null;
+    if (flatUp != null) {
+      call = "up"; upWhy = "flat"; nextKg = flatUp; stalledFor = 0;
+    } else if (stalledFor >= 3) {
       call = "back_off";
       nextKg = bodyweight ? null : stepDown(last.top as number, l.modality, kettlebells);
     } else stalledFor = 0;
   }
+
+  // Balance work never gets a "go heavier" push: control comes first, and heavy Bosu work tires the stabilisers.
+  if (balance && call === "up") { call = "hold"; nextKg = null; upWhy = null; }
 
   const repsTxt = last.reps.join(", ");
   const w = last.top != null ? kg(last.top) : "bodyweight";
@@ -126,6 +152,10 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
     line = bodyweight
       ? `${l.name}: ready to add reps, but ${easeWhy === "sick" ? "you're under the weather" : "sleep says ease off"}. Repeat ${repsTxt} for now.`
       : `${l.name}: ready for ${kg(nextKg!)}, but ${easeWhy === "sick" ? "you're under the weather" : "sleep says ease off"}. Stay at ${w} until ${easeWhy === "sick" ? "you're feeling better" : "you've had a good night"}.`;
+  } else if (call === "up" && upWhy === "easy") {
+    line = `${l.name}: you rated it Easy two sessions running. Go to ${kg(nextKg!)} on set 1.`;
+  } else if (call === "up" && upWhy === "flat") {
+    line = `${l.name}: same ${w} × ${last.reps[0]} on every set for ${flatFor} sessions. Go to ${kg(nextKg!)} and fight for the reps.`;
   } else if (call === "up") {
     line = bodyweight
       ? `${l.name}: go up. Add 2 reps to every set, or add weight. You hit ${target} two sessions running.`
@@ -134,6 +164,8 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
     line = bodyweight
       ? `${l.name}: no progress in ${stalledFor} sessions. Drop a set and slow the tempo, or swap it for a similar move.`
       : `${l.name}: no progress in ${stalledFor} sessions. Drop to ${kg(nextKg!)} and build back to ${target}, or swap it for a similar lift.`;
+  } else if (balance && call === "hold") {
+    line = `${l.name}: keep it smooth and controlled at ${w}. Balance work is about control, not load.`;
   } else if (call === "new") {
     line = `${l.name}: first time logged at ${w} (${repsTxt}). Repeat it and aim for ${target}.`;
   } else {
@@ -141,6 +173,9 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
       ? `${l.name}: aim for ${target}. Last time ${repsTxt}.`
       : `${l.name}: stay at ${w}, aim for ${target}. Last time ${repsTxt}${diff}.`;
   }
+  // First working set way above the range (e.g. 12 reps on a 4–6 lift) is a warm-up, not a working set.
+  const r0 = rangeForSet(range, 0);
+  if (r0 && last.reps[0] != null && last.reps[0] >= r0.hi + 3) line += ` Start set 1 inside ${r0.lo === r0.hi ? r0.lo : `${r0.lo}–${r0.hi}`} reps.`;
   return { name: l.name, call, bodyweight, repRange: range, top: last.top, reps: last.reps, change, nextKg, stalledFor, line };
 }
 

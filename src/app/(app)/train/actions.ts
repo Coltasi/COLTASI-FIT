@@ -176,8 +176,17 @@ export async function saveSet(setId: string, weightKg: number | null, reps: numb
   weightKg = kg; reps = r;
   const { error } = await supabase
     .from("session_sets")
-    .update({ weight_kg: weightKg, reps, done, done_at: done ? new Date().toISOString() : null })
+    // Unticking a set also clears how hard it felt.
+    .update({ weight_kg: weightKg, reps, done, done_at: done ? new Date().toISOString() : null, ...(done ? {} : { effort: null }) })
     .eq("id", setId);
+  if (error) throw new Error(error.message);
+}
+
+/** How hard a set felt, tapped right after ticking it. null clears it. */
+export async function saveSetEffort(setId: string, effort: "easy" | "hard" | "failed" | null) {
+  const { supabase } = await ctx();
+  const e = effort === "easy" || effort === "hard" || effort === "failed" ? effort : null;
+  const { error } = await supabase.from("session_sets").update({ effort: e }).eq("id", setId);
   if (error) throw new Error(error.message);
 }
 
@@ -262,6 +271,19 @@ export async function moveExercise(sessionId: string, sessionExerciseId: string,
   [list[i], list[j]] = [list[j], list[i]];
   await Promise.all(list.map((r, k) => supabase.from("session_exercises").update({ position: k + 1 }).eq("id", r.id)));
   revalidatePath(`/train/session/${sessionId}/edit`);
+  revalidatePath(`/train/session/${sessionId}`);
+}
+
+/** Moves a lift to sit right after another one (e.g. loaded Bosu work after the last heavy lift). */
+export async function moveExerciseAfter(sessionId: string, sessionExerciseId: string, afterId: string) {
+  const { supabase } = await ctx();
+  const { data } = await supabase.from("session_exercises").select("id, position").eq("session_id", sessionId).order("position");
+  const list = (data ?? []) as { id: string; position: number }[];
+  const moving = list.find((r) => r.id === sessionExerciseId);
+  if (!moving || !list.some((r) => r.id === afterId) || sessionExerciseId === afterId) return;
+  const rest = list.filter((r) => r.id !== sessionExerciseId);
+  rest.splice(rest.findIndex((r) => r.id === afterId) + 1, 0, moving);
+  await Promise.all(rest.map((r, k) => (r.position === k + 1 ? null : supabase.from("session_exercises").update({ position: k + 1 }).eq("id", r.id))));
   revalidatePath(`/train/session/${sessionId}`);
 }
 

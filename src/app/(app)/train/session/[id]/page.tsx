@@ -5,6 +5,7 @@ import { LoggedView } from "./logged-view";
 import { sleepSignal, type LiftSignal, type Night } from "@/lib/coach-signals";
 import { liftChange } from "@/components/coach-plan";
 import { getOwed, owedFor } from "@/lib/owed";
+import { isSetEffort } from "@/lib/set-effort";
 import { gradeSession, liftOutcome, type LiftLike } from "@/lib/effort";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
@@ -12,7 +13,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const { supabase, units, today } = await getContext();
   const { data: s } = await supabase
     .from("sessions")
-    .select("id, kind, title, status, session_date, feel, pain_areas, notes, effort, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done))")
+    .select("id, kind, title, status, session_date, feel, pain_areas, notes, effort, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done, effort))")
     .eq("id", id)
     .single();
   if (!s) notFound();
@@ -23,6 +24,20 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     const { data: rd } = await supabase.from("coach_reads").select("signals").eq("kind", "session").eq("source_id", s.id).order("created_at", { ascending: false }).limit(1);
     const sigLifts = ((rd?.[0]?.signals as any)?.lifts ?? []) as LiftLike[];
     const verdict = gradeSession(sigLifts, ses.filter((x) => x.skipped_reason && !x.skill).length);
+    // Hard sets across this session's week (Sunday to Saturday), finished workouts only.
+    const d = new Date(s.session_date + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+    const weekStart = d.toISOString().slice(0, 10);
+    d.setUTCDate(d.getUTCDate() + 6);
+    const weekEnd = d.toISOString().slice(0, 10);
+    const { count: weekHard } = await supabase
+      .from("session_sets")
+      .select("id, session_exercises!inner(sessions!inner(session_date, status))", { count: "exact", head: true })
+      .eq("done", true)
+      .in("effort", ["hard", "failed"])
+      .eq("session_exercises.sessions.status", "done")
+      .gte("session_exercises.sessions.session_date", weekStart)
+      .lte("session_exercises.sessions.session_date", weekEnd);
     const outcomeByName = new Map((sigLifts as (LiftLike & { name?: string })[]).map((l) => [String(l.name ?? "").toLowerCase(), liftOutcome(l)]));
     return (
       <LoggedView
@@ -33,6 +48,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
         status={s.status}
         units={units}
         verdict={verdict}
+        weekHard={weekHard ?? 0}
         checkIn={{ feel: s.feel ?? null, pains: s.pain_areas ?? [], notes: s.notes ?? null, effort: s.effort ?? null }}
         lifts={ses.map((x) => ({
           id: x.id,
@@ -41,7 +57,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
           skill: !!x.skill,
           outcome: outcomeByName.get((x.exercises?.name ?? "").toLowerCase()) ?? null,
           sets: ((x.session_sets ?? []) as any[]).filter((z) => z.done).sort((a, b) => a.set_no - b.set_no)
-            .map((z) => ({ weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps })),
+            .map((z) => ({ weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, effort: isSetEffort(z.effort) ? z.effort : null })),
         }))}
       />
     );
@@ -84,7 +100,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     coach: coachFor(x.exercises?.name ?? ""),
     sets: ((x.session_sets ?? []) as any[])
       .sort((a, b) => a.set_no - b.set_no)
-      .map((z) => ({ id: z.id, set_no: z.set_no, weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, done: z.done })),
+      .map((z) => ({ id: z.id, set_no: z.set_no, weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, done: z.done, effort: isSetEffort(z.effort) ? z.effort : null })),
   }));
 
   // Lifts offered in the swap/add sheet: one per exercise (synonyms merged), with your latest history of it.

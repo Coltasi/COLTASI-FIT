@@ -36,6 +36,9 @@ const PHRASES: [RegExp, string][] = [
   [/\bface ?pulls?\b/g, "facepull"],
   [/\bskull ?crushers?\b/g, "skullcrusher"],
   [/\bhip ?thrusts?\b/g, "hipthrust"],
+  // Flat-back, glute-led 45° back extension = the 45-Degree Hip Hinge (not the spine-rounding version).
+  [/\b(?:glute[- ]?focused )?45[- ]?(?:degree|deg|°)? ?(?:hip ?hinges?|back ?extensions?)\b/g, "45degree hiphinge"],
+  [/\bglute[- ]?focused back ?extensions?\b/g, "45degree hiphinge"],
 ];
 
 const NO_SINGULAR = new Set(["biceps", "triceps", "press", "glutes", "ab"]);
