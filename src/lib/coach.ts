@@ -71,7 +71,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     supabase.from("sessions").select("day_id, session_date").eq("status", "done").eq("kind", "split").not("day_id", "is", null).order("session_date", { ascending: false }).limit(200),
     fetchAll<any>((a, b) => supabase
       .from("session_exercises")
-      .select("id, exercise_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
+      .select("id, exercise_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done, effort)")
       .eq("sessions.status", "done")
       .order("id")
       .range(a, b)),
@@ -85,7 +85,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   const perfs = new Map<string, Perf[]>();
   for (const r of [...history].sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? -1 : 1))) {
     const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no)
-      .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps }));
+      .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps, effort: s.effort ?? null }));
     if (!sets.length) continue;
     const k = keyOf(r.exercise_id);
     if (!perfs.has(k)) perfs.set(k, []);

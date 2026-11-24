@@ -6,20 +6,27 @@ import { unit, w, type Units } from "@/lib/units";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 import { EffortTag } from "@/components/effort";
 import { EFFORT_LABEL, effortCallout, isEffort, type Effort, type Verdict } from "@/lib/effort";
+import { isHardSet, SET_EFFORT_LABEL, type SetEffort } from "@/lib/set-effort";
 import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 
 /** Read-only view of a finished (or skipped) session: every logged set per lift. */
-export function LoggedView({ id, saved, title, date, status, units, lifts, checkIn, verdict }: {
+export function LoggedView({ id, saved, title, date, status, units, lifts, checkIn, verdict, weekHard = 0 }: {
   id: string; saved?: boolean; title: string; date: string; status: string; units: Units;
   checkIn?: { feel: string | null; pains: string[]; notes: string | null; effort?: string | null };
   verdict?: Verdict | null;
-  lifts: { id: string; name: string; skipped: string | null; skill: boolean; outcome?: 1 | 0 | -1 | null; sets: { weight_kg: number | null; reps: number | null }[] }[];
+  /** Hard + failed sets across this workout's week (Sunday first). */
+  weekHard?: number;
+  lifts: { id: string; name: string; skipped: string | null; skill: boolean; outcome?: 1 | 0 | -1 | null; sets: { weight_kg: number | null; reps: number | null; effort?: SetEffort | null }[] }[];
 }) {
   const logged = lifts.filter((l) => l.sets.length);
   const skipped = lifts.filter((l) => !l.sets.length && l.skipped);
   const missed = lifts.filter((l) => !l.sets.length && !l.skipped);
   const setCount = logged.reduce((n, l) => n + l.sets.length, 0);
   const planned = lifts.length;
+  const working = logged.filter((l) => !l.skill).flatMap((l) => l.sets);
+  const hardSets = working.filter((z) => isHardSet(z.effort)).length;
+  const failedSets = working.filter((z) => z.effort === "failed").length;
+  const rated = working.some((z) => z.effort);
   const mine: Effort | null = isEffort(checkIn?.effort) ? checkIn.effort : null;
   const callout = status === "done" ? effortCallout(mine, verdict ?? null, checkIn?.feel ?? null) : null;
 
@@ -51,6 +58,21 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
 
       {status === "done" ? (
         <>
+          <div className="tiles">
+            <div className="tile" style={{ background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
+              <span className="big" style={{ fontSize: 40 }}>{rated ? hardSets : "–"}</span>
+              <span style={{ fontSize: 17, fontWeight: 600 }}>hard sets</span>
+            </div>
+            <div className="tile">
+              <span className="big" style={{ fontSize: 40, color: "var(--rust)" }}>{rated ? failedSets : "–"}</span>
+              <span style={{ fontSize: 17, fontWeight: 600 }}>to failure</span>
+            </div>
+          </div>
+          <div className="tile" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: "16px 18px" }}>
+            <span style={{ fontSize: 17, fontWeight: 500 }}>This week</span>
+            <span className="big" style={{ fontSize: 22, marginTop: 0 }}>{weekHard} hard {weekHard === 1 ? "set" : "sets"}</span>
+          </div>
+          {!rated ? <p className="cap">No sets were rated in this workout. Tap Easy, Hard or Failed after each set next time.</p> : null}
           <div className="tiles">
             <div className="tile"><span className="lab">Lifts logged</span><span className="big">{logged.length}/{planned}</span><span className="cap">{skipped.length ? `${skipped.length} skipped` : missed.length ? `${missed.length} not logged` : "All done"}</span></div>
             <div className="tile"><span className="lab">Improved</span><span className="big" style={{ color: verdict?.better ? "var(--jade)" : undefined }}>{verdict ? verdict.better : "–"}</span><span className="cap">{verdict ? `of ${verdict.compared} compared` : "Not enough history"}</span></div>
@@ -90,12 +112,13 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
                     <IconDown style={{ color: "var(--stone)", flexShrink: 0 }} />
                   </summary>
                   <div className="card" style={{ marginTop: 10, padding: "8px 16px" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr) minmax(0,1fr)", gap: "8px 8px", fontSize: 16 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "40px minmax(0,1fr) minmax(0,1fr) 72px", gap: "8px 8px", fontSize: 16, alignItems: "center" }}>
                       <span className="lab">Set</span>
                       <span className="lab" style={{ textAlign: "right" }}>{l.skill ? "" : `Weight (${unit(units)})`}</span>
                       <span className="lab" style={{ textAlign: "right" }}>{l.skill ? "Seconds" : "Reps"}</span>
+                      <span className="lab" style={{ textAlign: "right" }}>Effort</span>
                       {l.sets.map((z, i) => (
-                        <Row key={i} n={i + 1} kg={l.skill ? "" : z.weight_kg ? w(z.weight_kg, units) : "BW"} reps={z.reps == null ? "?" : String(z.reps)} />
+                        <Row key={i} n={i + 1} kg={l.skill ? "" : z.weight_kg ? w(z.weight_kg, units) : "BW"} reps={z.reps == null ? "?" : String(z.reps)} effort={z.effort ?? null} />
                       ))}
                     </div>
                   </div>
@@ -135,12 +158,13 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
   );
 }
 
-function Row({ n, kg, reps }: { n: number; kg: string; reps: string }) {
+function Row({ n, kg, reps, effort }: { n: number; kg: string; reps: string; effort: SetEffort | null }) {
   return (
     <>
       <span className="num" style={{ color: "var(--muted)" }}>{n}</span>
       <span className="num" style={{ textAlign: "right" }}>{kg}</span>
       <span className="num" style={{ textAlign: "right" }}>{reps}</span>
+      <span style={{ textAlign: "right" }}>{effort ? <span className={`tag ${effort === "easy" ? "neutral" : "ember"}`}>{SET_EFFORT_LABEL[effort]}</span> : null}</span>
     </>
   );
 }

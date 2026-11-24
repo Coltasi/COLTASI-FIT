@@ -11,11 +11,13 @@ import { GUIDES } from "@/lib/exercise-guides";
 import type { Candidate, LastTime } from "@/lib/data";
 import { exerciseKey } from "@/lib/exercise-match";
 import { lastLine, searchCandidates } from "@/components/exercise-search";
-import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, saveSet, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
+import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, moveExerciseAfter, saveSet, saveSetEffort, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
 import { CheckInCard } from "./check-in-card";
+import { GRIND_CUE, SET_EFFORTS, SET_EFFORT_LABEL, isHardSet, type SetEffort } from "@/lib/set-effort";
+import { FINISHER_CUE, PRIMER_CUE, balanceRoles, type Role } from "@/lib/placement";
 import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
 
-export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean };
+export type SSet = { id: string; set_no: number; weight_kg: number | null; reps: number | null; done: boolean; effort?: SetEffort | null };
 /** Coach's change for this lift next time (from the latest Coach read), shown as a tag and prefilled on set 1. */
 export type CoachCall = { tone: "up" | "down"; text: string; kg: number | null };
 export type SEx = {
@@ -107,8 +109,16 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   // Set ticks save without refreshing other screens (keeps logging fast), so when you leave the
   // workout, drop the remembered tabs and show Today/History with the new sets.
   useEffect(() => () => router.refresh(), [router]);
+  // Balance work vs heavy lifts: primers before (no rating), loaded Bosu after (finisher).
+  const { roles, lastHeavyId } = balanceRoles(exs.map((e) => ({
+    id: e.id, name: e.name, skipped: e.skipped,
+    heaviestKg: Math.max(0, ...e.sets.filter((z) => z.done).map((z) => z.weight_kg ?? 0), e.last?.top ?? 0) || null,
+  })));
+  const lastHeavyName = exs.find((e) => e.id === lastHeavyId)?.name ?? null;
+  const rated = (e: SEx) => !e.skill && roles.get(e.id) !== "primer";
   const doneCount = exs.filter(isDone).length;
   const skippedCount = exs.filter((e) => e.skipped).length;
+  const hardCount = exs.filter(rated).reduce((n, e) => n + e.sets.filter((z) => z.done && isHardSet(z.effort)).length, 0);
 
   function skip(ex: SEx, reason: SkipReason | null) {
     setSkipFor(null);
@@ -140,7 +150,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
     setExs((prev) => {
       const next = prev.map((e) => (e.id !== exId ? e : { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }));
       const ex = next.find((e) => e.id === exId);
-      if (ex && isDone(ex) && patch.done) setOpenId(next.find((e) => !isDone(e))?.id ?? null);
+      // Working sets ask how hard they were, so move on once the last one is rated, not the moment it's ticked.
+      const finished = ex && isDone(ex) && (!rated(ex) ? patch.done : patch.effort != null && ex.sets.every((z) => z.effort));
+      if (finished) setOpenId(next.find((e) => !isDone(e))?.id ?? null);
       return next;
     });
   }
@@ -190,7 +202,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
           tag={sm.beat ? <span className="tag jade">↑ Beat last time</span> : undefined} />
       ); })()
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
-        tag={e.coach ? <CoachTag call={e.coach} /> : undefined}
+        tag={roles.get(e.id) === "misplaced" ? <span className="tag ember">Move after your heavy lifts</span> : e.coach ? <CoachTag call={e.coach} /> : undefined}
         sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
   const top: ReactNode[] = [
@@ -258,10 +270,23 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
 
       {open?.kind === "ex" ? (
         <ExerciseCard key={open.id} ex={open.ex} units={units} sessionId={session.id}
+          role={roles.get(open.ex.id) ?? null} lastHeavyName={lastHeavyName}
+          onMoveAfter={lastHeavyId ? () => start(async () => {
+            await moveExerciseAfter(session.id, open.ex.id, lastHeavyId);
+            setOpenId(exs.find((e) => !isDone(e) && e.id !== open.ex.id)?.id ?? null);
+            router.refresh();
+          }) : undefined}
           onSwap={() => setSheet({ mode: "swap", ex: open.ex })}
           onSkip={() => (open.ex.skill ? skip(open.ex, "time") : setSkipFor(open.ex))}
           onPatch={patchSet}
           onAddSet={(s) => setExs((prev) => prev.map((e) => (e.id === open.ex.id ? { ...e, sets: [...e.sets, s] } : e)))} />
+      ) : null}
+
+      {exs.some((e) => !e.skill) ? (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--navy)", color: "#fff", borderRadius: 18, padding: "16px 20px" }}>
+          <span style={{ fontSize: 17, fontWeight: 600 }}>Hard sets today</span>
+          <span className="disp" style={{ fontSize: 28, color: "#fff" }}>{hardCount}</span>
+        </div>
       ) : null}
 
       {bottom.length ? <div className="card clip">{bottom}</div> : null}
@@ -418,6 +443,10 @@ function summary(e: SEx, units: Units): { text: string; beat: boolean } {
   return { text: `${n} · top set ${w(top.weight_kg!, units)} ${unit(units)} × ${top.reps ?? "?"}`, beat };
 }
 
+/** Colours for a rated set: Easy stays quiet, Hard is terracotta, Failed is navy. */
+const EFFORT_BG: Record<SetEffort, string> = { easy: "var(--tint-neutral)", hard: "var(--rust)", failed: "var(--navy)" };
+const EFFORT_FG: Record<SetEffort, string> = { easy: "var(--navy)", hard: "#fff", failed: "#fff" };
+
 /** Bells you own (kg). Tap one to fill the current set's weight on kettlebell lifts. */
 const BELLS_KG = [8, 12, 16, 20, 24, 30];
 const isBellLift = (name: string) => /kettlebell|\bkb\b|goblet|swing|turkish|farmer|snatch|windmill|halo/i.test(name);
@@ -462,8 +491,10 @@ function rampRows(ex: SEx, units: Units): string[] {
   return rampSets(kg, units).map((r) => `${r.w} ${unit(units)} × ${r.reps}`);
 }
 
-function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet }: {
+function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, onSwap, onSkip, onPatch, onAddSet }: {
   ex: SEx; units: Units; sessionId: string;
+  /** Balance work's place in today's order (Bosu, Turkish Get-Up). */
+  role: Role; lastHeavyName: string | null; onMoveAfter?: () => void;
   onSwap: () => void;
   onSkip: () => void;
   onPatch: (exId: string, setId: string, patch: Partial<SSet>) => void;
@@ -474,7 +505,11 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
   );
   const [, start] = useTransition();
   const [flash, setFlash] = useState<string | null>(null);
+  /** The set whose "How hard was that?" buttons are showing. */
+  const [askFor, setAskFor] = useState<string | null>(null);
   const current = ex.sets.find((s) => !s.done)?.id;
+  /** Primers (and skill blocks) aren't meant to be hard, so they don't ask. */
+  const rates = !ex.skill && role !== "primer";
   const bells = !ex.skill && isBellLift(ex.name);
   const lastFor = (s: SSet) => ex.last?.sets[s.set_no - 1];
   const logged = ex.sets.some((s) => s.done);
@@ -500,8 +535,15 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
     const done = !s.done;
     if (done) setVals({ ...vals, [s.id]: { w: wStr, r: rStr } });
     if (done && beat(kg, reps, lastFor(s), units)) { setFlash(s.id); setTimeout(() => setFlash((f) => (f === s.id ? null : f)), 1400); }
-    onPatch(ex.id, s.id, { done, weight_kg: kg, reps });
+    onPatch(ex.id, s.id, { done, weight_kg: kg, reps, ...(done ? {} : { effort: null }) });
+    setAskFor(done && rates ? s.id : null);
     start(() => saveSet(s.id, kg, reps, done));
+  }
+
+  function rate(s: SSet, effort: SetEffort) {
+    setAskFor(null);
+    onPatch(ex.id, s.id, { effort });
+    start(() => saveSetEffort(s.id, effort));
   }
 
   const fld = (active: boolean, done: boolean): CSSProperties => ({
@@ -517,6 +559,20 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
         {ex.coach ? <span className={`tag ${ex.coach.tone === "up" ? "blue" : "ember"}`} title="Coach's call for today">{ex.coach.text}</span> : null}
       </div>
       <p className="cap" style={{ marginTop: 2 }}>{ex.plan}</p>
+      {role === "misplaced" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 12, background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px" }}>
+          <p style={{ fontSize: 17, fontWeight: 600, color: "var(--rust)", margin: 0 }}>
+            Loaded Bosu work tires the stabilisers your heavy lifts need. Do it after {lastHeavyName ?? "your heavy lifts"}.
+          </p>
+          {onMoveAfter ? <button type="button" className="btn2" onClick={onMoveAfter} style={{ height: 48, fontSize: 16 }}>Move after {lastHeavyName}</button> : null}
+        </div>
+      ) : ex.skill ? null : (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, borderRadius: 14, padding: "12px 14px",
+          background: role === "primer" ? "var(--tint-blue)" : "var(--tint-ember)", color: role === "primer" ? "var(--kingfisher-text)" : "var(--rust)" }}>
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L4 14h7l-1 8 9-12h-7z" /></svg>
+          <span style={{ fontSize: 17, fontWeight: 600 }}>{role === "primer" ? PRIMER_CUE : role === "finisher" ? FINISHER_CUE : GRIND_CUE}</span>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         {logged || ex.skill ? null : <button type="button" className="btn2" onClick={onSwap} style={actBtn}>Swap</button>}
         {logged ? null : <button type="button" className="btn2" onClick={onSkip} style={actBtn}>Skip</button>}
@@ -561,6 +617,33 @@ function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet 
               <button type="button" className={`chk${s.done ? " on" : ""}`} aria-pressed={s.done} aria-label={`Set ${s.set_no} done`} onClick={() => toggle(s)}>
                 {s.done ? <IconCheck size={18} /> : null}
               </button>
+              {s.done && rates ? (
+                askFor === s.id ? (
+                  <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 10, background: "var(--field)", border: "1.5px solid var(--navy)", borderRadius: 14, padding: 12 }}>
+                    <p className="ln" style={{ margin: 0 }}>How hard was set {s.set_no}?</p>
+                    <div role="group" aria-label={`How hard was set ${s.set_no}`} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
+                      {SET_EFFORTS.map((o) => (
+                        <button key={o.id} type="button" aria-pressed={s.effort === o.id} onClick={() => rate(s, o.id)}
+                          style={{ minHeight: 68, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", padding: "8px 4px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
+                            background: s.effort === o.id ? EFFORT_BG[o.id] : "#fff", color: s.effort === o.id ? EFFORT_FG[o.id] : o.id === "hard" ? "var(--rust)" : "var(--navy)",
+                            border: `2px solid ${o.id === "easy" ? "var(--line-strong)" : o.id === "hard" ? "var(--ember)" : "var(--navy)"}` }}>
+                          <span style={{ fontSize: 17, fontWeight: 700 }}>{o.label}</span>
+                          <span style={{ fontSize: 15 }}>{o.sub}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: -2 }}>
+                    <button type="button" onClick={() => setAskFor(s.id)} aria-label={s.effort ? `Set ${s.set_no} felt ${SET_EFFORT_LABEL[s.effort]}. Change` : `Rate set ${s.set_no}`}
+                      style={{ minHeight: 36, borderRadius: 999, padding: "4px 14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                        background: s.effort ? EFFORT_BG[s.effort] : "#fff", color: s.effort ? EFFORT_FG[s.effort] : "var(--muted)",
+                        border: s.effort ? "none" : "1.5px dashed var(--mist)" }}>
+                      {s.effort ? SET_EFFORT_LABEL[s.effort] : "How hard?"}
+                    </button>
+                  </div>
+                )
+              ) : null}
             </div>
           );
         })}
