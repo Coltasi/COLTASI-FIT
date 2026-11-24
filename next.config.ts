@@ -12,6 +12,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Tabs you've just visited are reused for 60 s instead of re-fetched, so switching back is instant.
+  // Anything you save (server actions call revalidatePath) clears this straight away.
+  experimental: { staleTimes: { dynamic: 60 } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

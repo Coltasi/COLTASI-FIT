@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { IconCheck, IconPlus, IconPen } from "@/components/icons";
 import { Ring, Sheet, linkBtn } from "@/components/sheet";
@@ -93,6 +93,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const [skipFor, setSkipFor] = useState<SEx | null>(null);
   const [sheet, setSheet] = useState<{ mode: "swap" | "add"; ex?: SEx } | null>(() => (session.kind === "custom" && !initial.length ? { mode: "add" } : null));
   const [pending, start] = useTransition();
+  // Set ticks save without refreshing other screens (keeps logging fast), so when you leave the
+  // workout, drop the remembered tabs and show Today/History with the new sets.
+  useEffect(() => () => router.refresh(), [router]);
   const doneCount = exs.filter(isDone).length;
   const skippedCount = exs.filter((e) => e.skipped).length;
 

@@ -6,7 +6,13 @@
 // Strategy:
 // - Same-origin static assets (hashed /_next/static/*, /icons/*, /brand/*,
 //   fonts, manifest, favicons) are cache-first with a background refresh.
-// - Page navigations (HTML) are network-first. Every successful page load is
+// - Opening one of the main tabs (FAST_PATHS) is stale-while-revalidate: the
+//   last saved copy shows instantly, a fresh copy is fetched in the background
+//   and saved, and once the page is up the app is told to refresh its data
+//   (client sends {type: "ready"}, worker answers {type: "refresh"}). This hides
+//   Vercel cold starts. Other pages (workout session, forms) stay network-first
+//   so they never start from old data.
+// - Other page navigations (HTML) are network-first. Every successful page load is
 //   saved under a normalized address (query string stripped, so the PWA's
 //   launch URL "/?source=pwa" and "/" share one entry). With no connection,
 //   or if the network hangs past NAV_TIMEOUT_MS while a cached copy exists,
@@ -23,11 +29,14 @@
 //
 // Bump CACHE_VERSION whenever this file's caching behavior changes, so old
 // caches get cleaned up on activate.
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const STATIC_CACHE = `coltasi-static-${CACHE_VERSION}`;
 const PAGE_CACHE = `coltasi-pages-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const NAV_TIMEOUT_MS = 6000;
+const FAST_PATHS = ["/", "/train", "/train/history", "/progress", "/progress/lifting", "/coach", "/food"];
+// Windows that were shown a saved copy and should refresh once they're up.
+const staleClients = new Set();
 const WARM_PATHS = ["/", "/train", "/train/choose", "/train/history", "/progress", "/progress/lifting", "/coach", "/sleep", "/settings"];
 const WARM_MIN_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -121,6 +130,25 @@ async function cachedPage(url) {
   return cache.match(pageKey(url), { ignoreSearch: true, ignoreVary: true });
 }
 
+function isFastPath(url) {
+  let path = new URL(url).pathname;
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  return FAST_PATHS.includes(path);
+}
+
+async function staleWhileRevalidateNavigation(event) {
+  const { request } = event;
+  const cached = await cachedPage(request.url);
+  if (!cached) return networkFirstNavigation(event);
+  if (event.resultingClientId) staleClients.add(event.resultingClientId);
+  event.waitUntil(
+    fetch(request)
+      .then((response) => (isCacheablePage(response) ? cachePage(request.url, response) : null))
+      .catch(() => {})
+  );
+  return cached;
+}
+
 async function networkFirstNavigation(event) {
   const { request } = event;
   const cached = await cachedPage(request.url);
@@ -187,6 +215,10 @@ self.addEventListener("message", (event) => {
   if (event.data && event.data.type === "warm") {
     event.waitUntil(warm());
   }
+  if (event.data && event.data.type === "ready" && event.source && staleClients.has(event.source.id)) {
+    staleClients.delete(event.source.id);
+    event.source.postMessage({ type: "refresh" });
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -197,7 +229,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirstNavigation(event));
+    event.respondWith(isFastPath(request.url) ? staleWhileRevalidateNavigation(event) : networkFirstNavigation(event));
     return;
   }
 
