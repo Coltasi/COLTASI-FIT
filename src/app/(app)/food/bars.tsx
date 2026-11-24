@@ -3,8 +3,8 @@ export function IntakeBars({ kcal, protein, targetKcal, targetProtein, compact }
   kcal: number; protein: number; targetKcal: number | null; targetProtein: number | null; compact?: boolean;
 }) {
   const rows = [
-    { label: "Calories", val: Math.round(kcal), target: targetKcal, unit: "", color: "var(--kingfisher)", over: "var(--ember)" },
-    { label: "Protein", val: Math.round(protein), target: targetProtein, unit: " g", color: "var(--lagoon)", over: "var(--lagoon)" },
+    { label: "Calories", val: Math.round(kcal), target: targetKcal, unit: "", color: "var(--kingfisher)", over: "var(--rust)" },
+    { label: "Protein", val: Math.round(protein), target: targetProtein, unit: " g", color: "var(--ember)", over: "var(--ember)" },
   ];
   return (
     <div style={{ display: "grid", gap: compact ? 8 : 12 }}>

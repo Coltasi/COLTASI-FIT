@@ -45,7 +45,7 @@ export function CheckInCard({ formId, initial }: { formId: string; initial?: { f
           <p className="lab" style={{ color: "var(--navy)" }}>Notes for Coach · optional</p>
           <p className="cap">{filled ? summary(feel, pains, notes) : "Sick, tired, or something niggling? Tell Coach."}</p>
         </div>
-        <span className="cap" style={{ color: "var(--kingfisher-text)", flexShrink: 0 }}>{open ? "Done" : filled ? "Edit" : "Add"}</span>
+        <span className="cap" style={{ color: "var(--ember-text)", flexShrink: 0 }}>{open ? "Done" : filled ? "Edit" : "Add"}</span>
       </button>
 
       {open ? (

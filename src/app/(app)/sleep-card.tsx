@@ -27,10 +27,10 @@ export function SleepCard({ night, logged, bars }: {
         {(logged?.flags ?? []).map((f) => <input key={f} type="hidden" name="flags" value={f} />)}
         {logged?.note ? <input type="hidden" name="note" value={logged.note} /> : null}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab" style={{ color: "var(--kingfisher-text)" }}>Log last night&apos;s sleep</p>
+          <p className="lab" style={{ color: "var(--ember-text)" }}>Log last night&apos;s sleep</p>
           <span style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
             <span className="cap" style={{ fontSize: 14 }}>{fmtDow(night)} night</span>
-            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -74,7 +74,7 @@ export function SleepCard({ night, logged, bars }: {
       ) : (
         <>
           <span className="num" style={{ fontSize: 22, marginTop: 2, color: "var(--muted)" }}>–</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--kingfisher-text)" }}>Log last night</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ember-text)" }}>Log last night</span>
         </>
       )}
       <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 6 }} aria-hidden>

@@ -89,7 +89,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
           {pickedSessions.map((s) => (
             <Link key={s.id} href={`/train/session/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--navy)" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: KIND[s.kind]?.color ?? "var(--kingfisher)" }} />
-              {fmtShort(s.date)} · {s.title}<span style={{ color: "var(--kingfisher-text)", marginLeft: "auto" }}>View ›</span>
+              {fmtShort(s.date)} · {s.title}<span style={{ color: "var(--ember-text)", marginLeft: "auto" }}>View ›</span>
             </Link>
           ))}
         </div>

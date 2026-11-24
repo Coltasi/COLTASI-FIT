@@ -222,5 +222,5 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" } as const;
+const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" } as const;
 const tile = { padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", font: "inherit", color: "var(--navy)" } as const;
