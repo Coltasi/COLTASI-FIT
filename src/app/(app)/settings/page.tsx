@@ -27,14 +27,14 @@ export default async function SettingsPage() {
           <Link href="/settings/profile" className="row" style={{ minHeight: 72, justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span className="disp" style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--navy)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{name.slice(0, 1).toUpperCase()}</span>
-              <div><p style={{ fontSize: 15, fontWeight: 600 }}>{name}</p><p className="cap">{user.email}</p></div>
+              <div><p style={{ fontSize: 16, fontWeight: 600 }}>{name}</p><p className="cap">{user.email}</p></div>
             </div>
             <IconChevron />
           </Link>
           <details className="row" style={{ display: "block" }}>
             <summary style={{ listStyle: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 32 }}>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>Manage household</span>
-              <span style={{ fontSize: 14, color: "var(--muted)" }}>{others.length ? `${others.length} other login${others.length > 1 ? "s" : ""}` : "just you"}</span>
+              <span style={{ fontSize: 16, fontWeight: 600 }}>Manage household</span>
+              <span style={{ fontSize: 15, color: "var(--muted)" }}>{others.length ? `${others.length} other login${others.length > 1 ? "s" : ""}` : "just you"}</span>
             </summary>
             <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
               {others.map((m) => <p key={m.id} className="cap">• {m.display_name ?? "Member"}</p>)}
@@ -43,11 +43,6 @@ export default async function SettingsPage() {
               </p>
             </div>
           </details>
-          <form action={signOut}>
-            <button type="submit" className="row" style={{ width: "100%", background: "none", borderLeft: 0, borderRight: 0, borderBottom: 0, textAlign: "left", cursor: "pointer", minHeight: 56 }}>
-              <span style={{ fontSize: 15, fontWeight: 600, color: "var(--rust)" }}>Sign out</span>
-            </button>
-          </form>
         </div>
       </div>
 
@@ -55,27 +50,29 @@ export default async function SettingsPage() {
         <SectionLabel>Profile &amp; units</SectionLabel>
         <div className="card clip">
           <Link href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Body stats</p><p className="cap">Height, sex, age, TDEE and targets</p></div>
+            <div><p style={{ fontSize: 16, fontWeight: 600 }}>Body stats</p><p className="cap">Height, sex, age, TDEE and targets</p></div>
             <IconChevron />
           </Link>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>Units</p>
+            <p style={{ fontSize: 16, fontWeight: 600 }}>Units</p>
             <UnitsToggle units={units} />
           </div>
         </div>
       </div>
 
       <div>
-        <SectionLabel>Program &amp; goals</SectionLabel>
+        <SectionLabel>Training &amp; nutrition goals</SectionLabel>
         <div className="card clip">
           {[
             ["Current phase", profile.phase ? profile.phase[0].toUpperCase() + profile.phase.slice(1) : "–"],
             ["Target rate", rate == null ? "Not set" : `${rate > 0 ? "+" : rate < 0 ? "−" : ""}${Math.abs(Number(rate))} kg/week`],
+            ["Calorie target", profile.target_kcal ? `${profile.target_kcal.toLocaleString("en-US")} kcal` : "Not set"],
+            ["Protein target", profile.protein_g ? `${profile.protein_g} g` : "Not set"],
             ["Kettlebells on hand", kbs.length ? `${Math.min(...kbs)} to ${Math.max(...kbs)} kg` : "None"],
           ].map(([l, v]) => (
             <Link key={l} href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-              <p style={{ fontSize: 15, fontWeight: 600 }}>{l}</p>
-              <span style={{ fontSize: 14, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>{v} <IconChevron /></span>
+              <p style={{ fontSize: 16, fontWeight: 600 }}>{l}</p>
+              <span style={{ fontSize: 15, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>{v} <IconChevron /></span>
             </Link>
           ))}
         </div>
@@ -86,32 +83,36 @@ export default async function SettingsPage() {
         <div className="card clip">
           <PushSettings />
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Daily sleep log</p><p className="cap">Every morning at {profile.sleep_time?.slice(0, 5) ?? "08:45"}</p></div>
+            <div><p style={{ fontSize: 16, fontWeight: 600 }}>Daily sleep log</p><p className="cap">Every morning at {profile.sleep_time?.slice(0, 5) ?? "08:45"}</p></div>
             <PrefToggle field="notify_sleep" on={profile.notify_sleep ?? true} label="Daily sleep log reminder" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Weigh-ins</p><p className="cap">Mon, Wed, Fri at {profile.weigh_in_time?.slice(0, 5) ?? "08:45"}</p></div>
+            <div><p style={{ fontSize: 16, fontWeight: 600 }}>Weigh-ins</p><p className="cap">Mon, Wed, Fri at {profile.weigh_in_time?.slice(0, 5) ?? "08:45"}</p></div>
             <PrefToggle field="notify_weigh_in" on={profile.notify_weigh_in} label="Weigh-in reminders" />
           </div>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <div><p style={{ fontSize: 15, fontWeight: 600 }}>Workout day</p><p className="cap">Split days at {profile.workout_time?.slice(0, 5) ?? "08:00"}</p></div>
+            <div><p style={{ fontSize: 16, fontWeight: 600 }}>Workout day</p><p className="cap">Split days at {profile.workout_time?.slice(0, 5) ?? "08:00"}</p></div>
             <PrefToggle field="notify_workout" on={profile.notify_workout} label="Workout day reminder" />
           </div>
         </div>
-        <p className="cap" style={{ marginTop: 8, marginLeft: 4 }}>Sleep and weigh-in reminders skip themselves if you have already logged. Workout day reminders are not live yet.</p>
+        <p className="cap" style={{ marginTop: 8, lineHeight: 1.45 }}>Sleep and weigh-in reminders skip themselves if you have already logged. Workout day reminders are saved but not sent yet (not built).</p>
       </div>
 
       <div>
-        <SectionLabel>Data</SectionLabel>
+        <SectionLabel>Data &amp; privacy</SectionLabel>
         <div className="card clip">
           <a href="/settings/export" className="row" style={{ minHeight: 56, justifyContent: "space-between" }} download>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>Export my data</p><IconChevron />
+            <p style={{ fontSize: 16, fontWeight: 600 }}>Export my data</p><IconChevron />
           </a>
           <div className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
-            <p style={{ fontSize: 15, fontWeight: 600 }}>About Coltasi Fit</p><span className="cap">v3</span>
+            <p style={{ fontSize: 16, fontWeight: 600 }}>About Coltasi Fit</p><span className="cap">v4</span>
           </div>
         </div>
       </div>
+
+      <form action={signOut} style={{ marginTop: 8 }}>
+        <button type="submit" className="ghost" style={{ color: "var(--crimson)" }}>Sign out</button>
+      </form>
     </main>
   );
 }

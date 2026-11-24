@@ -98,7 +98,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 16px", minHeight: 56 }}>
         <label htmlFor="f-day" className="ln" style={{ flexGrow: 1 }}>Scan date</label>
         <input id="f-day" type="date" name="scanned_on" value={day} max={today} required onChange={(e) => { setDay(e.target.value); setDayNote(null); }}
-          style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--field)", border: "1px solid transparent" }} />
+          style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--field)", border: "1px solid var(--line-strong)" }} />
       </div>
       {dayNote ? <p role="status" style={{ fontSize: 14, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
       {photos.map((p) => <input key={p.path} type="hidden" name="photo_path" value={p.path} />)}
@@ -136,7 +136,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
               onChange={(e) => { setProblems([]); const v = e.target.value.replace(",", "."); setVals((x) => ({ ...x, [f.name]: v })); setFilled((x) => ({ ...x, [f.name]: false })); }}
               style={{
                 width: 86, height: 40, borderRadius: 10, textAlign: "right", padding: "0 10px", fontSize: 16, color: "var(--navy)",
-                border: `1px solid ${filled[f.name] ? "var(--kingfisher)" : "transparent"}`, background: filled[f.name] ? "var(--tint-blue)" : "var(--field)",
+                border: `1px solid ${filled[f.name] ? "var(--kingfisher)" : "var(--line-strong)"}`, background: filled[f.name] ? "var(--tint-blue)" : "var(--field)",
               }} />
             <span className="cap" style={{ width: 36 }}>{f.unit}</span>
           </div>

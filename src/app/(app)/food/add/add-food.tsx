@@ -127,29 +127,37 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-          <p className="lab">Saved, one tap</p>
+          <h2 className="sec">Saved foods</h2>
           {saved.length ? <button type="button" onClick={() => setManage((m) => !m)} style={linkBtn}>{manage ? "Done" : "Edit"}</button> : null}
         </div>
         {saved.length ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="list">
             {saved.map((s) => (
-              <button key={s.id} type="button" className="chip" disabled={!!busy} onClick={() => tapSaved(s)}
-                style={manage ? { borderColor: "var(--rust)", color: "var(--rust)" } : undefined}>
-                {busy === `saved-${s.id}` ? "Logging…" : manage ? `× ${s.name}` : `${s.name} · ${s.kcal}`}
+              <button key={s.id} type="button" className="li" disabled={!!busy} onClick={() => tapSaved(s)}
+                aria-label={manage ? `Remove ${s.name} from saved foods` : `Log ${s.name}`}
+                style={{ width: "100%", background: "none", borderLeft: 0, borderRight: 0, borderTop: 0, textAlign: "left", cursor: "pointer", font: "inherit" }}>
+                <span style={{ flexGrow: 1, minWidth: 0 }}>
+                  <span className="t" style={{ display: "block", fontSize: 16, lineHeight: 1.3 }}>{s.name}</span>
+                  <span className="s" style={{ display: "block" }}>{busy === `saved-${s.id}` ? "Logging…" : `${Math.round(Number(s.protein_g))} g protein`}</span>
+                </span>
+                <span className="v">{s.kcal} kcal</span>
+                <span aria-hidden style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700,
+                  background: manage ? "var(--tint-crimson)" : "var(--tint-ember)", color: manage ? "var(--crimson)" : "var(--rust)" }}>{manage ? "×" : "+"}</span>
               </button>
             ))}
           </div>
         ) : (
-          <p className="cap" style={{ fontSize: 14 }}>Your shake and smoothie go here. Log one below and tick &ldquo;Save for one tap&rdquo;.</p>
+          <p className="cap">Your shake and smoothie go here. Log one below and tick &ldquo;Save for one tap&rdquo;.</p>
         )}
       </div>
 
+      <h2 className="sec" style={{ marginTop: 8 }}>Something new</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
-          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap" style={{ fontSize: 14 }}>Coach estimates it</span>
+          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates it</span>
         </button>
         <button type="button" className="card" disabled={!!busy} onClick={() => codeRef.current?.click()} style={tile}>
-          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap" style={{ fontSize: 14 }}>Packaged food</span>
+          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap">Packaged food</span>
         </button>
       </div>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
@@ -160,13 +168,13 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
         <div style={{ display: "flex", gap: 8 }}>
           <input id="desc" className="fld" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Chicken shawarma, half the rice" style={{ flexGrow: 1 }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onDescribe(); } }} />
-          <button type="button" className="btn2" disabled={!!busy} onClick={onDescribe}>Estimate</button>
+          <button type="button" className="btn2" disabled={!!busy} onClick={onDescribe} style={{ height: 50, whiteSpace: "nowrap" }}>Estimate</button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <input className="fld" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Barcode number" style={{ flexGrow: 1 }} />
-          <button type="button" className="btn2" disabled={!!busy || !code} onClick={() => findCode(code)}>Look up</button>
+          <button type="button" className="btn2" disabled={!!busy || !code} onClick={() => findCode(code)} style={{ height: 50, whiteSpace: "nowrap" }}>Look up</button>
         </div>
-        <button type="button" onClick={() => { setErr(null); setProduct(null); setDraft({ name: "", kcal: "", protein: "", source: "manual" }); }} style={{ ...linkBtn, alignSelf: "flex-start", fontSize: 14 }}>
+        <button type="button" onClick={() => { setErr(null); setProduct(null); setDraft({ name: "", kcal: "", protein: "", source: "manual" }); }} style={{ ...linkBtn, alignSelf: "flex-start", fontSize: 15, minHeight: 44 }}>
           Enter it yourself
         </button>
       </div>
@@ -193,7 +201,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
       {draft ? (
         <div className="card" style={{ padding: 16, display: "grid", gap: 12, border: "2px solid var(--lagoon)" }}>
           {draft.source === "photo" || draft.source === "text" ? (
-            <p style={{ fontSize: 14, display: "flex", gap: 8, alignItems: "flex-start" }}><CoachMark size={18} /><span>Estimate{draft.note ? `: ${draft.note}` : ""}. Adjust if it looks off.</span></p>
+            <p style={{ fontSize: 15, display: "flex", gap: 8, alignItems: "flex-start" }}><CoachMark size={18} /><span>Estimate{draft.note ? `: ${draft.note}` : ""}. Adjust if it looks off.</span></p>
           ) : null}
           <label style={{ display: "block" }}>
             <span className="flab">Name</span>

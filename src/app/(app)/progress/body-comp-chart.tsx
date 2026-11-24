@@ -10,16 +10,16 @@ export type CompPoint = { d: string; kg: number; src: "scan" | "weigh-in" };
 // Brand kit: Deep Navy, Kingfisher, Lagoon, Ember.
 const METRICS: { key: MetricKey; label: string; color: string; goodDown: boolean | null }[] = [
   { key: "weight", label: "Weight", color: "var(--navy)", goodDown: true },
-  { key: "fat", label: "Fat", color: "var(--ember)", goodDown: true },
-  { key: "muscle", label: "Muscle", color: "var(--kingfisher)", goodDown: false },
-  { key: "water", label: "Water", color: "var(--lagoon)", goodDown: null },
+  { key: "fat", label: "Fat mass", color: "var(--ember)", goodDown: true },
+  { key: "muscle", label: "Muscle mass", color: "var(--kingfisher)", goodDown: false },
+  { key: "water", label: "Body water", color: "var(--kingfisher-text)", goodDown: null },
 ];
 const STORE_KEY = "coltasi.bodycomp.selected";
-const RANGES = [{ k: "3m", l: "3M", days: 91 }, { k: "all", l: "All", days: null }] as const;
+const RANGES = [{ k: "1m", l: "1M", days: 31 }, { k: "3m", l: "3M", days: 91 }, { k: "6m", l: "6M", days: 183 }, { k: "all", l: "All", days: null }] as const;
 type RangeKey = (typeof RANGES)[number]["k"];
 
 const goodColor = (d: number, goodDown: boolean | null) =>
-  goodDown == null || Math.abs(d) < 0.05 ? "var(--muted)" : (d < 0) === goodDown ? "var(--kingfisher-text)" : "var(--rust)";
+  goodDown == null || Math.abs(d) < 0.05 ? "var(--muted)" : (d < 0) === goodDown ? "var(--jade)" : "var(--crimson)";
 
 /**
  * Body comp: a 2x2 grid of tiles (latest value, change over the range, sparkline), and one big chart for the
@@ -91,12 +91,12 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
 
   return (
     <div className="card" style={{ padding: "16px 16px 12px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <p className="sec">Body</p>
-        <div role="group" aria-label="Time range" style={{ display: "flex", gap: 2, background: "var(--tint-neutral)", borderRadius: 9, padding: 3 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <p className="sec">Trend</p>
+        <div role="group" aria-label="Time range" style={{ display: "flex", gap: 2, background: "var(--tint-neutral)", borderRadius: 12, padding: 3 }}>
           {RANGES.map((r) => (
             <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setPick(null); }}
-              style={{ height: 26, minWidth: 40, borderRadius: 7, border: 0, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              style={{ height: 40, minWidth: 44, borderRadius: 9, border: 0, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                 background: range === r.k ? "#fff" : "transparent", color: range === r.k ? "var(--navy)" : "var(--muted)",
                 boxShadow: range === r.k ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}>{r.l}</button>
           ))}
@@ -148,7 +148,7 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
           {ticks.map((t, i) => (
             <g key={i}>
               <line x1={0} x2={right} y1={sy(t)} y2={sy(t)} stroke={i === 2 ? "var(--line-strong)" : "var(--line-soft)"} />
-              <text x={W} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Montserrat, sans-serif">{t % 1 ? t.toFixed(1) : t}</text>
+              <text x={W} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{t % 1 ? t.toFixed(1) : t}</text>
             </g>
           ))}
           <line x1={sx(active.d)} x2={sx(active.d)} y1={top} y2={bottom} stroke="var(--mist)" strokeDasharray="3 3" />
@@ -162,9 +162,14 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
             return <circle key={p.d} cx={sx(p.d)} cy={sy(conv(p.kg))} r={r} fill={hit ? "#fff" : sel.color} stroke={sel.color} strokeWidth={hit ? 2.5 : 0} />;
           })}
           {months.map((m) => (
-            <text key={m.l} x={Math.min(Math.max(sx(m.d), 14), right - 10)} y={H - 4} textAnchor="middle" fontSize={11} fill="var(--muted)" fontFamily="Montserrat, sans-serif">{m.l}</text>
+            <text key={m.l} x={Math.min(Math.max(sx(m.d), 14), right - 10)} y={H - 4} textAnchor="middle" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{m.l}</text>
           ))}
         </svg>
+        <p className="cap" style={{ marginTop: 10, lineHeight: 1.45 }}>
+          {sel.key === "weight"
+            ? "Big dots are Tanita scans, small dots are weigh-ins. Tap the chart to inspect a day."
+            : "Tanita scan estimate (bioimpedance). Small swings between scans are normal: read the trend, not one reading."}
+        </p>
       </div>
     </div>
   );

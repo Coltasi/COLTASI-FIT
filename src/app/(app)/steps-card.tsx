@@ -18,11 +18,11 @@ export function StepsCard({ today, bars, avg7 }: {
 
   if (editing) {
     return (
-      <div className="card" style={{ gridColumn: "1 / -1", padding: "14px 16px", border: "2px solid var(--lagoon)", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="card" style={{ gridColumn: "1 / -1", padding: "14px 16px", border: "2px solid var(--kingfisher)", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab" style={{ color: "var(--ember-text)" }}>Log steps</p>
+          <p className="ln">Log steps</p>
           <span style={{ display: "flex", gap: 14 }}>
-            <Link href="/steps" style={{ fontSize: 14, fontWeight: 600 }}>History</Link>
+            <Link href="/steps" style={{ fontSize: 15, fontWeight: 600 }}>History</Link>
             <button type="button" onClick={() => setEditing(false)} style={linkBtn}>Cancel</button>
           </span>
         </div>
@@ -35,26 +35,21 @@ export function StepsCard({ today, bars, avg7 }: {
     );
   }
 
-  // Compact tile: tap anywhere to log or edit.
+  // Compact tile: tap anywhere to log or edit. Missing data is an action, not a dash.
   return (
-    <button type="button" onClick={() => setEditing(true)} className="card" aria-label={todaySteps != null ? "Edit steps" : "Log steps"}
-      style={{ padding: "16px 16px", textAlign: "left", cursor: "pointer", font: "inherit", color: "var(--navy)", display: "flex", flexDirection: "column", gap: 2 }}>
+    <button type="button" onClick={() => setEditing(true)} className="tile" aria-label={todaySteps != null ? "Edit steps" : "Log steps"} style={{ cursor: "pointer" }}>
       <span className="lab">Steps</span>
-      {todaySteps != null ? (
-        <span className="num" style={{ fontSize: 22, marginTop: 2 }}>{fmtSteps(todaySteps)}</span>
-      ) : (
-        <span className="num" style={{ fontSize: 22, marginTop: 2, color: "var(--muted)" }}>–</span>
-      )}
-      {todaySteps != null || avg7 == null
-        ? <span className="cap" style={{ fontSize: 14 }}>{avg7 != null ? `Avg ${fmtSteps(avg7)}` : "Today"}</span>
-        : <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ember-text)" }}>Log today · avg {fmtSteps(avg7)}</span>}
-      <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 6 }} aria-hidden>
+      {todaySteps != null
+        ? <span className="big">{fmtSteps(todaySteps)}</span>
+        : <span className="big" style={{ color: "var(--rust)", fontSize: 24 }}>Log steps +</span>}
+      <span className="cap">{avg7 != null ? `${fmtSteps(avg7)} daily avg.` : "Today"}</span>
+      <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 10 }} aria-hidden>
         {bars.map((b) => (
-          <span key={b.day} style={{ flex: 1, borderRadius: 2, height: b.steps ? `${Math.max(15, (b.steps / maxS) * 100)}%` : "15%", background: b.steps == null ? "var(--line-soft)" : b.day === today ? "var(--lagoon)" : "#D4EEF5" }} />
+          <span key={b.day} style={{ flex: 1, borderRadius: 2, height: b.steps ? `${Math.max(15, (b.steps / maxS) * 100)}%` : "15%", background: b.steps == null ? "var(--line-soft)" : b.day === today ? "var(--kingfisher)" : "#bfe0ea" }} />
         ))}
       </span>
     </button>
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" } as const;
+const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 44 } as const;

@@ -36,13 +36,13 @@ export default async function ChoosePage() {
       <BackHeader href="/train" label="Train" title="Choose workout" />
       <div className="card clip">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "14px 16px 10px" }}>
-          <p className="lab">The Split</p>
+          <p className="ln" style={{ fontSize: 17 }}>The Split</p>
           <p className="cap" style={{ fontSize: 14 }}>{program.filter((d) => d.program === "split").length} days</p>
         </div>
         {program.filter((d) => d.program === "split").map((d) => <Row key={d.id} d={d} />)}
       </div>
       <div className="card clip">
-        <div style={{ padding: "14px 16px 10px" }}><p className="lab">Kettlebell</p></div>
+        <div style={{ padding: "14px 16px 10px" }}><p className="ln" style={{ fontSize: 17 }}>Kettlebell</p></div>
         {program.filter((d) => d.program === "kettlebell").map((d) => <Row key={d.id} d={d} />)}
       </div>
       <form action={startCustom}>

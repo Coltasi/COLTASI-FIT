@@ -21,7 +21,7 @@ export function ProfileForm({ profile: p }: { profile: Profile }) {
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div className="card" style={{ padding: 16, display: "grid", gap: 14 }}>
-        <p className="lab">You</p>
+        <p className="ln" style={{ fontSize: 17 }}>You</p>
         <Field label="Name" name="display_name" value={p.display_name} inputMode="text" />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
           <Field label="Height (cm)" name="height_cm" value={p.height_cm} />
@@ -36,7 +36,7 @@ export function ProfileForm({ profile: p }: { profile: Profile }) {
       </div>
 
       <div className="card" style={{ padding: 16, display: "grid", gap: 14 }}>
-        <p className="lab">Goal</p>
+        <p className="ln" style={{ fontSize: 17 }}>Goal</p>
         <label style={{ display: "block" }}>
           <span className="flab">Phase</span>
           <select name="phase" className="fld" defaultValue={p.phase ?? "cut"}>
@@ -47,7 +47,7 @@ export function ProfileForm({ profile: p }: { profile: Profile }) {
       </div>
 
       <div className="card" style={{ padding: 16, display: "grid", gap: 14 }}>
-        <p className="lab">Energy</p>
+        <p className="ln" style={{ fontSize: 17 }}>Energy</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
           <Field label="TDEE (kcal)" name="tdee_kcal" value={p.tdee_kcal} inputMode="numeric" />
           <Field label="Target (kcal)" name="target_kcal" value={p.target_kcal} inputMode="numeric" />
@@ -60,7 +60,7 @@ export function ProfileForm({ profile: p }: { profile: Profile }) {
       </div>
 
       <div className="card" style={{ padding: 16, display: "grid", gap: 14 }}>
-        <p className="lab">Equipment</p>
+        <p className="ln" style={{ fontSize: 17 }}>Equipment</p>
         <Field label="Kettlebells on hand (kg)" name="kettlebells_kg" value={(p.kettlebells_kg ?? []).join(", ")} inputMode="text" hint="Comma separated, e.g. 8, 12, 16, 20, 24, 30" />
       </div>
 

@@ -1,11 +1,13 @@
-import { BrandRow, CoachMark } from "@/components/ui";
+import { CoachMark, PageHeader, Section } from "@/components/ui";
 import { PARTS, ReadText } from "@/components/coach-read-parts";
-import { CoachPlan } from "@/components/coach-plan";
+import { CoachPlan, liftChange } from "@/components/coach-plan";
+import { headline } from "@/lib/points";
+import type { LiftSignal } from "@/lib/coach-signals";
 import { RefreshRead } from "./refresh-read";
 import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
 
-import { signed, unit } from "@/lib/units";
+import { signed, unit, w } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
 import { fmtK, getSteps, stepSummary } from "@/lib/steps";
 import { AskBox } from "./ask-box";
@@ -22,7 +24,7 @@ function ago(iso: string) {
 const KIND = {
   session: { label: "Workout", color: "var(--kingfisher)", bg: "var(--tint-blue)", fg: "var(--kingfisher-text)" },
   weigh_in: { label: "Weigh-in", color: "var(--ember)", bg: "var(--tint-ember)", fg: "var(--rust)" },
-  scan: { label: "Body scan", color: "var(--lagoon)", bg: "var(--tint-neutral)", fg: "var(--navy)" },
+  scan: { label: "Body scan", color: "var(--jade)", bg: "var(--tint-jade)", fg: "var(--jade)" },
 } as const;
 
 export default async function CoachPage() {
@@ -54,34 +56,68 @@ export default async function CoachPage() {
     else days.push([d, [r]]);
   }
 
+  // Recommended actions: only lifts the latest plan changes, each with the Coach's own stated reason.
+  const sig = latest?.signals && Array.isArray(latest.signals.lifts) ? latest.signals : null;
+  const recs = sig ? (sig.lifts as LiftSignal[]).map((l) => ({ l, c: liftChange(l, units) })).filter((x) => x.c) : [];
+  const recFor = sig?.liftsFor as string | null | undefined;
+  const nextName = week.nextDay?.name;
+  const recWhen = recFor ? (recFor === nextName ? `For your next session, ${recFor}` : `For your next ${recFor} session${nextName ? ` (${nextName} comes first)` : ""}`) : "For your next session";
+  const head = latest ? headline(latest.headline).head : null;
+  const ind = (label: string, value: string, sub: string, tone?: string) => (
+    <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
+      <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>{label}</p>
+      <p className="num" style={{ fontSize: 24, color: tone ?? "var(--on-navy)" }}>{value}</p>
+      <p style={{ fontSize: 14, color: "var(--on-navy-muted)" }}>{sub}</p>
+    </div>
+  );
+
   return (
-    <main className="screen" style={{ paddingBottom: 260 }}>
-      <BrandRow />
-      <div>
-        <h1 className="disp" style={{ fontSize: 30, lineHeight: 1 }}>Coach</h1>
-        <p className="cap" style={{ marginTop: 6 }}>Ask anything, and see every read so far</p>
-      </div>
+    <main className="screen" style={{ paddingBottom: 280, gap: 26 }}>
+      <PageHeader title="Coach" sub="What to change, and why" />
+
+      <section className="feature" aria-label="Weekly briefing">
+        <p className="eyebrow"><CoachMark size={24} />Your weekly briefing</p>
+        <p className="feature-title" style={{ fontSize: 22 }}>{head ?? "Your briefing builds as you log workouts, sleep and weigh-ins."}</p>
+        {latest ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Written {ago(latest.created_at)} after your latest {(KIND[latest.kind as keyof typeof KIND] ?? KIND.weigh_in).label.toLowerCase()}</p> : null}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
+          {ind("Workouts", String(week.doneThisWeek), "this week")}
+          {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need more weigh-ins", behind ? "#f2b89c" : undefined)}
+          {ind("Avg sleep", avgSleep != null ? `${avgSleep.toFixed(1)} h` : "–", avgSleep != null ? "last 7 nights" : "log sleep on Today")}
+          {ind("Avg steps", stepAvg != null ? fmtK(stepAvg) : "–", stepAvg != null ? "last 7 days" : "log steps on Today")}
+        </div>
+      </section>
+
+      <Section title="Your next move" gap={4}>
+        <p className="cap">{recs.length ? recWhen : sig ? "No weight changes: repeat last time's weights and aim for an extra rep." : "Recommendations appear after your first logged workout."}</p>
+        {recs.length ? (
+          <div className="list">
+            {recs.map(({ l, c }) => (
+              <details key={l.name} className="li" style={{ display: "block" }}>
+                <summary style={{ listStyle: "none", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <p className="t" style={{ fontSize: 16 }}>{l.name}</p>
+                    <p className="s" style={{ color: "var(--ember-text)", fontWeight: 600 }}>Why? ›</p>
+                  </div>
+                  <p className="v" style={{ color: c!.tone === "up" ? "var(--jade)" : "var(--rust)" }}>{c!.text}</p>
+                </summary>
+                <div style={{ marginTop: 10, padding: "12px 14px", borderRadius: 12, background: "var(--surface)", border: "1px solid var(--line)" }}>
+                  <p style={{ fontSize: 15, lineHeight: 1.45 }}>{l.line}</p>
+                  <p className="cap" style={{ marginTop: 8 }}>
+                    Based on: last top set {l.top != null ? `${w(l.top, units)} ${unit(units)}` : "bodyweight"}{l.reps?.length ? ` × ${l.reps.join(", ")} reps` : ""}
+                    {l.call === "back_off" ? ` · ${l.stalledFor} sessions without beating your best` : ""}
+                    {l.repRange ? ` · target ${l.repRange} reps` : ""}
+                  </p>
+                </div>
+              </details>
+            ))}
+          </div>
+        ) : null}
+      </Section>
 
       <AskBox />
 
-      <div>
-        <p className="lab" style={{ marginBottom: 8 }}>This week</p>
-        <div className="card clip" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))" }}>
-          <div style={tile}><div className="num" style={big}>{week.doneThisWeek}</div><p className="cap">{week.doneThisWeek === 1 ? "Workout" : "Workouts"}</p></div>
-          <div style={{ ...tile, borderLeft: line }}>
-            <div className="num" style={{ ...big, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={unitStyle}> {unit(units)}/wk</span></div>
-            <p className="cap">{target != null ? `Plan ${signed(conv(target), 2)}` : "Weight change"}</p>
-          </div>
-          <div style={{ ...tile, borderTop: line }}><div className="num" style={big}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={unitStyle}> h</span></div><p className="cap">Avg sleep</p></div>
-          <div style={{ ...tile, borderTop: line, borderLeft: line }}><div className="num" style={big}>{stepAvg != null ? fmtK(stepAvg) : "–"}</div><p className="cap">Avg steps</p></div>
-        </div>
-      </div>
-
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-          <p className="lab">Reads</p>
-          {latest ? <RefreshRead /> : null}
-        </div>
+      <Section title="Insights" right={latest ? <RefreshRead /> : null} gap={6}>
+        <p className="cap">Every read your coach has written, newest first. Tap one to see the full plan.</p>
         {reads?.length ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 6 }}>
             {days.map(([day, rs]) => (
@@ -90,26 +126,24 @@ export default async function CoachPage() {
                   <span className="disp" style={{ fontSize: 17, color: "var(--navy)", whiteSpace: "nowrap" }}>
                     {day === today ? "Today" : day === addDays(today, -1) ? "Yesterday" : fmtDay(day)}
                   </span>
-                  {day === today || day === addDays(today, -1) ? <span className="cap" style={{ fontSize: 14 }}>{fmtDay(day)}</span> : null}
                   <span style={{ flexGrow: 1, height: 1, background: "var(--line-strong)" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {rs.map((r) => {
                     const k = KIND[r.kind as keyof typeof KIND] ?? KIND.weigh_in;
-                    const first = r.id === latest?.id;
                     return (
-                      <details key={r.id} className="card" open={first} style={{ padding: "12px 14px", borderLeft: `4px solid ${k.color}` }}>
+                      <details key={r.id} className="card" style={{ padding: "12px 16px" }}>
                         <summary style={{ listStyle: "none", cursor: "pointer" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span className="tag" style={{ background: k.bg, color: k.fg }}>{k.label}</span>
-                            <span className="cap" style={{ fontSize: 14 }}>{first ? ago(r.created_at) : time(r.created_at)}</span>
+                            <span className="cap">{r.id === latest?.id ? ago(r.created_at) : time(r.created_at)}</span>
                           </div>
-                          <p style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginTop: 6 }}>{r.headline}</p>
+                          <p style={{ fontSize: 16, fontWeight: 500, lineHeight: 1.45, marginTop: 6 }}>{r.headline}</p>
                         </summary>
                         {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
                           <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
                         ) : PARTS.filter(([, key]) => r[key]).map(([l, key]) => (
-                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
+                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
                         ))}
                       </details>
                     );
@@ -121,15 +155,10 @@ export default async function CoachPage() {
         ) : (
           <div className="card cream" style={{ padding: 16, display: "flex", gap: 10 }}>
             <CoachMark />
-            <p style={{ fontSize: 15, lineHeight: 1.45 }}>Finish a session or log a weigh-in and your first read appears here.</p>
+            <p style={{ fontSize: 16, lineHeight: 1.45 }}>Finish a session or log a weigh-in and your first insight appears here.</p>
           </div>
         )}
-      </div>
+      </Section>
     </main>
   );
 }
-
-const line = "1px solid var(--line-soft)";
-const tile = { padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2 } as const;
-const big = { fontSize: 26, lineHeight: 1.1 } as const;
-const unitStyle = { fontSize: 15, color: "var(--muted)" } as const;

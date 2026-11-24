@@ -8,7 +8,7 @@ export type CalSession = { id: string; date: string; kind: string; title: string
 
 const KIND: Record<string, { label: string; color: string }> = {
   split: { label: "Split", color: "var(--kingfisher)" },
-  kettlebell: { label: "Kettlebell", color: "var(--lagoon)" },
+  kettlebell: { label: "Kettlebell", color: "var(--navy)" },
   custom: { label: "Custom", color: "var(--ember)" },
 };
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
@@ -16,7 +16,7 @@ const monthName = (y: number, m: number) => new Intl.DateTimeFormat("en-US", { m
 const iso = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d, 12)).toISOString().slice(0, 10);
 
 /** Month grid of finished workouts, coloured by kind. Tap a day to open that workout. */
-export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; today: string }) {
+export function WorkoutCalendar({ sessions, today, bare = false }: { sessions: CalSession[]; today: string; bare?: boolean }) {
   const [ty, tm] = [Number(today.slice(0, 4)), Number(today.slice(5, 7)) - 1];
   const [ym, setYm] = useState({ y: ty, m: tm });
   const [picked, setPicked] = useState<string | null>(null);
@@ -42,14 +42,14 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
   const move = (n: number) => { setPicked(null); setYm(({ y, m }) => { const d = new Date(Date.UTC(y, m + n, 1)); return { y: d.getUTCFullYear(), m: d.getUTCMonth() }; }); };
   const pickedSessions = picked ? byDate.get(picked) ?? [] : [];
 
-  const navBtn = (on: boolean) => ({ width: 32, height: 32, borderRadius: 9, border: "1px solid var(--line-strong)", background: "#fff", color: on ? "var(--navy)" : "var(--mist)", cursor: on ? "pointer" : "default", fontSize: 16, fontWeight: 700, fontFamily: "inherit", padding: 0 } as const);
+  const navBtn = (on: boolean) => ({ width: 44, height: 44, borderRadius: 12, border: "1px solid var(--line-strong)", background: "#fff", color: on ? "var(--navy)" : "var(--mist)", cursor: on ? "pointer" : "default", fontSize: 16, fontWeight: 700, fontFamily: "inherit", padding: 0 } as const);
 
   return (
-    <div className="card" style={{ padding: "18px 18px" }}>
+    <div className={bare ? undefined : "card"} style={{ padding: bare ? 0 : "18px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <p className="lab">{monthName(ym.y, ym.m)}</p>
-          <p className="cap" style={{ fontSize: 14 }}>
+          <p className="ln">{monthName(ym.y, ym.m)}</p>
+          <p className="cap">
             {trainedDays} {trainedDays === 1 ? "day" : "days"} trained{streak > 1 && ym.y === ty && ym.m === tm ? ` · ${streak}-week streak` : ""}
           </p>
         </div>
@@ -60,7 +60,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 4, marginTop: 10 }}>
-        {DOW.map((d, i) => <p key={i} className="cap" style={{ fontSize: 14, textAlign: "center" }}>{d}</p>)}
+        {DOW.map((d, i) => <p key={i} className="cap" style={{ textAlign: "center" }}>{d}</p>)}
         {cells.map((d, i) => {
           if (!d) return <span key={`e${i}`} />;
           const ss = byDate.get(d) ?? [];
@@ -72,8 +72,8 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
             <button key={d} type="button" disabled={!ss.length} onClick={() => setPicked(sel ? null : d)}
               aria-label={`${fmtShort(d)}${ss.length ? `: ${ss.map((s) => s.title).join(", ")}` : ""}`}
               style={{
-                aspectRatio: "1", borderRadius: 8, padding: 0, fontFamily: "inherit", fontSize: 14, fontWeight: isToday ? 800 : 600,
-                border: sel ? "2px solid var(--navy)" : isToday ? "1.5px dashed var(--ember)" : "1px solid transparent",
+                aspectRatio: "1", borderRadius: 8, padding: 0, fontFamily: "inherit", fontSize: 15, fontWeight: isToday ? 800 : 600,
+                border: sel ? "2px solid var(--navy)" : isToday ? "2px solid var(--rust)" : "1px solid transparent",
                 background: fill ?? (future ? "transparent" : "var(--line-soft)"),
                 color: fill ? "#fff" : future ? "var(--mist)" : "var(--muted)", cursor: ss.length ? "pointer" : "default", position: "relative",
               }}>
@@ -87,7 +87,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
       {pickedSessions.length ? (
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {pickedSessions.map((s) => (
-            <Link key={s.id} href={`/train/session/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--navy)" }}>
+            <Link key={s.id} href={`/train/session/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: "var(--navy)", minHeight: 44 }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: KIND[s.kind]?.color ?? "var(--kingfisher)" }} />
               {fmtShort(s.date)} · {s.title}<span style={{ color: "var(--ember-text)", marginLeft: "auto" }}>View ›</span>
             </Link>
@@ -95,7 +95,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
         </div>
       ) : null}
 
-      <div className="cap" style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 14 }}>
+      <div className="cap" style={{ display: "flex", gap: 14, marginTop: 12 }}>
         {Object.values(KIND).map((k) => (
           <span key={k.label} style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: k.color }} />{k.label}</span>
         ))}
