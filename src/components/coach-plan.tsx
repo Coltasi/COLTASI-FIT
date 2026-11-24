@@ -49,7 +49,7 @@ function nextPill(l: LiftSignal, ease: boolean, units: Units): Pill {
   return { text: "Same", bg: "var(--tint-neutral)", fg: "var(--muted)", rank: 3 };
 }
 
-const th = { fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)" } as const;
+const th = { fontSize: 14, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)" } as const;
 const grid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 64px 92px", alignItems: "center", gap: 8 } as const;
 
 function Tile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
@@ -57,7 +57,7 @@ function Tile({ label, value, sub, color }: { label: string; value: string; sub?
     <div style={{ background: "#fff", borderRadius: 10, padding: "10px 10px 8px", minWidth: 0 }}>
       <p style={th}>{label}</p>
       <p className="num" style={{ fontSize: 18, marginTop: 2, color: color ?? "var(--navy)" }}>{value}</p>
-      {sub ? <p className="cap" style={{ fontSize: 11 }}>{sub}</p> : null}
+      {sub ? <p className="cap" style={{ fontSize: 14 }}>{sub}</p> : null}
     </div>
   );
 }
@@ -128,7 +128,7 @@ export function CoachPlan({ s, weight, units }: { s: PlanSignals; weight: string
                 {l.bodyweight || l.top == null ? "BW" : `${w(l.top, units)} ${u}`}
               </span>
               <span style={{ textAlign: "right" }}>
-                <span className="tag num" style={{ background: p.bg, color: p.fg, fontSize: 12 }}>{p.text}</span>
+                <span className="tag num" style={{ background: p.bg, color: p.fg, fontSize: 14 }}>{p.text}</span>
               </span>
             </div>
           ))}
@@ -136,10 +136,10 @@ export function CoachPlan({ s, weight, units }: { s: PlanSignals; weight: string
       ) : null}
 
       {same ? (
-        <p className="cap" style={{ fontSize: 12, marginTop: 8 }}>{shown.length ? `+ ${same} more: same as last time` : `All ${same} lifts: same as last time`}</p>
+        <p className="cap" style={{ fontSize: 14, marginTop: 8 }}>{shown.length ? `+ ${same} more: same as last time` : `All ${same} lifts: same as last time`}</p>
       ) : null}
 
-      {s.weight ? <WeightTiles wt={s.weight} units={units} /> : weight ? <p style={{ fontSize: 13, marginTop: 10, lineHeight: 1.4 }}><b>Weight · </b>{weight}</p> : null}
+      {s.weight ? <WeightTiles wt={s.weight} units={units} /> : weight ? <p style={{ fontSize: 14, marginTop: 10, lineHeight: 1.4 }}><b>Weight · </b>{weight}</p> : null}
     </div>
   );
 }

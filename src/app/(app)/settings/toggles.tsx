@@ -21,7 +21,7 @@ export function UnitsToggle({ units }: { units: Units }) {
   return (
     <div className="segc" role="group" aria-label="Units" style={{ width: 180, borderRadius: 10, padding: 3, gap: 3 }}>
       {(["imperial", "metric"] as const).map((u) => (
-        <button key={u} type="button" aria-pressed={v === u} className={v === u ? "on" : ""} style={{ height: 32, fontSize: 13, borderRadius: 8 }}
+        <button key={u} type="button" aria-pressed={v === u} className={v === u ? "on" : ""} style={{ height: 32, fontSize: 14, borderRadius: 8 }}
           onClick={() => start(async () => { setV(u); await setPref("units", u); })}>
           {u === "imperial" ? "Imperial" : "Metric"}
         </button>

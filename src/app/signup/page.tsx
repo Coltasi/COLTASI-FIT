@@ -37,7 +37,7 @@ export default function SignUpPage() {
         </div>
         {state.error ? <p className="err">{state.error}</p> : null}
         <button className="btn" type="submit" disabled={pending}>{pending ? "Creating…" : "Create account"}</button>
-        <p className="cap" style={{ fontSize: 12, lineHeight: 1.45, textAlign: "center" }}>Your training, weight, sleep and body-composition data is stored privately in your own account.</p>
+        <p className="cap" style={{ fontSize: 14, lineHeight: 1.45, textAlign: "center" }}>Your training, weight, sleep and body-composition data is stored privately in your own account.</p>
       </form>
     </main>
   );

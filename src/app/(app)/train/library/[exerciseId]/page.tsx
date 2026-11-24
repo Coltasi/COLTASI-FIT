@@ -22,17 +22,17 @@ export default async function HowToPage({ params, searchParams }: PageProps<"/tr
           <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             <p className="lab">Muscles worked</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {g.primary.map((m) => <span key={m} style={{ fontSize: 12, fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: "var(--navy)", color: "#fff" }}>{m}</span>)}
-              {g.secondary.map((m) => <span key={m} style={{ fontSize: 12, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: "var(--tint-blue)", color: "var(--kingfisher-text)" }}>{m}</span>)}
+              {g.primary.map((m) => <span key={m} style={{ fontSize: 14, fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: "var(--navy)", color: "#fff" }}>{m}</span>)}
+              {g.secondary.map((m) => <span key={m} style={{ fontSize: 14, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: "var(--tint-blue)", color: "var(--kingfisher-text)" }}>{m}</span>)}
             </div>
-            <p className="cap" style={{ fontSize: 12 }}>Dark = main muscles · Blue = also working</p>
+            <p className="cap" style={{ fontSize: 14 }}>Dark = main muscles · Blue = also working</p>
           </div>
 
           <div className="card clip">
             <div style={{ padding: "14px 16px 6px" }}><p className="lab">Steps</p></div>
             {g.steps.map((t, i) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "26px minmax(0,1fr)", gap: 10, padding: "10px 16px", borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
-                <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
                 <p style={{ fontSize: 14, lineHeight: 1.45 }}>{t}</p>
               </div>
             ))}
@@ -50,7 +50,7 @@ export default async function HowToPage({ params, searchParams }: PageProps<"/tr
       <a href={demoUrl(ex.name)} target="_blank" rel="noopener noreferrer" className="btn" style={{ gap: 8 }}>
         <IconPlay />Watch a demo
       </a>
-      <p className="cap" style={{ fontSize: 12, textAlign: "center", marginTop: -8 }}>Opens YouTube search results for this lift</p>
+      <p className="cap" style={{ fontSize: 14, textAlign: "center", marginTop: -8 }}>Opens YouTube search results for this lift</p>
     </main>
   );
 }

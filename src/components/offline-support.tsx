@@ -60,7 +60,7 @@ export function OfflineSupport() {
         padding: "calc(env(safe-area-inset-top) + 8px) 16px 8px",
         background: "var(--navy, #153261)",
         color: "#fff",
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: 600,
         textAlign: "center",
         lineHeight: 1.35,

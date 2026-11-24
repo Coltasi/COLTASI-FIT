@@ -43,15 +43,15 @@ export function EditFoods({ items, day, today, min, exitHref }: {
             <input className="fld" aria-label="Name" value={r.name} disabled={r.remove} onChange={(e) => set(i, { name: e.target.value })}
               style={{ flexGrow: 1, height: 40, textDecoration: r.remove ? "line-through" : undefined }} />
             <button type="button" onClick={() => set(i, { remove: !r.remove })} aria-label={r.remove ? `Keep ${r.name}` : `Remove ${r.name}`}
-              style={{ height: 40, padding: "0 12px", borderRadius: 10, border: "1.5px solid var(--rust)", background: r.remove ? "var(--rust)" : "transparent", color: r.remove ? "#fff" : "var(--rust)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              style={{ height: 40, padding: "0 12px", borderRadius: 10, border: "1.5px solid var(--rust)", background: r.remove ? "var(--rust)" : "transparent", color: r.remove ? "#fff" : "var(--rust)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
               {r.remove ? "Undo" : "Remove"}
             </button>
           </div>
           {!r.remove ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr", gap: 8 }}>
-              <label><span className="flab" style={{ fontSize: 11 }}>kcal</span><input className="fld" inputMode="numeric" value={r.kcal} onChange={(e) => set(i, { kcal: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 11 }}>Protein g</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 11 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>kcal</span><input className="fld" inputMode="numeric" value={r.kcal} onChange={(e) => set(i, { kcal: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>Protein g</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
             </div>
           ) : null}
         </div>

@@ -24,7 +24,7 @@ export default async function ExercisePage({ params, searchParams }: PageProps<"
   for (const s of tops) if (s.top > runningBest) { if (runningBest !== -Infinity) prDates.add(s.date); runningBest = s.top; }
   // Logged, but never with a weight: a bodyweight lift.
   const bw = best == null && sessions.length > 0;
-  const kg = (v: number | null) => (v != null ? <>{w(v, units)}<span style={{ fontSize: 13 }}> {unit(units)}</span></> : bw ? "BW" : "–");
+  const kg = (v: number | null) => (v != null ? <>{w(v, units)}<span style={{ fontSize: 14 }}> {unit(units)}</span></> : bw ? "BW" : "–");
 
   return (
     <main className="screen">
@@ -57,7 +57,7 @@ export default async function ExercisePage({ params, searchParams }: PageProps<"
             <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtShort(s.date)}</span>
             <span className="cap">
               {s.sets.map((z) => z.reps ?? "?").join(", ")}
-              {prDates.has(s.date) ? <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: ".06em", padding: "2px 6px", borderRadius: 6, background: "var(--tint-ember)", color: "var(--rust)", marginLeft: 6 }}>PR</span> : null}
+              {prDates.has(s.date) ? <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: ".06em", padding: "2px 6px", borderRadius: 6, background: "var(--tint-ember)", color: "var(--rust)", marginLeft: 6 }}>PR</span> : null}
             </span>
             <span className="num" style={{ fontSize: 16, textAlign: "right" }}>{s.top != null ? w(s.top, units) : "–"}</span>
           </div>

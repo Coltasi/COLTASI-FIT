@@ -33,7 +33,7 @@ export function CheckInCard({ formId, initial }: { formId: string; initial?: { f
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6 }}>
           {EFFORTS.map((e) => (
             <button key={e} type="button" className={`chip${effort === e ? " on" : ""}`} aria-pressed={effort === e}
-              onClick={() => setEffort(effort === e ? null : e)} style={{ justifyContent: "center", padding: "0 4px", fontSize: 13 }}>{EFFORT_LABEL[e]}</button>
+              onClick={() => setEffort(effort === e ? null : e)} style={{ justifyContent: "center", padding: "0 4px", fontSize: 14 }}>{EFFORT_LABEL[e]}</button>
           ))}
         </div>
       </div>

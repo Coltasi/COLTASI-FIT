@@ -96,7 +96,7 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
         <div role="group" aria-label="Time range" style={{ display: "flex", gap: 2, background: "var(--tint-neutral)", borderRadius: 9, padding: 3 }}>
           {RANGES.map((r) => (
             <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setPick(null); }}
-              style={{ height: 26, minWidth: 40, borderRadius: 7, border: 0, fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+              style={{ height: 26, minWidth: 40, borderRadius: 7, border: 0, fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
                 background: range === r.k ? "#fff" : "transparent", color: range === r.k ? "var(--navy)" : "var(--muted)",
                 boxShadow: range === r.k ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}>{r.l}</button>
           ))}
@@ -121,7 +121,7 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
                 background: isSel ? "#fff" : "var(--tint-neutral)", border: `2px solid ${isSel ? m.color : "transparent"}` }}>
               <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>{m.label}</span>
-                {p.length > 1 ? <span style={{ fontSize: 13, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}</span> : null}
+                {p.length > 1 ? <span style={{ fontSize: 14, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}</span> : null}
               </span>
               <span className="num" style={{ display: "block", fontSize: 24, fontWeight: 800, color: "var(--navy)", whiteSpace: "nowrap", marginTop: 2, letterSpacing: "-0.02em" }}>
                 {w(p.at(-1)!.kg, units)}<span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)", marginLeft: 4 }}>{unit(units)}</span>
@@ -135,7 +135,7 @@ export function BodyCompChart({ series: full, units }: { series: Record<MetricKe
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span className="num" style={{ fontSize: 28, color: "var(--navy)" }}>{w(active.kg, units)} <span className="cap">{unit(units)}</span></span>
           {active.d !== first.d ? (
-            <span style={{ fontSize: 13, fontWeight: 700, color: goodColor(change, sel.goodDown) }}>{signed(change)} {unit(units)} since {fmtShort(first.d)}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: goodColor(change, sel.goodDown) }}>{signed(change)} {unit(units)} since {fmtShort(first.d)}</span>
           ) : null}
         </div>
         <p className="cap" style={{ marginTop: 2, fontSize: 14 }}>{sel.label} · {fmtShort(active.d)}{active.src === "scan" ? " · scan" : ""}</p>

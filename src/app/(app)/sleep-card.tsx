@@ -29,8 +29,8 @@ export function SleepCard({ night, logged, bars }: {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="lab" style={{ color: "var(--kingfisher-text)" }}>Log last night&apos;s sleep</p>
           <span style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
-            <span className="cap" style={{ fontSize: 12 }}>{fmtDow(night)} night</span>
-            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <span className="cap" style={{ fontSize: 14 }}>{fmtDow(night)} night</span>
+            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -43,12 +43,12 @@ export function SleepCard({ night, logged, bars }: {
         </div>
         <div>
           <p className="ln" style={{ marginBottom: 8 }}>How did you wake up?</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 6 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 6 }}>
             {MOODS.map((m) => {
               const on = mood === m.v;
               return (
                 <button key={m.v} type="button" aria-pressed={on} onClick={() => setMood(on ? "" : m.v)}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 10.5, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
                   <span style={{ width: 12, height: 12, borderRadius: "50%", background: m.c }} />{m.l}
                 </button>
               );
@@ -64,17 +64,17 @@ export function SleepCard({ night, logged, bars }: {
   // Compact tile: tap anywhere to log or edit.
   return (
     <button type="button" onClick={() => setEditing(true)} className="card" aria-label={logged ? "Edit sleep" : "Log sleep"}
-      style={{ padding: "12px 14px", textAlign: "left", cursor: "pointer", font: "inherit", color: "var(--navy)", display: "flex", flexDirection: "column", gap: 2 }}>
+      style={{ padding: "16px 16px", textAlign: "left", cursor: "pointer", font: "inherit", color: "var(--navy)", display: "flex", flexDirection: "column", gap: 2 }}>
       <span className="lab">Sleep</span>
       {logged ? (
         <>
-          <span className="num" style={{ fontSize: 22, marginTop: 2 }}>{logged.hours.toFixed(1)}<span className="cap" style={{ fontSize: 13 }}> h</span></span>
-          <span className="cap" style={{ fontSize: 12, textTransform: "capitalize" }}>{logged.wake_feeling ?? "Last night"}</span>
+          <span className="num" style={{ fontSize: 22, marginTop: 2 }}>{logged.hours.toFixed(1)}<span className="cap" style={{ fontSize: 14 }}> h</span></span>
+          <span className="cap" style={{ fontSize: 14, textTransform: "capitalize" }}>{logged.wake_feeling ?? "Last night"}</span>
         </>
       ) : (
         <>
           <span className="num" style={{ fontSize: 22, marginTop: 2, color: "var(--muted)" }}>–</span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--kingfisher-text)" }}>Log last night</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--kingfisher-text)" }}>Log last night</span>
         </>
       )}
       <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 6 }} aria-hidden>

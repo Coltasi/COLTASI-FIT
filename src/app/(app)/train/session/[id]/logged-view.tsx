@@ -41,9 +41,9 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
             <p className="ln" style={{ flexGrow: 1 }}>{l.name}</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "40px minmax(0,1fr) minmax(0,1fr)", gap: "6px 8px", fontSize: 14 }}>
-            <span className="lab" style={{ fontSize: 10 }}>Set</span>
-            <span className="lab" style={{ fontSize: 10 }}>{l.skill ? "" : unit(units)}</span>
-            <span className="lab" style={{ fontSize: 10 }}>{l.skill ? "Secs" : "Reps"}</span>
+            <span className="lab" style={{ fontSize: 14 }}>Set</span>
+            <span className="lab" style={{ fontSize: 14 }}>{l.skill ? "" : unit(units)}</span>
+            <span className="lab" style={{ fontSize: 14 }}>{l.skill ? "Secs" : "Reps"}</span>
             {l.sets.map((z, i) => (
               <Row key={i} n={i + 1} kg={l.skill ? "" : z.weight_kg ? w(z.weight_kg, units) : "BW"} reps={z.reps == null ? "?" : String(z.reps)} />
             ))}

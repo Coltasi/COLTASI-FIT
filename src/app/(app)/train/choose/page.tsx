@@ -37,7 +37,7 @@ export default async function ChoosePage() {
       <div className="card clip">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "14px 16px 10px" }}>
           <p className="lab">The Split</p>
-          <p className="cap" style={{ fontSize: 12 }}>{program.filter((d) => d.program === "split").length} days</p>
+          <p className="cap" style={{ fontSize: 14 }}>{program.filter((d) => d.program === "split").length} days</p>
         </div>
         {program.filter((d) => d.program === "split").map((d) => <Row key={d.id} d={d} />)}
       </div>
