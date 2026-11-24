@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CoachMark, PageHeader, Section } from "@/components/ui";
+import { CoachMark, PageHeader } from "@/components/ui";
 import { liftChange } from "@/components/coach-plan";
 import type { LiftSignal } from "@/lib/coach-signals";
 import { IconBook, IconCheck, IconClock } from "@/components/icons";
@@ -38,7 +38,6 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const suggested = !!day && day.id === week.nextDay?.id;
 
-  const todo = split.filter((d) => !week.done.has(d.id));
   const lastAgo = lastOfDay?.[0] ? ago(daysBetween(lastOfDay[0].session_date, today)) : null;
 
   return (
@@ -88,27 +87,33 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         </section>
       ) : null}
 
-      <Section title="Your training split">
-        <div className="chips" role="list">
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <p className="lab" style={{ textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>This week</p>
+          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + split.filter((d) => !week.done.has(d.id)).length)}, minmax(0, 1fr))`, gap: 6 }}>
           {weekDone.map((x) => (
-            <Link key={x.id} href={`/train/session/${x.id}`} role="listitem" className="chip" style={{ gap: 6, color: "var(--navy)", borderColor: "transparent", background: "var(--tint-blue)" }}
-              aria-label={`${x.title}, done ${x.session_date === today ? "today" : fmtDow(x.session_date)}`}>
-              <IconCheck size={14} style={{ color: "var(--kingfisher-text)" }} />
-              {x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "Kettlebell" : x.title}
+            <Link key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
+              <span style={{ fontSize: 13, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
+              <IconCheck size={14} />
             </Link>
           ))}
-          {todo.map((d) => {
+          {split.filter((d) => !week.done.has(d.id)).map((d) => {
             const isNext = week.nextDay?.id === d.id;
-            const picked = day?.id === d.id;
             return (
-              <Link key={d.id} href={`/train?day=${d.id}`} role="listitem" className={`chip${picked ? " on" : ""}`} aria-label={`${d.name}${isNext ? ", next up" : ", upcoming"}`}>
-                {d.name}{isNext ? " →" : ""}
+              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat"
+                style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
+                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{d.name}</span>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
               </Link>
             );
           })}
         </div>
-        <p className="cap">Runs in order, not by weekday. Ticked = done this week; tap a day to preview it.</p>
-      </Section>
+      </div>
 
       {day ? (
         <StartForm
@@ -139,3 +144,5 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
 }
 
 const ago = (n: number) => (n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`);
+
+const tileBase = { borderRadius: 12, padding: "9px 2px", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2, color: "var(--navy)" };
