@@ -30,10 +30,10 @@ export function CheckInCard({ formId, initial }: { formId: string; initial?: { f
           <p className="lab" style={{ color: "var(--navy)" }}>How hard did you go?</p>
           <p className="cap">Be honest. Coach checks it against your numbers.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8 }}>
           {EFFORTS.map((e) => (
             <button key={e} type="button" className={`chip${effort === e ? " on" : ""}`} aria-pressed={effort === e}
-              onClick={() => setEffort(effort === e ? null : e)} style={{ justifyContent: "center", padding: "0 4px", fontSize: 14 }}>{EFFORT_LABEL[e]}</button>
+              onClick={() => setEffort(effort === e ? null : e)} style={{ justifyContent: "center", padding: "0 8px", minHeight: 52, whiteSpace: "normal", textAlign: "center", width: "100%" }}>{EFFORT_LABEL[e]}</button>
           ))}
         </div>
       </div>
