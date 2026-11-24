@@ -66,14 +66,14 @@ export default async function CoachPage() {
 
       <div>
         <p className="lab" style={{ marginBottom: 8 }}>This week</p>
-        <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))" }}>
-          <div style={{ padding: 12 }}><div className="num" style={{ fontSize: 20 }}>{week.doneThisWeek}</div><p className="cap">Workouts</p></div>
-          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}>
-            <div className="num" style={{ fontSize: 20, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={{ fontSize: 14 }}> {unit(units)}</span></div>
-            <p className="cap">{target != null ? `vs ${signed(conv(target), 2)} plan` : "per week"}</p>
+        <div className="card clip" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))" }}>
+          <div style={tile}><div className="num" style={big}>{week.doneThisWeek}</div><p className="cap">{week.doneThisWeek === 1 ? "Workout" : "Workouts"}</p></div>
+          <div style={{ ...tile, borderLeft: line }}>
+            <div className="num" style={{ ...big, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={unitStyle}> {unit(units)}/wk</span></div>
+            <p className="cap">{target != null ? `Plan ${signed(conv(target), 2)}` : "Weight change"}</p>
           </div>
-          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={{ fontSize: 14, color: "var(--muted)" }}> h</span></div><p className="cap">Avg sleep</p></div>
-          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{stepAvg != null ? fmtK(stepAvg) : "–"}</div><p className="cap">Avg steps</p></div>
+          <div style={{ ...tile, borderTop: line }}><div className="num" style={big}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={unitStyle}> h</span></div><p className="cap">Avg sleep</p></div>
+          <div style={{ ...tile, borderTop: line, borderLeft: line }}><div className="num" style={big}>{stepAvg != null ? fmtK(stepAvg) : "–"}</div><p className="cap">Avg steps</p></div>
         </div>
       </div>
 
@@ -128,3 +128,8 @@ export default async function CoachPage() {
     </main>
   );
 }
+
+const line = "1px solid var(--line-soft)";
+const tile = { padding: "16px 18px", display: "flex", flexDirection: "column", gap: 2 } as const;
+const big = { fontSize: 26, lineHeight: 1.1 } as const;
+const unitStyle = { fontSize: 15, color: "var(--muted)" } as const;
