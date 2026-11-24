@@ -20,7 +20,7 @@ export default async function HowToPage({ params, searchParams }: PageProps<"/tr
       {g ? (
         <>
           <div className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-            <p className="lab">Muscles worked</p>
+            <p className="ln">Muscles worked</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {g.primary.map((m) => <span key={m} style={{ fontSize: 14, fontWeight: 700, padding: "5px 10px", borderRadius: 999, background: "var(--navy)", color: "#fff" }}>{m}</span>)}
               {g.secondary.map((m) => <span key={m} style={{ fontSize: 14, fontWeight: 600, padding: "5px 10px", borderRadius: 999, background: "var(--tint-blue)", color: "var(--kingfisher-text)" }}>{m}</span>)}
@@ -29,7 +29,7 @@ export default async function HowToPage({ params, searchParams }: PageProps<"/tr
           </div>
 
           <div className="card clip">
-            <div style={{ padding: "14px 16px 6px" }}><p className="lab">Steps</p></div>
+            <div style={{ padding: "14px 16px 6px" }}><p className="ln">Steps</p></div>
             {g.steps.map((t, i) => (
               <div key={i} style={{ display: "grid", gridTemplateColumns: "26px minmax(0,1fr)", gap: 10, padding: "10px 16px", borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
                 <span style={{ width: 24, height: 24, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
@@ -39,7 +39,7 @@ export default async function HowToPage({ params, searchParams }: PageProps<"/tr
           </div>
 
           <div className="card cream" style={{ padding: "14px 16px" }}>
-            <p className="lab" style={{ color: "var(--rust)" }}>Common mistake</p>
+            <p className="ln" style={{ color: "var(--rust)" }}>Common mistake</p>
             <p style={{ fontSize: 14, lineHeight: 1.45, marginTop: 4 }}>{g.mistake}</p>
           </div>
         </>

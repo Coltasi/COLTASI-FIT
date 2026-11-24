@@ -48,15 +48,26 @@ function Dot({ done, dashed }: { done: boolean; dashed?: boolean }) {
   );
 }
 
-function Row({ done, dashed, name, sub, muted, onClick }: { done: boolean; dashed?: boolean; name: string; sub?: string; muted?: boolean; onClick?: () => void }) {
+function Row({ done, dashed, name, sub, muted, tag, onClick }: { done: boolean; dashed?: boolean; name: string; sub?: string; muted?: boolean; tag?: ReactNode; onClick?: () => void }) {
   return (
     <button type="button" className="row" onClick={onClick} style={rowBtn}>
       <Dot done={done} dashed={dashed} />
       <div style={{ flexGrow: 1 }}>
         <p className="ln" style={{ color: muted ? "var(--muted)" : "var(--navy)" }}>{name}</p>
         {sub ? <p className="cap">{sub}</p> : null}
+        {tag ? <div style={{ marginTop: 6 }}>{tag}</div> : null}
       </div>
     </button>
+  );
+}
+
+/** The Coach's call on an upcoming lift, as a visible tag with the bird. */
+function CoachTag({ call }: { call: CoachCall }) {
+  return (
+    <span className={`tag ${call.tone === "up" ? "jade" : "ember"}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/coltasi-bird.svg" alt="" width={16} height={16} />Coach: {call.text}
+    </span>
   );
 }
 
@@ -174,9 +185,13 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const exRow = (e: SEx) => e.skipped
     ? <Row key={e.id} done={false} dashed muted name={e.name} sub={e.skill ? "Skipped · tap to undo" : `Skipped · ${SKIP_LABEL[e.skipped]} · Coach will remind you · tap to undo`} onClick={() => skip(e, null)} />
     : isDone(e)
-    ? <Row key={e.id} done muted name={e.name} sub={summary(e, units)} onClick={() => setOpenId(e.id)} />
+    ? (() => { const sm = summary(e, units); return (
+        <Row key={e.id} done muted name={e.name} sub={sm.text} onClick={() => setOpenId(e.id)}
+          tag={sm.beat ? <span className="tag jade">↑ Beat last time</span> : undefined} />
+      ); })()
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
-        sub={`${e.coach ? `${e.coach.text} · ` : ""}${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
+        tag={e.coach ? <CoachTag call={e.coach} /> : undefined}
+        sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
   const top: ReactNode[] = [
     <WarmupRow key="warmup" warmup={warmup} done={extras.warmup_done}
@@ -389,12 +404,18 @@ function PickSheet({ mode, title, options, all, units, pending, onClose, onApply
   );
 }
 
-function summary(e: SEx, units: Units) {
+/** One plain line for a finished lift: its top set, not a row of numbers. Plus whether it beat last time's top set. */
+function summary(e: SEx, units: Units): { text: string; beat: boolean } {
   const done = e.sets.filter((s) => s.done);
-  const ws = [...new Set(done.map((s) => (s.weight_kg == null ? null : w(s.weight_kg, units))).filter(Boolean))];
-  const reps = done.map((s) => s.reps ?? "?").join(", ");
-  if (e.skill) return `${reps} s held`;
-  return ws.length ? `${ws.join(" · ")} ${unit(units)} · ${reps}` : `${reps} reps`;
+  const n = `${done.length} ${done.length === 1 ? "set" : "sets"}`;
+  if (e.skill) return { text: `${n} · best hold ${Math.max(0, ...done.map((s) => s.reps ?? 0))} s`, beat: false };
+  const loaded = done.filter((s) => (s.weight_kg ?? 0) > 0);
+  if (!loaded.length) return { text: `${n} · best ${Math.max(0, ...done.map((s) => s.reps ?? 0))} reps`, beat: false };
+  const top = loaded.reduce((a, s) => ((s.weight_kg ?? 0) > (a.weight_kg ?? 0) || ((s.weight_kg ?? 0) === (a.weight_kg ?? 0) && (s.reps ?? 0) > (a.reps ?? 0)) ? s : a));
+  const lastTop = e.last?.top ?? null;
+  const lastTopReps = lastTop != null ? Math.max(0, ...(e.last?.sets ?? []).filter((z) => z.weight_kg === lastTop).map((z) => z.reps ?? 0)) : 0;
+  const beat = lastTop != null && ((top.weight_kg ?? 0) > lastTop + 0.01 || (Math.abs((top.weight_kg ?? 0) - lastTop) < 0.01 && (top.reps ?? 0) > lastTopReps));
+  return { text: `${n} · top set ${w(top.weight_kg!, units)} ${unit(units)} × ${top.reps ?? "?"}`, beat };
 }
 
 /** Bells you own (kg). Tap one to fill the current set's weight on kettlebell lifts. */

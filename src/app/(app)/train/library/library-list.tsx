@@ -26,7 +26,7 @@ export function LibraryList({ groups }: { groups: { name: string; items: { id: s
       </label>
       {shown.map((g) => (
         <div key={g.name} className="card clip">
-          <div style={{ padding: "12px 16px 8px" }}><p className="lab">{g.name}</p></div>
+          <div style={{ padding: "12px 16px 8px" }}><p className="ln" style={{ fontSize: 17 }}>{g.name}</p></div>
           {g.items.map((x) => (
             <Link key={x.id} href={`/train/library/${x.id}`} className="row" style={{ borderTop: "1px solid var(--line-soft)" }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>
