@@ -185,6 +185,12 @@ export const GUIDES: Record<string, Guide> = {
     steps: ["Sit with knees under the pad, balls of feet on the edge.","Lower heels fully.","Press up as high as possible."],
     mistake: "Rushing the bottom stretch.",
   },
+  "45-Degree Hip Hinge": {
+    primary: ["Glutes","Hamstrings"],
+    secondary: ["Lower back (holds still)"],
+    steps: ["Set the 45° bench pad just below your hip bones, feet flat, a dumbbell, kettlebell or plate hugged flat to your chest.","Keep your back flat like a plank and hinge down from the hips for 2 seconds, then pause 1 second at the bottom.","Drive up through your heels in 1 second, squeezing your glutes, and stop when your body is in a straight line."],
+    mistake: "Rounding your back on the way down or arching past straight at the top. Your spine stays still; your hips do the moving.",
+  },
   "Kettlebell Swing": {
     primary: ["Glutes","Hamstrings"],
     secondary: ["Core","Upper back","Grip"],
@@ -362,7 +368,7 @@ export const GUIDES: Record<string, Guide> = {
 };
 
 /** Library sections: one per program day, plus Kettlebell. */
-export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers","Seated Overhead Press","Shoulder Press + Overhead Superset"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL","Hamstring Machine Curl","Single-Leg Press","Single-Leg Lunge"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press","Zanetti Press","Chest Flies","Skull Crushers","Triceps Dips"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls","Standing Iso Dumbbell Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL","Clean Front Squat","Round the World","Kettlebell Side Lifts","Kettlebell Overhead March"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat","Bosu Round the World"]],["Core",["Kettlebell Dead Bug","Kneeling Woodchopper","Cable Oblique Extensions","Seated Linear Leg Lift"]]];
+export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers","Seated Overhead Press","Shoulder Press + Overhead Superset"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL","Hamstring Machine Curl","45-Degree Hip Hinge","Single-Leg Press","Single-Leg Lunge"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press","Zanetti Press","Chest Flies","Skull Crushers","Triceps Dips"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls","Standing Iso Dumbbell Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL","Clean Front Squat","Round the World","Kettlebell Side Lifts","Kettlebell Overhead March"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat","Bosu Round the World"]],["Core",["Kettlebell Dead Bug","Kneeling Woodchopper","Cable Oblique Extensions","Seated Linear Leg Lift"]]];
 
 export const guideFor = (name: string): Guide | null => GUIDES[name] ?? null;
 
