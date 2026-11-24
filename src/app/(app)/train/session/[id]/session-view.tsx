@@ -85,12 +85,8 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const [extras, setExtras] = useState({ warmup_done: session.warmup_done, finisher_done: session.finisher_done, cooldown_done: session.cooldown_done });
   const [warmup, setWarm] = useState<string | null>(session.warmup);
   const [warmSheet, setWarmSheet] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(() => {
-    if (initialOpen && initial.some((e) => e.id === initialOpen)) return initialOpen;
-    const first = initial.find((e) => !isDone(e));
-    const r = editing ? null : rampLift(initial);
-    return first && r && first.id === r.id && !first.sets.some((s) => s.done) ? RAMP : first?.id ?? null;
-  });
+  const [openId, setOpenId] = useState<string | null>(() =>
+    (initialOpen && initial.some((e) => e.id === initialOpen) ? initialOpen : null) ?? initial.find((e) => !isDone(e))?.id ?? null);
   const [rampTicks, setRampTicks] = useState<boolean[]>([false, false, false]);
   const [owed, setOwed] = useState(initialOwed);
   const [skipFor, setSkipFor] = useState<SEx | null>(null);
@@ -153,26 +149,24 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
 
   // Ramp-up sets are their own entry, right before the first weighted lift of the day (not logged, not counted).
   const rampEx = editing ? null : rampLift(exs);
-  const rampDone = !!rampEx && (rampTicks.every(Boolean) || rampEx.sets.some((s) => s.done));
-  type Item = { kind: "ramp"; id: string; ex: SEx } | { kind: "ex"; id: string; ex: SEx };
+  const rampLogged = !!rampEx && rampEx.sets.some((s) => s.done);
+  const ramp = rampEx ? rampRows(rampEx, units) : [];
+  type Item = { kind: "ramp"; id: string; ex: SEx; i: number } | { kind: "ex"; id: string; ex: SEx };
   const items: Item[] = exs.flatMap((e): Item[] => (rampEx && e.id === rampEx.id
-    ? [{ kind: "ramp", id: RAMP, ex: e }, { kind: "ex", id: e.id, ex: e }]
+    ? [...ramp.map((_, i): Item => ({ kind: "ramp", id: `${RAMP}${i}`, ex: e, i })), { kind: "ex", id: e.id, ex: e }]
     : [{ kind: "ex", id: e.id, ex: e }]));
 
-  function tickRamp(i: number) {
-    const next = rampTicks.map((t, j) => (j === i ? !t : t));
-    setRampTicks(next);
-    if (next.every(Boolean) && rampEx) setOpenId(rampEx.id);
-  }
+  const tickRamp = (i: number) => setRampTicks((t) => t.map((v, j) => (j === i ? !v : v)));
 
   // Plan order: rows before the open entry (warm-up first), the open entry, rows after it.
   const openPos = items.findIndex((it) => it.id === openId);
   const cut = openPos < 0 ? items.length : openPos;
   const open = openPos < 0 ? null : items[openPos];
-  const itemRow = (it: Item) => it.kind === "ramp"
-    ? <Row key={RAMP} done={rampDone} muted={rampDone} name="Ramp-up sets" onClick={() => setOpenId(RAMP)}
-        sub={rampDone ? `Done · before ${it.ex.name}` : `3 light sets · before ${it.ex.name}`} />
-    : exRow(it.ex);
+  const itemRow = (it: Item) => {
+    if (it.kind === "ex") return exRow(it.ex);
+    const on = rampTicks[it.i] || rampLogged;
+    return <Row key={it.id} done={on} muted={on} dashed name={`Ramp-up · ${ramp[it.i]}`} onClick={() => tickRamp(it.i)} />;
+  };
   const exRow = (e: SEx) => e.skipped
     ? <Row key={e.id} done={false} dashed muted name={e.name} sub={e.skill ? "Skipped · tap to undo" : `Skipped · ${SKIP_LABEL[e.skipped]} · Coach will remind you · tap to undo`} onClick={() => skip(e, null)} />
     : isDone(e)
@@ -243,9 +237,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
 
       {top.length ? <div className="card clip">{top}</div> : null}
 
-      {open?.kind === "ramp" ? (
-        <RampCard ex={open.ex} units={units} ticks={rampTicks} onTick={tickRamp} />
-      ) : open ? (
+      {open?.kind === "ex" ? (
         <ExerciseCard key={open.id} ex={open.ex} units={units} sessionId={session.id}
           onSwap={() => setSheet({ mode: "swap", ex: open.ex })}
           onSkip={() => (open.ex.skill ? skip(open.ex, "time") : setSkipFor(open.ex))}
@@ -438,49 +430,11 @@ function rampLift(exs: SEx[]): SEx | null {
   return ex;
 }
 
-/** Ramp-up sets shown like any other exercise: one row per set, tick each off. Light weight, nothing saved. */
-function RampCard({ ex, units, ticks, onTick }: { ex: SEx; units: Units; ticks: boolean[]; onTick: (i: number) => void }) {
+/** Ramp-up sets as tick rows, e.g. "20 kg × 8–10". Light weight, nothing saved. */
+function rampRows(ex: SEx, units: Units): string[] {
   const kg = rampKg(ex);
-  const sets = kg != null ? rampSets(kg, units) : [{ w: "", reps: "8–10" }, { w: "", reps: "5" }, { w: "", reps: "2–3" }];
-  const [vals, setVals] = useState(() => sets.map((r) => ({ w: r.w, r: r.reps })));
-  const current = ticks.findIndex((t) => !t);
-  const fld = (active: boolean, done: boolean): CSSProperties => ({
-    width: "100%", height: 44, borderRadius: 10, textAlign: "center", fontWeight: 700, fontSize: 17, fontVariantNumeric: "tabular-nums",
-    border: `1px solid ${active ? "var(--ember)" : done ? "var(--line)" : "var(--line-strong)"}`,
-    background: done ? "#fff" : "var(--field)", color: done ? "var(--muted)" : "var(--navy)",
-  });
-  const grid: CSSProperties = { display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center" };
-  return (
-    <div className="card" style={{ padding: 16, border: "2px solid var(--ember)" }}>
-      <h2 className="disp" style={{ fontSize: 22 }}>Ramp-up sets</h2>
-      <p className="cap" style={{ marginTop: 2 }}>Before {ex.name} · light weight, not logged</p>
-      {kg == null ? <p className="cap" style={{ marginTop: 4 }}>About 50%, 70%, then 85% of your working weight.</p> : null}
-      <div style={{ ...grid, margin: "14px 0 6px" }}>
-        <span className="lab" style={{ fontSize: 14 }}>Set</span>
-        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>{unit(units)}</span>
-        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>Reps</span>
-        <span />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {vals.map((v, i) => (
-          <div key={i} style={grid}>
-            <span className="num" style={{ color: i === current ? "var(--rust)" : "var(--muted)" }}>{i + 1}</span>
-            <label><span className="sr-only">Ramp set {i + 1} weight in {unit(units)}</span>
-              <input inputMode="decimal" value={v.w} style={fld(i === current, ticks[i])}
-                onChange={(e) => setVals(vals.map((x, j) => (j === i ? { ...x, w: e.target.value.replace(",", ".") } : x)))} />
-            </label>
-            <label><span className="sr-only">Ramp set {i + 1} reps</span>
-              <input inputMode="numeric" value={v.r} style={fld(i === current, ticks[i])}
-                onChange={(e) => setVals(vals.map((x, j) => (j === i ? { ...x, r: e.target.value } : x)))} />
-            </label>
-            <button type="button" className={`chk${ticks[i] ? " on" : ""}`} aria-pressed={ticks[i]} aria-label={`Ramp set ${i + 1} done`} onClick={() => onTick(i)}>
-              {ticks[i] ? <IconCheck size={18} /> : null}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  if (kg == null) return ["light × 8–10", "medium × 5", "heavier × 2–3"];
+  return rampSets(kg, units).map((r) => `${r.w} ${unit(units)} × ${r.reps}`);
 }
 
 function ExerciseCard({ ex, units, sessionId, onSwap, onSkip, onPatch, onAddSet }: {
