@@ -21,8 +21,8 @@ export function AddExerciseRow({ sessionId, candidates, units }: { sessionId: st
     return (
       <button type="button" onClick={() => setOpen(true)} className="card flat"
         style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", border: "1.5px dashed var(--mist)", background: "transparent", cursor: "pointer", textAlign: "left", width: "100%" }}>
-        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--tint-blue)", color: "var(--kingfisher-text)", display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus /></span>
-        <span><span className="ln" style={{ display: "block", color: "var(--kingfisher-text)" }}>Add exercise</span><span className="cap">Search the library or type a new one</span></span>
+        <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--tint-ember)", color: "var(--ember-text)", display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus /></span>
+        <span><span className="ln" style={{ display: "block", color: "var(--ember-text)" }}>Add exercise</span><span className="cap">Search the library or type a new one</span></span>
       </button>
     );
   }

@@ -25,7 +25,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
         <button type="button" onClick={() => setNotesOpen(!notesOpen)} aria-expanded={notesOpen}
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: 0, padding: "2px 0 10px", cursor: "pointer", color: "var(--navy)", textAlign: "left" }}>
           {label}
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, color: "var(--kingfisher-text)" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, color: "var(--ember-text)" }}>
             {notesOpen ? "Hide" : "Coaching"}
             <IconDown style={{ transition: "transform .15s", transform: notesOpen ? "rotate(180deg)" : "none" }} />
           </span>
@@ -38,7 +38,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
       </ul>
       {parts.length || plan ? (
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: 0, padding: "4px 0 8px", cursor: "pointer", color: "var(--kingfisher-text)", fontSize: 14, fontWeight: 600 }}>
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: 0, padding: "4px 0 8px", cursor: "pointer", color: "var(--ember-text)", fontSize: 14, fontWeight: 600 }}>
           {open ? "Hide the plan" : "Next session plan"}
           <IconDown style={{ transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} />
         </button>

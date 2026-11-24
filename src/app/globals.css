@@ -7,6 +7,7 @@
   --navy-deep: #0e2447;
   --kingfisher: #298eb6;
   --kingfisher-text: #1e7099; /* text-safe shade of Kingfisher */
+  --ember-text: #bd5420; /* text-safe shade of Ember: links and secondary actions */
   --lagoon: #2ab3d1;
   --ember: #d96b29;
   --rust: #b0401d;
@@ -38,7 +39,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
-a { color: var(--kingfisher-text); text-decoration: none; }
+a { color: var(--ember-text); text-decoration: none; }
 a:hover { color: var(--navy); }
 button, input, select, textarea { font-family: inherit; color: inherit; }
 p { margin: 0; }
@@ -84,7 +85,7 @@ a.row:hover { background: #fbf8f0; color: var(--navy); }
 .btn.small { height: 40px; width: auto; padding: 0 18px; font-size: 14px; box-shadow: none; border-radius: 10px; }
 .btn2 {
   display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 14px; border-radius: 10px;
-  border: 1px solid var(--line-strong); background: var(--surface); font-size: 14px; font-weight: 600; color: var(--kingfisher-text); cursor: pointer;
+  border: 1px solid var(--line-strong); background: var(--surface); font-size: 14px; font-weight: 600; color: var(--ember-text); cursor: pointer;
 }
 .ghost {
   display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; border: 1px solid var(--line-strong);
@@ -98,7 +99,7 @@ a.row:hover { background: #fbf8f0; color: var(--navy); }
   width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface);
   padding: 0 14px; font-size: 15px; color: var(--navy);
 }
-.fld:focus { outline: 2px solid var(--kingfisher); outline-offset: 0; border-color: transparent; }
+.fld:focus { outline: 2px solid var(--ember); outline-offset: 0; border-color: transparent; }
 .flab { display: block; font-size: 14px; font-weight: 600; margin: 0 0 6px; }
 textarea.fld { height: 88px; padding: 12px 14px; resize: none; line-height: 1.4; }
 

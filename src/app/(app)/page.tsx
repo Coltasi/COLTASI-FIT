@@ -130,7 +130,7 @@ export default async function OverviewPage() {
       <Link href="/food" className="card" style={{ padding: "18px 18px", display: "grid", gap: 14, color: "var(--navy)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="lab">Food today</p>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--kingfisher-text)" }}>{foodRows?.length ? "Add" : "Log food"} →</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ember-text)" }}>{foodRows?.length ? "Add" : "Log food"} →</span>
         </div>
         <IntakeBars kcal={foodKcal} protein={foodProtein} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
       </Link>
