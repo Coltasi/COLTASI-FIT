@@ -69,10 +69,10 @@ export default async function CoachPage() {
         <div className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))" }}>
           <div style={{ padding: 12 }}><div className="num" style={{ fontSize: 20 }}>{week.doneThisWeek}</div><p className="cap">Workouts</p></div>
           <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}>
-            <div className="num" style={{ fontSize: 20, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={{ fontSize: 13 }}> {unit(units)}</span></div>
+            <div className="num" style={{ fontSize: 20, color: behind ? "var(--rust)" : "var(--navy)" }}>{rate != null ? signed(conv(rate)) : "–"}<span style={{ fontSize: 14 }}> {unit(units)}</span></div>
             <p className="cap">{target != null ? `vs ${signed(conv(target), 2)} plan` : "per week"}</p>
           </div>
-          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={{ fontSize: 13, color: "var(--muted)" }}> h</span></div><p className="cap">Avg sleep</p></div>
+          <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{avgSleep != null ? avgSleep.toFixed(1) : "–"}<span style={{ fontSize: 14, color: "var(--muted)" }}> h</span></div><p className="cap">Avg sleep</p></div>
           <div style={{ padding: 12, borderLeft: "1px solid var(--line-soft)" }}><div className="num" style={{ fontSize: 20 }}>{stepAvg != null ? fmtK(stepAvg) : "–"}</div><p className="cap">Avg steps</p></div>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default async function CoachPage() {
                   <span className="disp" style={{ fontSize: 17, color: "var(--navy)", whiteSpace: "nowrap" }}>
                     {day === today ? "Today" : day === addDays(today, -1) ? "Yesterday" : fmtDay(day)}
                   </span>
-                  {day === today || day === addDays(today, -1) ? <span className="cap" style={{ fontSize: 12 }}>{fmtDay(day)}</span> : null}
+                  {day === today || day === addDays(today, -1) ? <span className="cap" style={{ fontSize: 14 }}>{fmtDay(day)}</span> : null}
                   <span style={{ flexGrow: 1, height: 1, background: "var(--line-strong)" }} />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -102,14 +102,14 @@ export default async function CoachPage() {
                         <summary style={{ listStyle: "none", cursor: "pointer" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                             <span className="tag" style={{ background: k.bg, color: k.fg }}>{k.label}</span>
-                            <span className="cap" style={{ fontSize: 12 }}>{first ? ago(r.created_at) : time(r.created_at)}</span>
+                            <span className="cap" style={{ fontSize: 14 }}>{first ? ago(r.created_at) : time(r.created_at)}</span>
                           </div>
                           <p style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.45, marginTop: 6 }}>{r.headline}</p>
                         </summary>
                         {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
                           <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
                         ) : PARTS.filter(([, key]) => r[key]).map(([l, key]) => (
-                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
+                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
                         ))}
                       </details>
                     );

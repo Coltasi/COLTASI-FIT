@@ -70,7 +70,7 @@ function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null
         <p className="ln" style={{ color: done ? "var(--muted)" : "var(--navy)" }}>{warmup ? `Warm-up · ${WARMUP_LABEL[warmup] ?? warmup}` : "Warm-up"}</p>
         <p className="cap">{warmup ? "10 min" : "10 min · pick a machine"}</p>
       </button>
-      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 13, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
+      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 14, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
     </div>
   );
 }
@@ -188,7 +188,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       {editing ? (
         <div style={{ background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center", color: "var(--rust)" }}>
           <IconPen size={18} />
-          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Editing a finished workout. Changes save to the original date.</p>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Editing a finished workout. Changes save to the original date.</p>
         </div>
       ) : null}
 
@@ -214,10 +214,10 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
                 {o.skips30 >= 3 ? <p className="cap" style={{ color: "var(--rust)" }}>{o.skips30} skips this month. Is it soreness, or should we swap it?</p> : null}
               </div>
               <button type="button" className="btn2" disabled={pending} onClick={() => takeOwed(o)} style={{ flexShrink: 0 }}>Add</button>
-              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 13, flexShrink: 0 }}>Drop</button>
+              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 14, flexShrink: 0 }}>Drop</button>
             </div>
           ))}
-          <p className="cap" style={{ fontSize: 12 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
+          <p className="cap" style={{ fontSize: 14 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
         </div>
       ) : null}
 
@@ -495,9 +495,9 @@ function ExerciseCard({ ex, units, sessionId, ramp, onSwap, onSkip, onPatch, onA
       {ramp && !logged ? <RampUp ex={ex} units={units} /> : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: "14px 0 6px" }}>
-        <span className="lab" style={{ fontSize: 10 }}>Set</span>
-        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
-        <span className="lab" style={{ fontSize: 10, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>
+        <span className="lab" style={{ fontSize: 14 }}>Set</span>
+        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
+        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>
         <span />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -545,7 +545,7 @@ function ExerciseCard({ ex, units, sessionId, ramp, onSwap, onSkip, onPatch, onA
               );
             })}
           </div>
-          {units === "imperial" ? <p className="cap" style={{ marginTop: 4, fontSize: 11 }}>Bells are kg. The set saves as {unit(units)}.</p> : null}
+          {units === "imperial" ? <p className="cap" style={{ marginTop: 4, fontSize: 14 }}>Bells are kg. The set saves as {unit(units)}.</p> : null}
         </div>
       ) : null}
       <button type="button" className="btn2" style={{ marginTop: 12, width: "100%" }}

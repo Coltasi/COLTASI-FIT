@@ -43,12 +43,12 @@ export function SleepForm({ night, initial }: {
 
       <div>
         <p className="ln" style={{ marginBottom: 10 }}>How did you wake up?</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0,1fr))", gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 6 }}>
           {MOODS.map((m) => {
             const on = mood === m.v;
             return (
               <button key={m.v} type="button" aria-pressed={on} onClick={() => setMood(on ? "" : m.v)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 10.5, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
                 <span style={{ width: 12, height: 12, borderRadius: "50%", background: m.c }} />{m.l}
               </button>
             );

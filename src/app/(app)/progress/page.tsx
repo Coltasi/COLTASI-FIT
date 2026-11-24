@@ -8,6 +8,7 @@ import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 import { FoodTrend } from "./food-trend";
+import { StepsTrend } from "./steps-trend";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -69,6 +70,8 @@ export default async function ProgressBodyPage() {
 
       <SessionCounts supabase={supabase} today={today} />
 
+      <StepsTrend supabase={supabase} today={today} />
+
       <FoodTrend supabase={supabase} today={today} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
 
       <details className="card clip scans">
@@ -78,7 +81,7 @@ export default async function ProgressBodyPage() {
         </summary>
         {scans.length ? (
           <div style={{ padding: "0 18px 8px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>
               <span>Date</span><span style={{ textAlign: "right" }}>Body fat</span><span style={{ textAlign: "right" }}>Muscle</span><span style={{ textAlign: "right" }}>Weight</span>
             </div>
             {scans.map((s) => (
@@ -89,7 +92,7 @@ export default async function ProgressBodyPage() {
                 <span className="num" style={{ textAlign: "right" }}>{s.weight_kg != null ? w(s.weight_kg, units) : "–"}</span>
               </div>
             ))}
-            <p className="cap" style={{ padding: "8px 0 4px", fontSize: 13 }}>Muscle and weight in {unit(units)}</p>
+            <p className="cap" style={{ padding: "8px 0 4px", fontSize: 14 }}>Muscle and weight in {unit(units)}</p>
           </div>
         ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 14 }}>No scans yet.</p>}
         <div style={{ padding: "4px 18px 16px" }}>

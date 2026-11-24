@@ -100,7 +100,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         <input id="f-day" type="date" name="scanned_on" value={day} max={today} required onChange={(e) => { setDay(e.target.value); setDayNote(null); }}
           style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--field)", border: "1px solid transparent" }} />
       </div>
-      {dayNote ? <p role="status" style={{ fontSize: 13, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
+      {dayNote ? <p role="status" style={{ fontSize: 14, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
       {photos.map((p) => <input key={p.path} type="hidden" name="photo_path" value={p.path} />)}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
         {photos.map((p) => (
@@ -110,12 +110,12 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         {photos.length < MAX ? (
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading || reading}
             style={{ height: 96, borderRadius: 14, border: "1.5px dashed var(--mist)", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", cursor: "pointer" }}>
-            {uploading ? <span className="cap">Uploading…</span> : <><span style={{ fontSize: 22, lineHeight: 1 }}>+</span><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>Add photo</span></>}
+            {uploading ? <span className="cap">Uploading…</span> : <><span style={{ fontSize: 22, lineHeight: 1 }}>+</span><span className="cap" style={{ fontSize: 14, fontWeight: 600 }}>Add photo</span></>}
           </button>
         ) : null}
         {photos.length === 0 ? (
           <div style={{ height: 96, borderRadius: 14, background: "var(--tint-neutral)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", gridColumn: "span 2", padding: 10, textAlign: "center" }}>
-            <IconDoc size={22} /><span className="cap" style={{ fontSize: 11, fontWeight: 600 }}>One photo per screen: Fat, Muscle, Water, Visceral, BMR. The date comes from the photos.</span>
+            <IconDoc size={22} /><span className="cap" style={{ fontSize: 14, fontWeight: 600 }}>One photo per screen: Fat, Muscle, Water, Visceral, BMR. The date comes from the photos.</span>
           </div>
         ) : null}
       </div>
@@ -126,7 +126,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
           <CoachMark /><span style={{ fontSize: 14, fontWeight: 600 }}>Reading your scan…</span>
         </div>
       ) : null}
-      {msg ? <p role="status" style={{ fontSize: 13, marginTop: -6, fontWeight: 600, color: msg.err ? "var(--rust)" : "var(--kingfisher-text)" }}>{msg.text}</p> : null}
+      {msg ? <p role="status" style={{ fontSize: 14, marginTop: -6, fontWeight: 600, color: msg.err ? "var(--rust)" : "var(--kingfisher-text)" }}>{msg.text}</p> : null}
 
       <div className="card clip">
         {FIELDS.map((f, i) => (
@@ -143,7 +143,7 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         ))}
       </div>
       {problems.length ? (
-        <div className="card" style={{ padding: "10px 14px", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 13, fontWeight: 600, display: "grid", gap: 4 }} role="alert">
+        <div className="card" style={{ padding: "10px 14px", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 14, fontWeight: 600, display: "grid", gap: 4 }} role="alert">
           {problems.map((p) => <p key={p}>{p}</p>)}
         </div>
       ) : null}

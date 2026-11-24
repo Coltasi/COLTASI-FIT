@@ -140,16 +140,16 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
             ))}
           </div>
         ) : (
-          <p className="cap" style={{ fontSize: 13 }}>Your shake and smoothie go here. Log one below and tick &ldquo;Save for one tap&rdquo;.</p>
+          <p className="cap" style={{ fontSize: 14 }}>Your shake and smoothie go here. Log one below and tick &ldquo;Save for one tap&rdquo;.</p>
         )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
-          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap" style={{ fontSize: 11 }}>Coach estimates it</span>
+          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap" style={{ fontSize: 14 }}>Coach estimates it</span>
         </button>
         <button type="button" className="card" disabled={!!busy} onClick={() => codeRef.current?.click()} style={tile}>
-          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap" style={{ fontSize: 11 }}>Packaged food</span>
+          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap" style={{ fontSize: 14 }}>Packaged food</span>
         </button>
       </div>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
@@ -181,7 +181,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
       {product ? (
         <div className="card" style={{ padding: 16, display: "grid", gap: 10, border: "2px solid var(--lagoon)" }}>
           <p style={{ fontWeight: 700 }}>{product.name}</p>
-          <p className="cap" style={{ fontSize: 13 }}>{product.per100.kcal} kcal and {product.per100.protein_g} g protein per 100 g</p>
+          <p className="cap" style={{ fontSize: 14 }}>{product.per100.kcal} kcal and {product.per100.protein_g} g protein per 100 g</p>
           <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span className="flab" style={{ margin: 0 }}>How much (g)</span>
             <input className="fld" inputMode="decimal" value={grams} onChange={(e) => setGrams(e.target.value)} style={{ width: 100 }} />
@@ -193,7 +193,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
       {draft ? (
         <div className="card" style={{ padding: 16, display: "grid", gap: 12, border: "2px solid var(--lagoon)" }}>
           {draft.source === "photo" || draft.source === "text" ? (
-            <p style={{ fontSize: 13, display: "flex", gap: 8, alignItems: "flex-start" }}><CoachMark size={18} /><span>Estimate{draft.note ? `: ${draft.note}` : ""}. Adjust if it looks off.</span></p>
+            <p style={{ fontSize: 14, display: "flex", gap: 8, alignItems: "flex-start" }}><CoachMark size={18} /><span>Estimate{draft.note ? `: ${draft.note}` : ""}. Adjust if it looks off.</span></p>
           ) : null}
           <label style={{ display: "block" }}>
             <span className="flab">Name</span>
@@ -222,5 +222,5 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 13, fontWeight: 600, cursor: "pointer" } as const;
+const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--kingfisher-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" } as const;
 const tile = { padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", font: "inherit", color: "var(--navy)" } as const;

@@ -49,13 +49,13 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
       {edit ? (
         <div style={{ background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center", color: "var(--rust)" }}>
           <IconPen size={18} />
-          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Change names, numbers or the day, or remove entries. Use the arrows to edit other days.</p>
+          <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Change names, numbers or the day, or remove entries. Use the arrows to edit other days.</p>
         </div>
       ) : null}
 
       <div className="card" style={{ padding: "14px 16px", display: "grid", gap: 10 }}>
         <IntakeBars kcal={kcal} protein={protein} targetKcal={tK} targetProtein={tP} />
-        <p className="cap" style={{ fontSize: 13 }}>{leftLine(kcal, protein, tK, tP)}</p>
+        <p className="cap" style={{ fontSize: 14 }}>{leftLine(kcal, protein, tK, tP)}</p>
       </div>
 
       {edit ? (
@@ -67,7 +67,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
           <div key={r.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderTop: i ? "1px solid var(--line-soft)" : undefined }}>
             <div style={{ flexGrow: 1, minWidth: 0 }}>
               <p style={{ fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</p>
-              <p className="cap" style={{ fontSize: 12 }}>{Number(r.kcal).toLocaleString("en-US")} kcal · {Math.round(Number(r.protein_g))} g protein</p>
+              <p className="cap" style={{ fontSize: 14 }}>{Number(r.kcal).toLocaleString("en-US")} kcal · {Math.round(Number(r.protein_g))} g protein</p>
             </div>
           </div>
         )) : (
@@ -85,10 +85,10 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
           <span className={`tag ${energy.source === "measured" ? "blue" : "ember"}`}>{energy.source === "measured" ? "Measured" : "Estimate"}</span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
-          <div><p className="cap" style={{ fontSize: 12 }}>TDEE</p><p className="num" style={{ fontSize: 22 }}>{energy.tdee ? energy.tdee.toLocaleString("en-US") : "–"}</p></div>
-          <div><p className="cap" style={{ fontSize: 12 }}>Your target</p><p className="num" style={{ fontSize: 22 }}>{tK ? tK.toLocaleString("en-US") : "–"}</p></div>
+          <div><p className="cap" style={{ fontSize: 14 }}>TDEE</p><p className="num" style={{ fontSize: 22 }}>{energy.tdee ? energy.tdee.toLocaleString("en-US") : "–"}</p></div>
+          <div><p className="cap" style={{ fontSize: 14 }}>Your target</p><p className="num" style={{ fontSize: 22 }}>{tK ? tK.toLocaleString("en-US") : "–"}</p></div>
         </div>
-        <p className="cap" style={{ fontSize: 13, lineHeight: 1.4 }}>
+        <p className="cap" style={{ fontSize: 14, lineHeight: 1.4 }}>
           {energy.source === "measured"
             ? `From ${energy.loggedDays} logged days averaging ${energy.avgKcal?.toLocaleString("en-US")} kcal, while your weight moved ${energy.rateKgWeek! > 0 ? "+" : ""}${energy.rateKgWeek!.toFixed(2)} kg a week.`
             : `A formula guess from your latest scan. Log full days of food and weigh in Mon, Wed and Fri: after ${energy.daysNeeded} logged days (${energy.loggedDays} so far) this switches to your real number.`}
@@ -119,7 +119,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 6, marginTop: 4 }}>
           {Array.from({ length: 7 }, (_, i) => {
             const d = addDays(today, i - 6);
-            return <p key={d} className="cap" style={{ fontSize: 11, textAlign: "center", fontWeight: d === today ? 700 : 400 }}>{new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "narrow", timeZone: "UTC" })}</p>;
+            return <p key={d} className="cap" style={{ fontSize: 14, textAlign: "center", fontWeight: d === today ? 700 : 400 }}>{new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "narrow", timeZone: "UTC" })}</p>;
           })}
         </div>
       </div>

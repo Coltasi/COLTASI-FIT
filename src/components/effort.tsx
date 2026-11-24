@@ -17,11 +17,11 @@ export function EffortCard({ self, verdict, feel }: { self: string | null; verdi
       <p className="lab" style={{ color: "var(--navy)" }}>Effort</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <div>
-          <p className="cap" style={{ fontSize: 12 }}>You said</p>
+          <p className="cap" style={{ fontSize: 14 }}>You said</p>
           <div style={{ marginTop: 4 }}>{mine ? <EffortTag grade={mine} /> : <span className="cap">Not rated</span>}</div>
         </div>
         <div>
-          <p className="cap" style={{ fontSize: 12 }}>Coach says</p>
+          <p className="cap" style={{ fontSize: 14 }}>Coach says</p>
           <div style={{ marginTop: 4 }}>{verdict ? <EffortTag grade={verdict.grade} /> : <span className="cap">Not enough to compare</span>}</div>
         </div>
       </div>

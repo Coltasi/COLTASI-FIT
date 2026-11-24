@@ -45,11 +45,11 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
   const navBtn = (on: boolean) => ({ width: 32, height: 32, borderRadius: 9, border: "1px solid var(--line-strong)", background: "#fff", color: on ? "var(--navy)" : "var(--mist)", cursor: on ? "pointer" : "default", fontSize: 16, fontWeight: 700, fontFamily: "inherit", padding: 0 } as const);
 
   return (
-    <div className="card" style={{ padding: "12px 14px" }}>
+    <div className="card" style={{ padding: "18px 18px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <p className="lab">{monthName(ym.y, ym.m)}</p>
-          <p className="cap" style={{ fontSize: 12 }}>
+          <p className="cap" style={{ fontSize: 14 }}>
             {trainedDays} {trainedDays === 1 ? "day" : "days"} trained{streak > 1 && ym.y === ty && ym.m === tm ? ` · ${streak}-week streak` : ""}
           </p>
         </div>
@@ -60,7 +60,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 4, marginTop: 10 }}>
-        {DOW.map((d, i) => <p key={i} className="cap" style={{ fontSize: 10, textAlign: "center" }}>{d}</p>)}
+        {DOW.map((d, i) => <p key={i} className="cap" style={{ fontSize: 14, textAlign: "center" }}>{d}</p>)}
         {cells.map((d, i) => {
           if (!d) return <span key={`e${i}`} />;
           const ss = byDate.get(d) ?? [];
@@ -72,7 +72,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
             <button key={d} type="button" disabled={!ss.length} onClick={() => setPicked(sel ? null : d)}
               aria-label={`${fmtShort(d)}${ss.length ? `: ${ss.map((s) => s.title).join(", ")}` : ""}`}
               style={{
-                aspectRatio: "1", borderRadius: 8, padding: 0, fontFamily: "inherit", fontSize: 12, fontWeight: isToday ? 800 : 600,
+                aspectRatio: "1", borderRadius: 8, padding: 0, fontFamily: "inherit", fontSize: 14, fontWeight: isToday ? 800 : 600,
                 border: sel ? "2px solid var(--navy)" : isToday ? "1.5px dashed var(--ember)" : "1px solid transparent",
                 background: fill ?? (future ? "transparent" : "var(--line-soft)"),
                 color: fill ? "#fff" : future ? "var(--mist)" : "var(--muted)", cursor: ss.length ? "pointer" : "default", position: "relative",
@@ -95,7 +95,7 @@ export function WorkoutCalendar({ sessions, today }: { sessions: CalSession[]; t
         </div>
       ) : null}
 
-      <div className="cap" style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 11 }}>
+      <div className="cap" style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 14 }}>
         {Object.values(KIND).map((k) => (
           <span key={k.label} style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: k.color }} />{k.label}</span>
         ))}

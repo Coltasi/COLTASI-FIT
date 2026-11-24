@@ -84,10 +84,10 @@ export function LiftChart({ points, units }: { points: LiftPoint[]; units: Units
       </div>
       <div style={{ marginTop: 12, borderTop: "1px solid var(--line-soft)", paddingTop: 10, display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
         <strong style={{ fontSize: 14 }}>{fmtShort(p.date)}</strong>
-        <span className="num" style={{ fontSize: 20 }}>{w(p.top, units)}<span style={{ fontSize: 13 }}> {unit(units)}</span></span>
+        <span className="num" style={{ fontSize: 20 }}>{w(p.top, units)}<span style={{ fontSize: 14 }}> {unit(units)}</span></span>
         <span className="cap">× {p.reps.map((r) => r ?? "?").join(", ")}</span>
         {prev ? (
-          <span style={{ fontSize: 12, fontWeight: 700, color: p.top > prev.top ? "var(--kingfisher-text)" : p.top < prev.top ? "var(--rust)" : "var(--muted)" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: p.top > prev.top ? "var(--kingfisher-text)" : p.top < prev.top ? "var(--rust)" : "var(--muted)" }}>
             {signed(conv(p.top) - conv(prev.top))} vs {fmtShort(prev.date)}
           </span>
         ) : null}

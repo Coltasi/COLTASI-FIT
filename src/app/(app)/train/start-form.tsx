@@ -51,7 +51,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
                 aria-pressed={on}
                 onClick={() => setWarmup(on ? "" : o.v)}
                 style={{
-                  height: 44, borderRadius: 12, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                  height: 44, borderRadius: 12, fontSize: 14, fontWeight: 600, cursor: "pointer",
                   border: on ? "2px solid var(--ember)" : "1px solid var(--line-strong)",
                   background: on ? "var(--tint-ember)" : "#fff", color: on ? "var(--rust)" : "var(--navy)",
                 }}
@@ -66,7 +66,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
       <div className="card clip">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px 10px" }}>
           <p className="lab">Lifts</p>
-          <p className="cap" style={{ fontSize: 12 }}>last time</p>
+          <p className="cap" style={{ fontSize: 14 }}>last time</p>
         </div>
         {lifts.map((l) => (
           <div key={l.key} className="row" style={{ justifyContent: "space-between" }}>
