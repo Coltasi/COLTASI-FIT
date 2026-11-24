@@ -107,21 +107,22 @@ export function PushSettings() {
 
   const note =
     state === "unsupported" ? "This browser can't receive notifications. Open the installed app on your phone."
-    : state === "blocked" ? "Notifications are blocked for this app. Allow them in your phone's app settings, then come back."
-    : state === "on" ? "On for this device."
+    : state === "blocked" ? "Blocked in your phone's settings. Your saved reminders below are paused until you allow notifications for Coltasi Fit, then come back here."
+    : state === "on" ? "On for this device. Your saved reminders below will arrive."
     : state === "checking" ? "Checking…"
-    : "Off for this device.";
+    : "Off for this device, so your saved reminders below are paused.";
+  const paused = state === "blocked" || state === "off" || state === "unsupported";
 
   return (
-    <div className="row" style={{ minHeight: 56, justifyContent: "space-between", gap: 12 }}>
+    <div className="row" style={{ minHeight: 64, justifyContent: "space-between", gap: 12, background: paused ? "var(--tint-ember-soft)" : undefined }}>
       <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: 15, fontWeight: 600 }}>Phone notifications</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: paused ? "var(--rust)" : undefined }}>{paused ? "Reminders are paused" : state === "on" ? "Reminders are on" : "Phone notifications"}</p>
         <p className="cap">{msg ?? note}</p>
       </div>
       <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-        {state === "on" && <button type="button" className="btn2" style={{ height: 36 }} disabled={busy} onClick={() => { setBusy(true); sendTest().finally(() => setBusy(false)); }}>Send test</button>}
+        {state === "on" && <button type="button" className="btn2" style={{ height: 44 }} disabled={busy} onClick={() => { setBusy(true); sendTest().finally(() => setBusy(false)); }}>Send test</button>}
         {state === "off" && <button type="button" className="btn small" disabled={busy} onClick={enable}>Turn on</button>}
-        {state === "on" && <button type="button" className="btn2" style={{ height: 36 }} disabled={busy} onClick={disable}>Turn off</button>}
+        {state === "on" && <button type="button" className="btn2" style={{ height: 44 }} disabled={busy} onClick={disable}>Turn off</button>}
       </div>
     </div>
   );

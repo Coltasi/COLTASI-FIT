@@ -5,7 +5,7 @@ import { LoggedView } from "./logged-view";
 import { sleepSignal, type LiftSignal, type Night } from "@/lib/coach-signals";
 import { liftChange } from "@/components/coach-plan";
 import { getOwed, owedFor } from "@/lib/owed";
-import { gradeSession } from "@/lib/effort";
+import { gradeSession, liftOutcome, type LiftLike } from "@/lib/effort";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -21,7 +21,9 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
 
   if (s.status !== "in_progress") {
     const { data: rd } = await supabase.from("coach_reads").select("signals").eq("kind", "session").eq("source_id", s.id).order("created_at", { ascending: false }).limit(1);
-    const verdict = gradeSession((rd?.[0]?.signals as any)?.lifts, ses.filter((x) => x.skipped_reason && !x.skill).length);
+    const sigLifts = ((rd?.[0]?.signals as any)?.lifts ?? []) as LiftLike[];
+    const verdict = gradeSession(sigLifts, ses.filter((x) => x.skipped_reason && !x.skill).length);
+    const outcomeByName = new Map((sigLifts as (LiftLike & { name?: string })[]).map((l) => [String(l.name ?? "").toLowerCase(), liftOutcome(l)]));
     return (
       <LoggedView
         id={s.id}
@@ -37,6 +39,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
           name: x.exercises?.name ?? "",
           skipped: x.skipped_reason ?? null,
           skill: !!x.skill,
+          outcome: outcomeByName.get((x.exercises?.name ?? "").toLowerCase()) ?? null,
           sets: ((x.session_sets ?? []) as any[]).filter((z) => z.done).sort((a, b) => a.set_no - b.set_no)
             .map((z) => ({ weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps })),
         }))}

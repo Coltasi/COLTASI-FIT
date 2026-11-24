@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { BrandRow } from "@/components/ui";
+import { PageHeader } from "@/components/ui";
 import { getContext } from "@/lib/data";
 import { addDays, daysBetween, fmtDay, fmtShort, mondayOf } from "@/lib/dates";
-import { unit, w } from "@/lib/units";
+import { signed, unit, w } from "@/lib/units";
 import { ProgressTabs } from "./parts";
 import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart";
 import { WeighInForm } from "./weigh-in-form";
@@ -53,11 +53,57 @@ export default async function ProgressBodyPage() {
     fat: scanSeries((s) => num(s.fat_mass_kg) ?? (s.body_fat_pct != null && s.weight_kg != null ? (Number(s.body_fat_pct) * s.weight_kg) / 100 : null)),
   };
 
+  // Hero: where weight is, how far it has come, and the recent rate against the target rate.
+  const firstPt = series[0];
+  const recent = series.filter((p) => p.d >= addDays(today, -42));
+  let rate: number | null = null;
+  if (recent.length >= 3 && daysBetween(recent[0].d, recent.at(-1)!.d) >= 14) {
+    // Least-squares slope in kg per week over the last six weeks.
+    const xs = recent.map((p) => daysBetween(recent[0].d, p.d)), ys = recent.map((p) => p.kg);
+    const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
+    const num2 = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0), den = xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+    rate = den ? (num2 / den) * 7 : null;
+  }
+  const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);
+  const phase = profile.phase ? profile.phase[0].toUpperCase() + profile.phase.slice(1) : null;
+  const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
+  const total = latest && firstPt && latest.d !== firstPt.d ? conv(latest.kg) - conv(firstPt.kg) : null;
+
   return (
-    <main className="screen">
-      <BrandRow />
-      <h1 className="disp" style={{ fontSize: 30 }}>Progress</h1>
+    <main className="screen" style={{ gap: 22 }}>
+      <PageHeader title="Progress" sub={phase ? `Current phase: ${phase}` : undefined} />
       <ProgressTabs active="body" />
+
+      {latest ? (
+        <section className="feature" aria-label="Weight">
+          <p className="eyebrow">Current weight</p>
+          <p className="feature-title" style={{ fontSize: 40 }}>{w(latest.kg, units)} {unit(units)}</p>
+          {total != null ? <p style={{ fontSize: 17 }}>{signed(total)} {unit(units)} since {fmtDay(firstPt.d)}</p> : null}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
+            <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
+              <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Recent rate</p>
+              <p className="num" style={{ fontSize: 20 }}>{rate != null ? `${signed(conv(rate))} ${unit(units)}/wk` : "Need more weigh-ins"}</p>
+            </div>
+            <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
+              <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Target rate</p>
+              <p className="num" style={{ fontSize: 20 }}>{target != null ? `${signed(conv(target))} ${unit(units)}/wk` : "Not set"}</p>
+            </div>
+          </div>
+          {rate != null && target != null && target !== 0 ? (
+            <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
+              {Math.sign(rate) !== Math.sign(target) ? "Moving the other way from your target over the last six weeks."
+                : Math.abs(rate) < Math.abs(target) * 0.7 ? "Slower than your target over the last six weeks."
+                : Math.abs(rate) > Math.abs(target) * 1.3 ? "Faster than your target over the last six weeks."
+                : "On pace with your target over the last six weeks."}
+            </p>
+          ) : null}
+        </section>
+      ) : (
+        <section className="card" style={{ padding: 18 }}>
+          <p className="ln">No weight logged yet</p>
+          <p className="cap" style={{ marginTop: 4 }}>Log a weigh-in below. Your trend appears after a couple of weeks of Mon, Wed and Fri weigh-ins.</p>
+        </section>
+      )}
       <WeighInForm
         units={units}
         today={today}
@@ -74,9 +120,9 @@ export default async function ProgressBodyPage() {
 
       <FoodTrend supabase={supabase} today={today} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
 
-      <details className="card clip scans">
+      <details className="card clip scans" style={{ marginTop: 4 }}>
         <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", cursor: "pointer", listStyle: "none" }}>
-          <span className="sec">Tanita scans <span className="cap" style={{ fontSize: 15, fontWeight: 600 }}>{scans.length}</span></span>
+          <span><span className="sec" style={{ display: "block" }}>Tanita scan history</span><span className="cap">{scans.length} scans · bioimpedance estimates</span></span>
           <span aria-hidden className="chev" style={{ color: "var(--muted)", fontSize: 18, transition: "transform .15s" }}>⌄</span>
         </summary>
         {scans.length ? (
@@ -92,11 +138,11 @@ export default async function ProgressBodyPage() {
                 <span className="num" style={{ textAlign: "right" }}>{s.weight_kg != null ? w(s.weight_kg, units) : "–"}</span>
               </div>
             ))}
-            <p className="cap" style={{ padding: "8px 0 4px", fontSize: 14 }}>Muscle and weight in {unit(units)}</p>
+            <p className="cap" style={{ padding: "8px 0 4px" }}>Muscle and weight in {unit(units)}</p>
           </div>
         ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 14 }}>No scans yet.</p>}
         <div style={{ padding: "4px 18px 16px" }}>
-          <Link href="/progress/scan" className="btn2" style={{ width: "100%", height: 44, fontSize: 14 }}>+ Add scan</Link>
+          <Link href="/progress/scan" className="btn2" style={{ width: "100%" }}>+ Add scan</Link>
         </div>
       </details>
     </main>

@@ -61,7 +61,7 @@ export function LiftChart({ points, units }: { points: LiftPoint[]; units: Units
           return (
             <g key={i}>
               <line x1={0} y1={y} x2={right} y2={y} stroke={i === 2 ? "var(--line-strong)" : "var(--line-soft)"} />
-              <text x={W} y={y + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Montserrat, sans-serif">{Math.round(t)}</text>
+              <text x={W} y={y + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{Math.round(t)}</text>
             </g>
           );
         })}
@@ -74,7 +74,7 @@ export function LiftChart({ points, units }: { points: LiftPoint[]; units: Units
           return (
             <g key={q.date + i}>
               <circle cx={sx(q.date)} cy={sy(q.top)} r={hit ? 6 : q.pr ? 5 : 3.6} fill={hit ? "#fff" : c} stroke={c} strokeWidth={hit ? 2.4 : 0} />
-              {q.pr ? <text x={sx(q.date)} y={sy(q.top) - 9} textAnchor="middle" fontSize={9} fontWeight={800} fill="var(--rust)" fontFamily="Montserrat, sans-serif">PR</text> : null}
+              {q.pr ? <text x={sx(q.date)} y={sy(q.top) - 9} textAnchor="middle" fontSize={9} fontWeight={800} fill="var(--rust)" fontFamily="Inter Variable, Inter, sans-serif">PR</text> : null}
             </g>
           );
         })}

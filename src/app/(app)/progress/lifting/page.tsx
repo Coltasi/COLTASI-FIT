@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandRow } from "@/components/ui";
+import { PageHeader, Section } from "@/components/ui";
 import { getContext, getProgram } from "@/lib/data";
 import { getLiftHistory, type ExHistory } from "@/lib/lifts";
 import { fmtShort } from "@/lib/dates";
@@ -36,52 +36,63 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
     .sort((a, b) => (a.bestDate < b.bestDate ? 1 : a.bestDate > b.bestDate ? -1 : 0))
     .slice(0, 3);
 
+  const latestPr = prs[0];
+  const latestPrHist = latestPr ? hist.find((h) => h.exercise_id === latestPr.id) : null;
+  const prFirst = latestPrHist?.sessions.map((x) => x.top).find((x): x is number => x != null);
+
   return (
-    <main className="screen">
-      <BrandRow />
-      <h1 className="disp" style={{ fontSize: 30 }}>Progress</h1>
+    <main className="screen" style={{ gap: 22 }}>
+      <PageHeader title="Progress" />
       <ProgressTabs active="lifting" />
       <SessionCounts supabase={supabase} today={today} />
-      <div className="chips">
-        {["All", ...groupsOrder.filter((g) => g !== "Other")].map((g) => (
-          <Link key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>
-        ))}
-      </div>
 
-      {filter === "All" && prs.length ? (
-        <div className="card clip">
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 16px 8px" }}><p className="lab">Recent PRs</p><p className="lab">Top set</p></div>
-          {prs.map((p, i) => (
-            <Link key={p.id} href={`/progress/exercise/${p.id}`} className="row" style={i === 0 ? { paddingTop: 6 } : undefined}>
-              <div style={{ flexGrow: 1, minWidth: 0 }}><p className="ln">{p.name}</p><p className="cap">{fmtShort(p.bestDate)}</p></div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}><span className="num" style={{ fontSize: 17 }}>{w(p.best, units)}</span> <span className="cap">{unit(units)}</span></div>
-            </Link>
-          ))}
-        </div>
+      {filter === "All" && latestPr ? (
+        <Link href={`/progress/exercise/${latestPr.id}`} className="feature" style={{ color: "var(--on-navy)" }}>
+          <p className="eyebrow">Latest recorded best · {fmtShort(latestPr.bestDate)}</p>
+          <p className="feature-title">{latestPr.name} · {w(latestPr.best, units)} {unit(units)}</p>
+          {prFirst != null && prFirst !== latestPr.best ? <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>First logged at {w(prFirst, units)} {unit(units)}</p> : null}
+          {prs.length > 1 ? (
+            <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Also recent: {prs.slice(1).map((p) => `${p.name} ${w(p.best, units)} ${unit(units)}`).join(", ")}</p>
+          ) : null}
+        </Link>
       ) : null}
 
-      {ordered.map((g) => (
-        <div key={g} className="card clip">
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 16px 8px" }}><p className="lab">{g}</p><p className="lab">Best</p></div>
-          {groups.get(g)!.map((h, i) => {
-            const tops = h.sessions.map((s) => s.top).filter((x): x is number => x != null);
-            const best = tops.length ? Math.max(...tops) : null;
-            const bestDate = best != null ? [...h.sessions].reverse().find((s) => s.top === best)?.date : h.sessions.at(-1)?.date;
-            const firstTop = tops[0];
-            return (
-              <Link key={h.exercise_id} href={`/progress/exercise/${h.exercise_id}`} className="row" style={i === 0 ? { paddingTop: 6 } : undefined}>
-                <div style={{ flexGrow: 1, minWidth: 0 }}>
-                  <p className="ln">{h.name}</p>
-                  <p className="cap">{bestDate ? fmtShort(bestDate) : ""}{firstTop != null && best != null && best !== firstTop ? ` · from ${w(firstTop, units)} ${unit(units)}` : ""}</p>
-                </div>
-                <Sparkline values={tops.slice(-8)} />
-                <div style={{ textAlign: "right", width: 64, flexShrink: 0 }}>
-                  {best != null ? <><span className="num" style={{ fontSize: 17 }}>{w(best, units)}</span> <span className="cap">{unit(units)}</span></> : <span className="cap">{h.sessions.length}×</span>}
-                </div>
-              </Link>
-            );
-          })}
+      <Section title="Exercise progression" gap={10}>
+        <div className="chips">
+          {["All", ...groupsOrder.filter((g) => g !== "Other")].map((g) => (
+            <Link key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>
+          ))}
         </div>
+      </Section>
+
+      {ordered.map((g) => (
+        <section key={g}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h3 className="ln" style={{ fontSize: 17 }}>{g}</h3>
+            <span className="cap">Best top set</span>
+          </div>
+          <div className="list">
+            {groups.get(g)!.map((h) => {
+              const tops = h.sessions.map((s) => s.top).filter((x): x is number => x != null);
+              const best = tops.length ? Math.max(...tops) : null;
+              const lastS = h.sessions.at(-1);
+              const latestTop = lastS?.top ?? null;
+              const sub = best != null
+                ? `Latest ${latestTop != null ? `${w(latestTop, units)} ${unit(units)}` : "–"}${lastS ? ` · ${fmtShort(lastS.date)}` : ""}`
+                : `Bodyweight · ${h.sessions.length} ${h.sessions.length === 1 ? "session" : "sessions"}${lastS ? ` · ${fmtShort(lastS.date)}` : ""}`;
+              return (
+                <Link key={h.exercise_id} href={`/progress/exercise/${h.exercise_id}`} className="li">
+                  <div style={{ flexGrow: 1, minWidth: 0 }}>
+                    <p className="t" style={{ fontSize: 16 }}>{h.name}</p>
+                    <p className="s">{sub}</p>
+                  </div>
+                  {tops.length >= 3 ? <Sparkline values={tops.slice(-8)} width={64} height={28} /> : <span className="cap" style={{ width: 64, textAlign: "center", flexShrink: 0 }}>{tops.length ? "Early" : ""}</span>}
+                  <p className="v" style={{ minWidth: 70 }}>{best != null ? `${w(best, units)} ${unit(units)}` : `${h.sessions.length}×`}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
       ))}
       {!ordered.length ? <p className="cap" style={{ textAlign: "center", marginTop: 24 }}>Finish a session and your lifts show up here.</p> : null}
     </main>

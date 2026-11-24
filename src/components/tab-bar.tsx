@@ -14,6 +14,8 @@ const TABS = [
 
 export function TabBar() {
   const path = usePathname();
+  // Secondary settings pages are focused tasks with their own back button: no tab bar.
+  if (path.startsWith("/settings/")) return null;
   return (
     <nav className="tabbar" aria-label="Main">
       {TABS.map(({ href, label, Icon, match }) => {

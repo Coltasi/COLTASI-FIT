@@ -20,17 +20,17 @@ export function SleepCard({ night, logged, bars }: {
 
   if (editing) {
     return (
-      <form action={action} className="card" style={{ gridColumn: "1 / -1", padding: "14px 16px", border: "2px solid var(--lagoon)", display: "flex", flexDirection: "column", gap: 12 }}>
+      <form action={action} className="card" style={{ gridColumn: "1 / -1", padding: "14px 16px", border: "2px solid var(--kingfisher)", display: "flex", flexDirection: "column", gap: 12 }}>
         <input type="hidden" name="night_of" value={night} />
         <input type="hidden" name="hours" value={hours} />
         <input type="hidden" name="wake_feeling" value={mood} />
         {(logged?.flags ?? []).map((f) => <input key={f} type="hidden" name="flags" value={f} />)}
         {logged?.note ? <input type="hidden" name="note" value={logged.note} /> : null}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab" style={{ color: "var(--ember-text)" }}>Log last night&apos;s sleep</p>
+          <p className="ln">Log last night&apos;s sleep</p>
           <span style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
-            <span className="cap" style={{ fontSize: 14 }}>{fmtDow(night)} night</span>
-            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+            <span className="cap">{fmtDow(night)} night</span>
+            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, minHeight: 44, cursor: "pointer" }}>Cancel</button>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -48,7 +48,7 @@ export function SleepCard({ night, logged, bars }: {
               const on = mood === m.v;
               return (
                 <button key={m.v} type="button" aria-pressed={on} onClick={() => setMood(on ? "" : m.v)}
-                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
+                  style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
                   <span style={{ width: 12, height: 12, borderRadius: "50%", background: m.c }} />{m.l}
                 </button>
               );
@@ -56,30 +56,29 @@ export function SleepCard({ night, logged, bars }: {
           </div>
         </div>
         {state.error ? <p className="err">{state.error}</p> : null}
-        <button type="submit" className="btn" style={{ height: 48, fontSize: 15, boxShadow: "none" }} disabled={pending}>{pending ? "Saving…" : "Save sleep"}</button>
+        <button type="submit" className="btn" style={{ height: 52 }} disabled={pending}>{pending ? "Saving…" : "Save sleep"}</button>
       </form>
     );
   }
 
-  // Compact tile: tap anywhere to log or edit.
+  // Compact tile: tap anywhere to log or edit. Missing data is an action, not a dash.
   return (
-    <button type="button" onClick={() => setEditing(true)} className="card" aria-label={logged ? "Edit sleep" : "Log sleep"}
-      style={{ padding: "16px 16px", textAlign: "left", cursor: "pointer", font: "inherit", color: "var(--navy)", display: "flex", flexDirection: "column", gap: 2 }}>
+    <button type="button" onClick={() => setEditing(true)} className="tile" aria-label={logged ? "Edit sleep" : "Log sleep"} style={{ cursor: "pointer" }}>
       <span className="lab">Sleep</span>
       {logged ? (
         <>
-          <span className="num" style={{ fontSize: 22, marginTop: 2 }}>{logged.hours.toFixed(1)}<span className="cap" style={{ fontSize: 14 }}> h</span></span>
-          <span className="cap" style={{ fontSize: 14, textTransform: "capitalize" }}>{logged.wake_feeling ?? "Last night"}</span>
+          <span className="big">{logged.hours.toFixed(1)} h</span>
+          <span className="cap">{logged.wake_feeling ? logged.wake_feeling[0].toUpperCase() + logged.wake_feeling.slice(1) : "Last night"}</span>
         </>
       ) : (
         <>
-          <span className="num" style={{ fontSize: 22, marginTop: 2, color: "var(--muted)" }}>–</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ember-text)" }}>Log last night</span>
+          <span className="big" style={{ color: "var(--rust)", fontSize: 24 }}>Log sleep +</span>
+          <span className="cap">Last night</span>
         </>
       )}
-      <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 6 }} aria-hidden>
+      <span style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 18, marginTop: 10 }} aria-hidden>
         {bars.map((b) => (
-          <span key={b.night} style={{ flex: 1, borderRadius: 2, height: b.hours ? `${Math.max(15, (b.hours / maxH) * 100)}%` : "15%", background: b.hours == null ? "var(--line-soft)" : b.night === night ? "var(--lagoon)" : "#D4EEF5" }} />
+          <span key={b.night} style={{ flex: 1, borderRadius: 2, height: b.hours ? `${Math.max(15, (b.hours / maxH) * 100)}%` : "15%", background: b.hours == null ? "var(--line-soft)" : b.night === night ? "var(--kingfisher)" : "#bfe0ea" }} />
         ))}
       </span>
     </button>

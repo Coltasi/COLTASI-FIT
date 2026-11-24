@@ -5,7 +5,7 @@ export function ProgressTabs({ active }: { active: "body" | "lifting" }) {
   return (
     <nav className="segc" aria-label="Progress view">
       <Link href="/progress" className={active === "body" ? "on" : ""} aria-current={active === "body" ? "page" : undefined}>Body</Link>
-      <Link href="/progress/lifting" className={active === "lifting" ? "on" : ""} aria-current={active === "lifting" ? "page" : undefined}>Lifting</Link>
+      <Link href="/progress/lifting" className={active === "lifting" ? "on" : ""} aria-current={active === "lifting" ? "page" : undefined}>Strength</Link>
     </nav>
   );
 }
@@ -43,8 +43,8 @@ export function LineChart({ points, markers = [], height = 120, ariaLabel, xLabe
         <line x1={0} y1={top} x2={right} y2={top} stroke="var(--line-soft)" />
         <line x1={0} y1={(top + bottom) / 2} x2={right} y2={(top + bottom) / 2} stroke="var(--line-soft)" />
         <line x1={0} y1={bottom} x2={right} y2={bottom} stroke="var(--line-strong)" />
-        <text x={W} y={top + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Montserrat, sans-serif">{fmt(maxY)}{unitLabel ? ` ${unitLabel}` : ""}</text>
-        <text x={W} y={bottom + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Montserrat, sans-serif">{fmt(minY)}</text>
+        <text x={W} y={top + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{fmt(maxY)}{unitLabel ? ` ${unitLabel}` : ""}</text>
+        <text x={W} y={bottom + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{fmt(minY)}</text>
         {points.length > 1 ? <polyline points={line} fill="none" stroke="var(--kingfisher)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" /> : null}
         {markers.filter((m) => m.kind === "small").map((m, i) => <circle key={`s${i}`} cx={sx(m.x)} cy={sy(m.y)} r={2.6} fill="#9FCBDF" />)}
         {markers.filter((m) => m.kind === "big").map((m, i) => <circle key={`b${i}`} cx={sx(m.x)} cy={sy(m.y)} r={4.5} fill="var(--kingfisher)" />)}

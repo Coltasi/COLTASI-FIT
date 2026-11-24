@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { RegisterServiceWorker } from "@/components/register-sw";
-import "@fontsource/montserrat/400.css";
-import "@fontsource/montserrat/500.css";
-import "@fontsource/montserrat/600.css";
-import "@fontsource/montserrat/700.css";
-import "@fontsource/montserrat/800.css";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F8F5EC",
+  themeColor: "#F6F3EC",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

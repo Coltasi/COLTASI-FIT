@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { BrandRow } from "@/components/ui";
+import { CoachMark, PageHeader, Section } from "@/components/ui";
+import { liftChange } from "@/components/coach-plan";
+import type { LiftSignal } from "@/lib/coach-signals";
 import { IconBook, IconCheck, IconClock } from "@/components/icons";
 import { getContext, getFinishers, getLastTimes, getProgram, getWeekState } from "@/lib/data";
 import { daysBetween, fmtDow, mondayOf as week0 } from "@/lib/dates";
@@ -19,37 +21,48 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const split = program.filter((d) => d.program === "split");
   const chosenId = typeof sp.day === "string" ? sp.day : undefined;
   const day = program.find((d) => d.id === chosenId) ?? week.nextDay;
-  const [last, finishers, { data: lastOfDay }] = await Promise.all([
+  const [last, finishers, { data: lastOfDay }, { data: reads }] = await Promise.all([
     getLastTimes(supabase, day ? day.exercises.map((e) => e.exercise_id) : []),
     getFinishers(supabase),
     day
       ? supabase.from("sessions").select("session_date").eq("day_id", day.id).eq("status", "done").order("session_date", { ascending: false }).limit(1)
       : Promise.resolve({ data: null }),
+    supabase.from("coach_reads").select("signals").not("signals", "is", null).order("created_at", { ascending: false }).limit(15),
   ]);
+  // The Coach's latest call per lift, shown next to the plan so a changed prescription is never a surprise.
+  const calls = new Map<string, LiftSignal>();
+  for (const r of (reads ?? []) as { signals: { lifts?: LiftSignal[] } | null }[]) for (const l of r.signals?.lifts ?? []) {
+    const k = l.name.toLowerCase();
+    if (!calls.has(k)) calls.set(k, l);
+  }
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const suggested = !!day && day.id === week.nextDay?.id;
 
+  const todo = split.filter((d) => !week.done.has(d.id));
+  const lastAgo = lastOfDay?.[0] ? ago(daysBetween(lastOfDay[0].session_date, today)) : null;
+
   return (
-    <main className="screen">
-      <BrandRow />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h1 className="disp" style={{ fontSize: 30 }}>Train</h1>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
-          <Link href="/train/history" className="iconbtn" aria-label="Session history"><IconClock /></Link>
-        </div>
-      </div>
+    <main className="screen" style={{ gap: 26 }}>
+      <PageHeader
+        title="Train"
+        sub={week.doneToday.length ? `${week.doneToday.map((x) => x.title).join(" + ")} completed today` : `${week.doneThisWeek} ${week.doneThisWeek === 1 ? "workout" : "workouts"} this week`}
+        right={
+          <div style={{ display: "flex", gap: 8 }}>
+            <Link href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
+            <Link href="/train/history" className="iconbtn" aria-label="Workout history"><IconClock /></Link>
+          </div>
+        }
+      />
 
       {sp.finished ? (
-        <Link href="/coach" className="card cream" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", color: "var(--navy)" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/coltasi-bird.svg" alt="" width={26} height={26} />
-          <span className="ln" style={{ flexGrow: 1 }}>Session saved. Coach is writing your read.</span>
+        <Link href="/coach" className="card cream" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", color: "var(--navy)" }}>
+          <CoachMark size={28} />
+          <span className="ln" style={{ flexGrow: 1 }}>Workout saved. Your coach is reviewing it.</span>
         </Link>
       ) : null}
 
       {week.inProgress ? (
-        <Link href={`/train/session/${week.inProgress.id}`} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", border: "2px solid var(--ember)", color: "var(--navy)" }}>
+        <Link href={`/train/session/${week.inProgress.id}`} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", border: "2px solid var(--rust)", color: "var(--navy)" }}>
           <div>
             <p className="lab" style={{ color: "var(--rust)" }}>In progress</p>
             <p className="ln" style={{ marginTop: 2 }}>{week.inProgress.title}</p>
@@ -58,90 +71,71 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         </Link>
       ) : null}
 
-      {!week.inProgress && week.doneToday.length ? (
-        <div className="card" style={{ padding: "4px 0" }}>
-          <p className="lab" style={{ padding: "10px 16px 4px" }}>Done today</p>
-          {week.doneToday.map((s) => (
-            <Link key={s.id} href={`/train/session/${s.id}`} className="row" style={{ color: "var(--navy)" }}>
-              <IconCheck size={16} />
-              <span className="ln" style={{ flexGrow: 1 }}>{s.title}</span>
-              <span className="tag blue">Done</span>
-            </Link>
-          ))}
-        </div>
+      {day ? (
+        <section className="feature">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <p className="eyebrow">{suggested ? (week.doneToday.length ? "Next session" : "Today's session") : "Picked session"}</p>
+            <Link href="/train/choose" className="btn2" style={{ flexShrink: 0 }}>Change</Link>
+          </div>
+          <h2 className="feature-title" style={{ fontSize: 32 }}>{day.name}</h2>
+          <p style={{ fontSize: 17 }}>{day.exercises.length} exercises · {totalSets} sets</p>
+          <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>{lastAgo ? `Last trained ${lastAgo}` : "First time on this day"}</p>
+          {!suggested && week.nextDay ? (
+            <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
+              Next in The Split is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 700 }}>Switch back</Link>
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab">This week</p>
-          <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + split.filter((d) => !week.done.has(d.id)).length)}, minmax(0, 1fr))`, gap: 6 }}>
+      <Section title="Your training split">
+        <div className="chips" role="list">
           {weekDone.map((x) => (
-            <Link key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
-              <IconCheck size={14} />
+            <Link key={x.id} href={`/train/session/${x.id}`} role="listitem" className="chip" style={{ gap: 6, color: "var(--navy)", borderColor: "transparent", background: "var(--tint-blue)" }}
+              aria-label={`${x.title}, done ${x.session_date === today ? "today" : fmtDow(x.session_date)}`}>
+              <IconCheck size={14} style={{ color: "var(--kingfisher-text)" }} />
+              {x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "Kettlebell" : x.title}
             </Link>
           ))}
-          {split.filter((d) => !week.done.has(d.id)).map((d) => {
+          {todo.map((d) => {
             const isNext = week.nextDay?.id === d.id;
+            const picked = day?.id === d.id;
             return (
-              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat"
-                style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
-                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{d.name}</span>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
+              <Link key={d.id} href={`/train?day=${d.id}`} role="listitem" className={`chip${picked ? " on" : ""}`} aria-label={`${d.name}${isNext ? ", next up" : ", upcoming"}`}>
+                {d.name}{isNext ? " →" : ""}
               </Link>
             );
           })}
         </div>
-      </div>
+        <p className="cap">Runs in order, not by weekday. Ticked = done this week; tap a day to preview it.</p>
+      </Section>
 
       {day ? (
-        <>
-          <div className="card" style={{ padding: "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ minWidth: 0 }}>
-                <p className="lab" style={{ color: "var(--rust)" }}>{suggested ? (week.doneToday.length ? "Up next" : "Today") : "Picked"}</p>
-                <h2 className="disp" style={{ fontSize: 34, lineHeight: 1.05, marginTop: 2 }}>{day.name}</h2>
-              </div>
-              <Link href="/train/choose" className="btn2" style={{ height: 36, padding: "0 14px", display: "inline-flex", alignItems: "center", fontSize: 14, flexShrink: 0 }}>Change</Link>
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
-              <span className="tag neutral">{day.exercises.length} lifts</span>
-              <span className="tag neutral">{totalSets} sets</span>
-              {lastOfDay?.[0] ? <span className="tag neutral">Last {ago(daysBetween(lastOfDay[0].session_date, today))}</span> : <span className="tag neutral">First time</span>}
-            </div>
-            {!suggested && week.nextDay ? (
-              <p className="cap" style={{ marginTop: 10 }}>
-                Next in The Split is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 600 }}>Switch back</Link>
-              </p>
-            ) : null}
-          </div>
-          <StartForm
-            dayId={day.id}
-            dayName={day.name}
-            units={units}
-            finishers={finishers}
-            lifts={day.exercises.map((e) => ({
+        <StartForm
+          dayId={day.id}
+          dayName={day.name}
+          units={units}
+          finishers={finishers}
+          lifts={day.exercises.map((e) => {
+            const call = calls.get(e.name.toLowerCase());
+            const c = call ? liftChange(call, units) : null;
+            return {
               key: `${e.position}:${e.exercise_id}`,
               position: e.position,
               name: e.name,
-              plan: `${e.target_sets} × ${e.rep_range}${e.sub_for ? ` · swapped in for ${e.sub_for.name}` : e.added ? " · added last time" : ""}`,
+              plan: `${e.target_sets} sets × ${e.rep_range}${e.sub_for ? ` · in for ${e.sub_for.name}` : e.added ? " · added last time" : ""}`,
               lastKg: last.get(e.exercise_id)?.top ?? null,
               hasLast: last.has(e.exercise_id),
-            }))}
-            disabled={!!week.inProgress}
-          />
-        </>
+              coach: c ? { tone: c.tone, text: c.short } : null,
+            };
+          })}
+          disabled={!!week.inProgress}
+        />
       ) : (
         <p className="cap">No program found.</p>
       )}
     </main>
   );
 }
-
-const tileBase = { borderRadius: 12, padding: "9px 2px", display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 2, color: "var(--navy)" };
 
 const ago = (n: number) => (n <= 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`);

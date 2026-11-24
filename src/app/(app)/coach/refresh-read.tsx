@@ -7,9 +7,9 @@ import { refreshRead } from "./actions";
 export function RefreshRead() {
   const [pending, start] = useTransition();
   return (
-    <div style={{ textAlign: "right", margin: "4px 0 8px" }}>
-      <button type="button" className="btn2" style={{ height: 32, fontSize: 14 }} disabled={pending} onClick={() => start(() => refreshRead())}>
-        {pending ? "Refreshing…" : "Refresh read"}
+    <div>
+      <button type="button" className="btn2" title="Rewrites the latest insight using everything you have logged since" disabled={pending} onClick={() => start(() => refreshRead())}>
+        {pending ? "Updating…" : "Update with new data"}
       </button>
     </div>
   );

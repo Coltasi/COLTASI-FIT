@@ -6,17 +6,26 @@ export type Effort = "slacked" | "okay" | "solid" | "pushed";
 export const EFFORTS: Effort[] = ["slacked", "okay", "solid", "pushed"];
 export const EFFORT_LABEL: Record<Effort, string> = { slacked: "Slacked", okay: "Okay", solid: "Solid", pushed: "Pushed hard" };
 export const EFFORT_COLOR: Record<Effort, { bg: string; fg: string }> = {
-  pushed: { bg: "var(--tint-blue)", fg: "var(--kingfisher-text)" },
+  pushed: { bg: "var(--tint-jade)", fg: "var(--jade)" },
   solid: { bg: "var(--tint-blue)", fg: "var(--kingfisher-text)" },
   okay: { bg: "var(--tint-neutral)", fg: "var(--muted)" },
   slacked: { bg: "var(--tint-ember)", fg: "var(--rust)" },
 };
 export const isEffort = (v: unknown): v is Effort => typeof v === "string" && (EFFORTS as string[]).includes(v);
 
-type LiftLike = { reps: number[]; change: { from: number | null; kg: number | null; repsFrom: number[] } | null };
+export type LiftLike = { reps: number[]; change: { from: number | null; kg: number | null; repsFrom: number[] } | null };
 export type Verdict = { grade: Effort; better: number; same: number; worse: number; skipped: number; compared: number; line: string };
 
 const sum = (a: number[]) => a.reduce((s, n) => s + (Number(n) || 0), 0);
+
+/** One lift against last time: 1 better, 0 matched, -1 lower, null when there's nothing to compare. Same rule the grade uses. */
+export function liftOutcome(l: LiftLike): 1 | 0 | -1 | null {
+  const c = l.change;
+  if (!c || (c.from == null && !c.repsFrom?.length)) return null;
+  if (c.kg == null && !c.repsFrom?.length) return 0;
+  const d = c.kg != null && c.kg !== 0 ? Math.sign(c.kg) : Math.sign(sum(l.reps) - sum(c.repsFrom ?? []));
+  return d > 0 ? 1 : d < 0 ? -1 : 0;
+}
 
 /** The Coach's grade for a finished session, from its lift signals. null when there's too little to compare. */
 export function gradeSession(lifts: LiftLike[] | null | undefined, skipped = 0): Verdict | null {

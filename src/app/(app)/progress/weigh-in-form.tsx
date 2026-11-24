@@ -15,10 +15,10 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
   }, { error: null });
 
   return (
-    <form action={action} className="card" style={{ padding: "16px 18px", border: due ? "2px solid var(--ember)" : undefined }}>
+    <form action={action} className="card" style={{ padding: "16px 18px", border: due ? "2px solid var(--rust)" : undefined }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <p className="sec" style={{ color: due ? "var(--rust)" : undefined }}>Weigh-in</p>
-        <p className="cap" style={{ fontSize: 14 }}>{label}</p>
+        <p className="cap">{label}</p>
       </div>
       <input type="hidden" name="measured_on" value={today} />
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -31,7 +31,7 @@ export function WeighInForm({ units, today, placeholder, due, label }: {
         <button type="submit" className="btn small" style={{ height: 48 }} disabled={pending}>{pending ? "…" : "Log"}</button>
       </div>
       {state.error ? <p className="err" style={{ marginTop: 8 }}>{state.error}</p> : null}
-      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--kingfisher-text)", fontWeight: 600 }}>Logged.</p> : null}
+      {state.ok ? <p className="cap" style={{ marginTop: 8, color: "var(--jade)", fontWeight: 600 }}>Logged.</p> : null}
     </form>
   );
 }
