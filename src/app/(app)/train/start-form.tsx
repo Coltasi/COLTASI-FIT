@@ -43,6 +43,40 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
       <input type="hidden" name="finisher_moves" value={finisherOn && fin ? JSON.stringify(fin.moves) : ""} />
       {cooldown ? <input type="hidden" name="cooldown" value="on" /> : null}
 
+      <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <h2 className="sec">Warm-up</h2>
+        <details className="card">
+          <summary style={{ listStyle: "none", padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
+            <span className="ln">{warmup ? `${WARMUPS.find((o) => o.v === warmup)?.l} · ${warmupMin} min` : "No warm-up"}</span>
+            <span style={{ color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>Edit</span>
+          </summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, borderTop: "1px solid var(--line-soft)" }}>
+            <p className="lab">Machine</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+              {WARMUPS.map((o) => {
+                const on = warmup === o.v;
+                return (
+                  <button key={o.v} type="button" aria-pressed={on} onClick={() => setWarmup(on ? "" : o.v)}
+                    style={{
+                      height: 48, borderRadius: 12, fontSize: 16, fontWeight: on ? 700 : 600, cursor: "pointer",
+                      border: on ? "2px solid var(--rust)" : "1px solid var(--line-strong)",
+                      background: on ? "var(--tint-ember)" : "#fff", color: on ? "var(--rust)" : "var(--navy)",
+                    }}>
+                    {on ? "✓ " : ""}{o.l}
+                  </button>
+                );
+              })}
+            </div>
+            {warmup ? (
+              <>
+                <p className="lab" style={{ marginTop: 8 }}>Length</p>
+                <WarmupLength value={warmupMin} onChange={setWarmupMin} />
+              </>
+            ) : null}
+          </div>
+        </details>
+      </section>
+
       <section style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <h2 className="sec">Workout plan</h2>
@@ -70,48 +104,25 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
         </div>
       </section>
 
-      <details className="card" style={{ padding: "0 16px" }}>
-        <summary style={{ listStyle: "none", minHeight: 60, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
-          <span>
-            <span className="ln" style={{ display: "block" }}>Workout preparation</span>
-            <span className="cap">{[warmup ? `${WARMUPS.find((o) => o.v === warmup)?.l} ${warmupMin} min` : "No warm-up", finisherOn && fin ? "Ab finisher" : null, cooldown ? "Cool-down" : null].filter(Boolean).join(" · ")}</span>
-          </span>
-          <span style={{ color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>Edit</span>
-        </summary>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
-          <p className="ln">Warm-up · {warmupMin} min</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            {WARMUPS.map((o) => {
-              const on = warmup === o.v;
-              return (
-                <button key={o.v} type="button" aria-pressed={on} onClick={() => setWarmup(on ? "" : o.v)}
-                  style={{
-                    height: 48, borderRadius: 12, fontSize: 16, fontWeight: on ? 700 : 600, cursor: "pointer",
-                    border: on ? "2px solid var(--rust)" : "1px solid var(--line-strong)",
-                    background: on ? "var(--tint-ember)" : "#fff", color: on ? "var(--rust)" : "var(--navy)",
-                  }}>
-                  {on ? "✓ " : ""}{o.l}
-                </button>
-              );
-            })}
-          </div>
-          {warmup ? <WarmupLength value={warmupMin} onChange={setWarmupMin} /> : null}
-          <div className="row" style={{ justifyContent: "space-between", padding: "14px 0", marginTop: 6 }}>
+      <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <h2 className="sec">After your lifts</h2>
+        <div className="card">
+          <div className="row" style={{ justifyContent: "space-between", padding: 16 }}>
             <div>
-              <p className="ln" style={{ marginBottom: 2 }}>Ab finisher</p>
+              <p className="ln">Ab finisher</p>
               <p className="cap">Tick it off during the workout</p>
             </div>
             <button type="button" className={`sw${finisherOn ? " on" : ""}`} aria-pressed={finisherOn} aria-label="Ab finisher" onClick={() => setFinisherOn(!finisherOn)}><span /></button>
           </div>
-          <div className="row" style={{ justifyContent: "space-between", padding: "14px 0" }}>
+          <div className="row" style={{ justifyContent: "space-between", padding: 16 }}>
             <div>
-              <p className="ln" style={{ marginBottom: 2 }}>Cool-down · 5 min</p>
+              <p className="ln">Cool-down · 5 min</p>
               <p className="cap">Stretch and breathing</p>
             </div>
             <button type="button" className={`sw${cooldown ? " on" : ""}`} aria-pressed={cooldown} aria-label="Cool-down" onClick={() => setCooldown(!cooldown)}><span /></button>
           </div>
         </div>
-      </details>
+      </section>
 
       <div className="dock">
         <div><StartButton label={disabled ? "Finish your open session first" : `Start ${dayName} →`} disabled={disabled} /></div>
