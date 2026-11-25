@@ -1,5 +1,6 @@
 "use server";
 
+import { DEFAULT_WARMUP_MIN, WARMUP_MINS } from "@/lib/warmup";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -19,6 +20,7 @@ async function ctx() {
   return { supabase, user };
 }
 
+const isWarmupMin = (m: number) => WARMUP_MINS.includes(m);
 const WARMUPS = ["stairs", "elliptical", "treadmill", "rower"];
 type Supa = Awaited<ReturnType<typeof createClient>>;
 type NewLift = { exercise_id: string; target_sets: number; rep_range: string | null; sub_for?: string | null; added?: boolean; one_off?: boolean; skill?: boolean };
@@ -63,7 +65,7 @@ function parseMoves(raw: FormDataEntryValue | null): { name: string; dose: strin
 
 /**
  * Starts a program day. Builds from the user's plan override for that day when there is one.
- * With quick=1 (the Start button on Overview) it uses the defaults: Stairs warm-up, the default
+ * With quick=1 (the Start button on Overview) it uses the defaults: 10 min Treadmill warm-up, the default
  * finisher and a cool-down.
  */
 export async function startSession(formData: FormData) {
@@ -82,11 +84,12 @@ export async function startSession(formData: FormData) {
   if (!day) throw new Error("That workout day no longer exists.");
 
   let warmup = String(formData.get("warmup") ?? "");
+  const warmupMin = Number(formData.get("warmup_min"));
   let cooldown = formData.get("cooldown") === "on";
   let finisher: string | null = null;
   let moves: { name: string; dose: string; done: boolean }[] | null = null;
   if (quick) {
-    warmup = "stairs";
+    warmup = "treadmill";
     cooldown = true;
     const f = ((fins ?? []) as any[]).find((x) => x.is_default) ?? (fins ?? [])[0];
     if (f) { finisher = f.name; moves = ((f.moves ?? []) as any[]).map((m) => ({ name: m.name, dose: m.dose, done: false })); }
@@ -103,6 +106,7 @@ export async function startSession(formData: FormData) {
       title: day.name,
       session_date: today,
       warmup: WARMUPS.includes(warmup) ? warmup : null,
+      warmup_min: isWarmupMin(warmupMin) ? warmupMin : DEFAULT_WARMUP_MIN,
       finisher,
       finisher_moves: moves,
       cooldown,
@@ -212,6 +216,15 @@ export async function setWarmup(sessionId: string, warmup: string) {
   const { supabase } = await ctx();
   if (!WARMUPS.includes(warmup)) return;
   await supabase.from("sessions").update({ warmup }).eq("id", sessionId).eq("status", "in_progress");
+  revalidatePath(`/train/session/${sessionId}`);
+}
+
+/** Changes the warm-up length (5 minute steps) during the workout. */
+export async function setWarmupMin(sessionId: string, min: number) {
+  const { supabase } = await ctx();
+  if (!isWarmupMin(min)) return;
+  const { error } = await supabase.from("sessions").update({ warmup_min: min }).eq("id", sessionId).eq("status", "in_progress");
+  if (error) throw new Error(error.message);
   revalidatePath(`/train/session/${sessionId}`);
 }
 

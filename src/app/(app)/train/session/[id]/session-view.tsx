@@ -11,7 +11,8 @@ import { GUIDES } from "@/lib/exercise-guides";
 import type { Candidate, LastTime } from "@/lib/data";
 import { exerciseKey } from "@/lib/exercise-match";
 import { lastLine, searchCandidates } from "@/components/exercise-search";
-import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, moveExerciseAfter, saveSet, saveSetEffort, setExtra, setWarmup, skipLift, swapLift } from "../../actions";
+import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, moveExerciseAfter, saveSet, saveSetEffort, setExtra, setWarmup, setWarmupMin, skipLift, swapLift } from "../../actions";
+import { WarmupLength } from "@/components/warmup-length";
 import { CheckInCard } from "./check-in-card";
 import { GRIND_CUE, SET_EFFORTS, SET_EFFORT_LABEL, isHardSet, type SetEffort } from "@/lib/set-effort";
 import { FINISHER_CUE, PRIMER_CUE, balanceRoles, type Role } from "@/lib/placement";
@@ -29,7 +30,7 @@ export type SEx = {
 };
 type Session = {
   id: string; kind: string; title: string;
-  warmup: string | null; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
+  warmup: string | null; warmup_min: number; warmup_done: boolean; cooldown: boolean; cooldown_done: boolean;
   finisher: boolean; finisher_done: boolean;
   /** A finished workout reopened to fix it: Save keeps its date, Cancel puts it back. */
   editing?: boolean;
@@ -73,8 +74,8 @@ function CoachTag({ call }: { call: CoachCall }) {
   );
 }
 
-/** Warm-up: tap the row to tick it off, tap Change to pick (or switch) the machine at any point in the workout. */
-function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null; done: boolean; onToggle: () => void; onChange: () => void }) {
+/** Warm-up: tap the row to tick it off, tap Change to switch the machine or length at any point in the workout. */
+function WarmupRow({ warmup, min, done, onToggle, onChange }: { warmup: string | null; min: number; done: boolean; onToggle: () => void; onChange: () => void }) {
   return (
     <div className="row">
       <button type="button" onClick={onToggle} aria-label="Warm-up done" style={{ background: "none", border: 0, padding: 0, cursor: "pointer", display: "flex" }}>
@@ -82,7 +83,7 @@ function WarmupRow({ warmup, done, onToggle, onChange }: { warmup: string | null
       </button>
       <button type="button" onClick={onToggle} style={{ flexGrow: 1, background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}>
         <p className="ln" style={{ color: done ? "var(--muted)" : "var(--navy)" }}>{warmup ? `Warm-up · ${WARMUP_LABEL[warmup] ?? warmup}` : "Warm-up"}</p>
-        <p className="cap">{warmup ? "10 min" : "10 min · pick a machine"}</p>
+        <p className="cap">{warmup ? `${min} min` : `${min} min · pick a machine`}</p>
       </button>
       <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 14, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
     </div>
@@ -98,6 +99,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const [exs, setExs] = useState(initial);
   const [extras, setExtras] = useState({ warmup_done: session.warmup_done, finisher_done: session.finisher_done, cooldown_done: session.cooldown_done });
   const [warmup, setWarm] = useState<string | null>(session.warmup);
+  const [warmMin, setWarmMin] = useState(session.warmup_min);
   const [warmSheet, setWarmSheet] = useState(false);
   const [openId, setOpenId] = useState<string | null>(() =>
     (initialOpen && initial.some((e) => e.id === initialOpen) ? initialOpen : null) ?? initial.find((e) => !isDone(e))?.id ?? null);
@@ -206,7 +208,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
         sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
   const top: ReactNode[] = [
-    <WarmupRow key="warmup" warmup={warmup} done={extras.warmup_done}
+    <WarmupRow key="warmup" warmup={warmup} min={warmMin} done={extras.warmup_done}
       onToggle={() => (warmup ? toggleExtra("warmup_done") : setWarmSheet(true))} onChange={() => setWarmSheet(true)} />,
   ];
   items.slice(0, cut).forEach((it) => top.push(itemRow(it)));
@@ -338,7 +340,8 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       ) : null}
 
       {warmSheet ? (
-        <Sheet title="Warm-up · 10 min" onClose={() => setWarmSheet(false)}>
+        <Sheet title={`Warm-up · ${warmMin} min`} onClose={() => setWarmSheet(false)}>
+          <WarmupLength value={warmMin} onChange={(m) => { setWarmMin(m); start(() => setWarmupMin(session.id, m)); }} />
           <div className="card flat clip">
             {WARMUP_KEYS.map((k) => {
               const on = warmup === k;

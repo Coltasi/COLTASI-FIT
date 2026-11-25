@@ -13,7 +13,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   const { supabase, units, today } = await getContext();
   const { data: s } = await supabase
     .from("sessions")
-    .select("id, kind, title, status, session_date, feel, pain_areas, notes, effort, warmup, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done, effort))")
+    .select("id, kind, title, status, session_date, feel, pain_areas, notes, effort, warmup, warmup_min, warmup_done, finisher, finisher_moves, finisher_done, cooldown, cooldown_done, edit_snapshot, session_exercises(id, exercise_id, position, target_sets, rep_range, sub_for, added, skipped_reason, skill, exercises(name), session_sets(id, set_no, weight_kg, reps, done, effort))")
     .eq("id", id)
     .single();
   if (!s) notFound();
@@ -111,7 +111,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
       key={exercises.map((e) => `${e.id}:${e.sets.length}`).join(",")}
       session={{
         id: s.id, kind: s.kind, title: s.title,
-        warmup: s.warmup, warmup_done: s.warmup_done, cooldown: s.cooldown, cooldown_done: s.cooldown_done,
+        warmup: s.warmup, warmup_min: s.warmup_min, warmup_done: s.warmup_done, cooldown: s.cooldown, cooldown_done: s.cooldown_done,
         finisher: !!s.finisher, finisher_done: s.finisher_done,
         editing: s.edit_snapshot != null,
       }}
