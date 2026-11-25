@@ -87,7 +87,7 @@ export function WorkoutCalendar({ sessions, today, bare = false }: { sessions: C
       {pickedSessions.length ? (
         <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
           {pickedSessions.map((s) => (
-            <Link key={s.id} href={`/train/session/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: "var(--navy)", minHeight: 44 }}>
+            <Link prefetch={false} key={s.id} href={`/train/session/${s.id}`} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: "var(--navy)", minHeight: 44 }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: KIND[s.kind]?.color ?? "var(--kingfisher)" }} />
               {fmtShort(s.date)} · {s.title}<span style={{ color: "var(--ember-text)", marginLeft: "auto" }}>View ›</span>
             </Link>

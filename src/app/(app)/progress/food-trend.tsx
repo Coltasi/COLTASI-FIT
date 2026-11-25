@@ -21,7 +21,7 @@ export async function FoodTrend({ supabase, today, targetKcal, targetProtein }: 
     return (
       <div className="card" style={{ padding: "16px 18px" }}>
         <p className="sec">Food</p>
-        <p className="cap" style={{ marginTop: 6, fontSize: 14 }}>Log meals in <Link href="/food">Food</Link> to see your trend here.</p>
+        <p className="cap" style={{ marginTop: 6, fontSize: 14 }}>Log meals in <Link prefetch={false} href="/food">Food</Link> to see your trend here.</p>
       </div>
     );
   }
@@ -31,7 +31,7 @@ export async function FoodTrend({ supabase, today, targetKcal, targetProtein }: 
   const maxK = Math.max(targetKcal ?? 0, ...[...totals.values()].map((t) => t.kcal)) * 1.08 || 3000;
 
   return (
-    <Link href="/food" className="card" style={{ padding: "16px 18px", display: "grid", gap: 16, color: "var(--navy)" }}>
+    <Link prefetch={false} href="/food" className="card" style={{ padding: "16px 18px", display: "grid", gap: 16, color: "var(--navy)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <p className="sec">Food</p>
         <p className="cap" style={{ fontSize: 14 }}>4 weeks</p>

@@ -41,7 +41,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
       <PageHeader
         title="Nutrition"
         above={edit ? <span style={{ color: "var(--rust)", fontWeight: 700 }}>Editing</span> : undefined}
-        right={edit ? undefined : <Link href={editHref} className="btn2"><IconPen size={16} />Edit</Link>}
+        right={edit ? undefined : <Link prefetch={false} href={editHref} className="btn2"><IconPen size={16} />Edit</Link>}
       />
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -71,7 +71,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
       </section>
 
       {edit ? null : (
-        <Link href={`/food/add${day === today ? "" : `?day=${day}`}`} className="btn">
+        <Link prefetch={false} href={`/food/add${day === today ? "" : `?day=${day}`}`} className="btn">
           <IconPlus size={18} />Add food
         </Link>
       )}
@@ -150,7 +150,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
               const h = t ? Math.max(6, (t.kcal / maxK) * 100) : 100;
               const over = !!(t && tK && t.kcal > tK);
               return (
-                <Link key={d} href={d === today ? "/food" : `/food?day=${d}`}
+                <Link prefetch={false} key={d} href={d === today ? "/food" : `/food?day=${d}`}
                   aria-label={`${d}: ${t ? `${Math.round(t.kcal)} kcal${d === today ? ", day in progress" : ""}` : "nothing logged"}`}
                   style={t
                     ? { height: `${h}%`, borderRadius: 4, background: over ? "var(--ember)" : d === today ? "#9fd0de" : "var(--kingfisher)", position: "relative", zIndex: 1 }

@@ -10,7 +10,7 @@ export default function SignUpPage() {
   return (
     <main className="screen no-tabs" style={{ padding: "22px 24px 40px", gap: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Link href="/login" className="iconbtn" aria-label="Back to Log in"><IconBack /></Link>
+        <Link prefetch={false} href="/login" className="iconbtn" aria-label="Back to Log in"><IconBack /></Link>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/coltasi-bird.svg" alt="" width={34} height={34} />
         <span className="disp" style={{ fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>

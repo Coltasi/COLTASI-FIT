@@ -24,7 +24,7 @@ export default async function SettingsPage() {
       <div>
         <SectionLabel>Account</SectionLabel>
         <div className="card clip">
-          <Link href="/settings/profile" className="row" style={{ minHeight: 72, justifyContent: "space-between" }}>
+          <Link prefetch={false} href="/settings/profile" className="row" style={{ minHeight: 72, justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <span className="disp" style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--navy)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>{name.slice(0, 1).toUpperCase()}</span>
               <div><p style={{ fontSize: 16, fontWeight: 600 }}>{name}</p><p className="cap">{user.email}</p></div>
@@ -49,7 +49,7 @@ export default async function SettingsPage() {
       <div>
         <SectionLabel>Profile &amp; units</SectionLabel>
         <div className="card clip">
-          <Link href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
+          <Link prefetch={false} href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
             <div><p style={{ fontSize: 16, fontWeight: 600 }}>Body stats</p><p className="cap">Height, sex, age, TDEE and targets</p></div>
             <IconChevron />
           </Link>
@@ -70,7 +70,7 @@ export default async function SettingsPage() {
             ["Protein target", profile.protein_g ? `${profile.protein_g} g` : "Not set"],
             ["Kettlebells on hand", kbs.length ? `${Math.min(...kbs)} to ${Math.max(...kbs)} kg` : "None"],
           ].map(([l, v]) => (
-            <Link key={l} href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
+            <Link prefetch={false} key={l} href="/settings/profile" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
               <p style={{ fontSize: 16, fontWeight: 600 }}>{l}</p>
               <span style={{ fontSize: 15, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>{v} <IconChevron /></span>
             </Link>

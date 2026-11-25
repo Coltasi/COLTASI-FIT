@@ -142,7 +142,7 @@ export default async function ProgressBodyPage() {
           </div>
         ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 14 }}>No scans yet.</p>}
         <div style={{ padding: "4px 18px 16px" }}>
-          <Link href="/progress/scan" className="btn2" style={{ width: "100%" }}>+ Add scan</Link>
+          <Link prefetch={false} href="/progress/scan" className="btn2" style={{ width: "100%" }}>+ Add scan</Link>
         </div>
       </details>
     </main>

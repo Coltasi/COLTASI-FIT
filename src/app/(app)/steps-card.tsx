@@ -22,7 +22,7 @@ export function StepsCard({ today, bars, avg7 }: {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="ln">Log steps</p>
           <span style={{ display: "flex", gap: 14 }}>
-            <Link href="/steps" style={{ fontSize: 15, fontWeight: 600 }}>History</Link>
+            <Link prefetch={false} href="/steps" style={{ fontSize: 15, fontWeight: 600 }}>History</Link>
             <button type="button" onClick={() => setEditing(false)} style={linkBtn}>Cancel</button>
           </span>
         </div>

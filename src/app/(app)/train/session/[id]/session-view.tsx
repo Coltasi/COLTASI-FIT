@@ -227,7 +227,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
           <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>{session.title}</h1>
           {session.kind === "custom" ? <p className="cap" style={{ marginTop: 4 }}>No plan. Build it as you go.</p> : null}
         </div>
-        <Link href={`/train/session/${session.id}/edit`} className="btn2" style={{ marginTop: 6 }}>Edit</Link>
+        <Link prefetch={false} href={`/train/session/${session.id}/edit`} className="btn2" style={{ marginTop: 6 }}>Edit</Link>
       </div>
 
       {editing ? (
@@ -576,7 +576,7 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         {logged || ex.skill ? null : <button type="button" className="btn2" onClick={onSwap} style={actBtn}>Swap</button>}
         {logged ? null : <button type="button" className="btn2" onClick={onSkip} style={actBtn}>Skip</button>}
-        <Link href={`/train/library/${ex.exerciseId}?from=${sessionId}`} className="btn2" style={actBtn}>How to</Link>
+        <Link prefetch={false} href={`/train/library/${ex.exerciseId}?from=${sessionId}`} className="btn2" style={actBtn}>How to</Link>
       </div>
       {ex.skill ? <p style={{ marginTop: 6 }}><span className="tag cream">Skill · warm-up</span></p> : null}
       {ex.subFor ? <p style={{ marginTop: 6 }}><span className="tag ember">Swapped in for {ex.subFor}</span></p> : null}

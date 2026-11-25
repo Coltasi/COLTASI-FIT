@@ -38,11 +38,12 @@ const FAST_PATHS = ["/", "/train", "/train/history", "/progress", "/progress/lif
 // Windows that were shown a saved copy and should refresh once they're up.
 const staleClients = new Set();
 const WARM_PATHS = ["/", "/train", "/train/choose", "/train/history", "/progress", "/progress/lifting", "/coach", "/sleep", "/settings"];
-const WARM_MIN_INTERVAL_MS = 10 * 60 * 1000;
+const WARM_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
+// Last-warm time, kept in STATIC_CACHE because the worker's memory is lost
+// whenever Android stops it.
+const WARM_STAMP_KEY = "/__warm-stamp";
 
 const PRECACHE_URLS = [OFFLINE_URL, "/manifest.json", "/brand/coltasi-bird.svg"];
-
-let lastWarm = 0;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -180,9 +181,13 @@ async function networkFirstNavigation(event) {
 // Fetch the main screens plus the JS/CSS they reference, so they open offline.
 async function warm() {
   const now = Date.now();
+  const cache = await caches.open(STATIC_CACHE);
+  const stamp = await cache.match(WARM_STAMP_KEY);
+  const lastWarm = stamp ? Number(await stamp.text()) || 0 : 0;
   if (now - lastWarm < WARM_MIN_INTERVAL_MS) return;
-  lastWarm = now;
+  await cache.put(WARM_STAMP_KEY, new Response(String(now)));
 
+  let saved = 0;
   const assets = new Set();
   await Promise.all(
     WARM_PATHS.map(async (path) => {
@@ -193,13 +198,16 @@ async function warm() {
         const html = await response.clone().text();
         for (const m of html.matchAll(/["'(](\/_next\/static\/[^"')\s\\]+)/g)) assets.add(m[1]);
         await cachePage(url, response);
+        saved++;
       } catch {
         // Offline or failed: try again next time.
       }
     })
   );
 
-  const cache = await caches.open(STATIC_CACHE);
+  // Nothing saved (offline or signed out): don't block the next try for 6 hours.
+  if (saved === 0) await cache.delete(WARM_STAMP_KEY);
+
   await Promise.all(
     [...assets].map(async (path) => {
       try {

@@ -20,7 +20,7 @@ export default async function ChoosePage() {
     const doneOn = week.done.get(d.id);
     const next = week.nextDay?.id === d.id;
     return (
-      <Link href={`/train?day=${d.id}`} className="row" style={next ? { background: "var(--tint-ember-soft)" } : undefined}>
+      <Link prefetch={false} href={`/train?day=${d.id}`} className="row" style={next ? { background: "var(--tint-ember-soft)" } : undefined}>
         <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: next ? "7px solid var(--ember)" : "1.5px solid var(--check-line)" }} />
         <span style={{ flexGrow: 1 }}>
           <span className="ln" style={{ display: "block" }}>{d.name}</span>

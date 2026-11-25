@@ -16,7 +16,7 @@ export async function StepsTrend({ supabase, today }: { supabase: Supa; today: s
     return (
       <div className="card" style={{ padding: "16px 18px" }}>
         <p className="sec">Steps</p>
-        <p className="cap" style={{ marginTop: 6 }}>Log steps on <Link href="/">Today</Link> to see your trend here.</p>
+        <p className="cap" style={{ marginTop: 6 }}>Log steps on <Link prefetch={false} href="/">Today</Link> to see your trend here.</p>
       </div>
     );
   }
@@ -25,7 +25,7 @@ export async function StepsTrend({ supabase, today }: { supabase: Supa; today: s
   const maxS = Math.max(10000, ...rows.map((r) => r.steps)) * 1.08;
 
   return (
-    <Link href="/steps" className="card" style={{ padding: "16px 18px", display: "grid", gap: 16, color: "var(--navy)" }}>
+    <Link prefetch={false} href="/steps" className="card" style={{ padding: "16px 18px", display: "grid", gap: 16, color: "var(--navy)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <p className="sec">Steps</p>
         <p className="cap">4 weeks</p>

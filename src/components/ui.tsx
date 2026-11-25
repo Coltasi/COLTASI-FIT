@@ -48,7 +48,7 @@ export function BackHeader({ href, label, eyebrow, title, eyebrowColor }: {
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <Link href={href} className="iconbtn" aria-label={`Back to ${label}`}><IconBack /></Link>
+      <Link prefetch={false} href={href} className="iconbtn" aria-label={`Back to ${label}`}><IconBack /></Link>
       <div>
         {eyebrow ? <p className="lab" style={eyebrowColor ? { color: eyebrowColor } : undefined}>{eyebrow}</p> : null}
         <h1 className="disp" style={{ fontSize: 26, lineHeight: 1.15, marginTop: eyebrow ? 2 : 0 }}>{title}</h1>

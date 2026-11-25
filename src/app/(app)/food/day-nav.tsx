@@ -11,12 +11,12 @@ export function DayNav({ day, today, min, edit }: { day: string; today: string; 
   const prev = shift(-1), next = shift(1);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      {prev >= min ? <Link href={href(prev)} className="btn2" aria-label="Previous day" style={arrow}>‹</Link> : <span className="btn2" style={{ ...arrow, opacity: 0.35 }} aria-hidden>‹</span>}
+      {prev >= min ? <Link prefetch={false} href={href(prev)} className="btn2" aria-label="Previous day" style={arrow}>‹</Link> : <span className="btn2" style={{ ...arrow, opacity: 0.35 }} aria-hidden>‹</span>}
       <input type="date" className="fld" value={day} min={min} max={today} aria-label="Pick a day"
         onChange={(e) => { const v = e.target.value; if (v && v >= min && v <= today) router.push(href(v)); }}
         style={{ flexGrow: 1, height: 44, textAlign: "center", fontWeight: 600 }} />
-      {next <= today ? <Link href={href(next)} className="btn2" aria-label="Next day" style={arrow}>›</Link> : <span className="btn2" style={{ ...arrow, opacity: 0.35 }} aria-hidden>›</span>}
-      {day !== today ? <Link href={href(today)} className="chip">Today</Link> : null}
+      {next <= today ? <Link prefetch={false} href={href(next)} className="btn2" aria-label="Next day" style={arrow}>›</Link> : <span className="btn2" style={{ ...arrow, opacity: 0.35 }} aria-hidden>›</span>}
+      {day !== today ? <Link prefetch={false} href={href(today)} className="chip">Today</Link> : null}
     </div>
   );
 }
