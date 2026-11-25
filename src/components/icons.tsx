@@ -30,6 +30,15 @@ export const IconChevron = ({ size = 18, ...p }: P) => (
 export const IconCheck = ({ size = 16, ...p }: P) => (
   <svg {...base(size)} strokeWidth={2.8} {...p}><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
 );
+export const IconFlame = ({ size = 16, ...p }: P) => (
+  <svg {...base(size)} strokeWidth={2.2} {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1-2.1-.2-4 2-6 .5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z" /></svg>
+);
+export const IconX = ({ size = 16, ...p }: P) => (
+  <svg {...base(size)} strokeWidth={2.8} {...p}><path d="m6 6 12 12M18 6 6 18" /></svg>
+);
+export const IconSmile = ({ size = 16, ...p }: P) => (
+  <svg {...base(size)} strokeWidth={2.2} {...p}><circle cx="12" cy="12" r="9" /><path d="M8 14.5s1.5 2 4 2 4-2 4-2" /><path d="M9 9.5h.01M15 9.5h.01" /></svg>
+);
 export const IconPlus = ({ size = 16, ...p }: P) => (
   <svg {...base(size)} strokeWidth={2.4} {...p}><path d="M12 5v14M5 12h14" /></svg>
 );
