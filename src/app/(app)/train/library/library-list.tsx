@@ -28,7 +28,7 @@ export function LibraryList({ groups }: { groups: { name: string; items: { id: s
         <div key={g.name} className="card clip">
           <div style={{ padding: "12px 16px 8px" }}><p className="ln" style={{ fontSize: 17 }}>{g.name}</p></div>
           {g.items.map((x) => (
-            <Link key={x.id} href={`/train/library/${x.id}`} className="row" style={{ borderTop: "1px solid var(--line-soft)" }}>
+            <Link prefetch={false} key={x.id} href={`/train/library/${x.id}`} className="row" style={{ borderTop: "1px solid var(--line-soft)" }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>
                 <p className="ln">{x.name}</p>
                 <p className="cap">{GUIDES[x.name]?.primary.join(", ")}</p>

@@ -71,12 +71,12 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
       {day ? (
         <div className="card cream" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", minHeight: 52 }}>
           <span className="ln">{fmtDay(day)}</span>
-          <Link href="/train/history" style={{ fontSize: 15, fontWeight: 700 }}>Show all</Link>
+          <Link prefetch={false} href="/train/history" style={{ fontSize: 15, fontWeight: 700 }}>Show all</Link>
         </div>
       ) : null}
       <div className="chips">
         {FILTERS.map((x) => (
-          <Link key={x.k} href={x.k === "all" ? "/train/history" : `/train/history?f=${x.k}`} className={`chip${f === x.k ? " on" : ""}`} aria-current={f === x.k ? "page" : undefined}>{x.l}</Link>
+          <Link prefetch={false} key={x.k} href={x.k === "all" ? "/train/history" : `/train/history?f=${x.k}`} className={`chip${f === x.k ? " on" : ""}`} aria-current={f === x.k ? "page" : undefined}>{x.l}</Link>
         ))}
       </div>
       {[...groups.entries()].map(([label, list]) => (
@@ -96,7 +96,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
               const mine = isEffort(s.effort) ? EFFORT_LABEL[s.effort as keyof typeof EFFORT_LABEL] : null;
               const d = new Date(s.session_date + "T12:00:00Z");
               return (
-                <Link key={s.id} href={`/train/session/${s.id}`} className="li" style={{ alignItems: "flex-start" }}>
+                <Link prefetch={false} key={s.id} href={`/train/session/${s.id}`} className="li" style={{ alignItems: "flex-start" }}>
                   <div aria-hidden style={{ width: 50, flexShrink: 0, borderRadius: 12, background: "var(--surface)", border: "1px solid var(--line)", textAlign: "center", padding: "6px 0" }}>
                     <p className="num" style={{ fontSize: 20, lineHeight: 1.1 }}>{d.getUTCDate()}</p>
                     <p className="cap" style={{ fontSize: 14 }}>{d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</p>

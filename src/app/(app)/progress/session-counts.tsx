@@ -11,7 +11,7 @@ export async function SessionCounts({ supabase, today }: { supabase: Supa; today
   ]);
 
   return (
-    <Link href="/train/history" className="card" aria-label="Workouts completed, open session history"
+    <Link prefetch={false} href="/train/history" className="card" aria-label="Workouts completed, open session history"
       style={{ display: "grid", gridTemplateColumns: "1fr 1fr", padding: "16px 18px", color: "var(--navy)" }}>
       <div className="stat"><b>{week ?? 0}</b><span>workouts this week</span></div>
       <div className="stat"><b>{total ?? 0}</b><span>all time</span></div>

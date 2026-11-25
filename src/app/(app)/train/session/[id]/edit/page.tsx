@@ -26,7 +26,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
           <p className="lab" style={s.edit_snapshot ? { color: "var(--rust)" } : undefined}>{s.title} · {s.edit_snapshot ? "editing" : "in progress"}</p>
           <h1 className="disp" style={{ fontSize: 28, marginTop: 2 }}>Edit lifts</h1>
         </div>
-        <Link href={`/train/session/${s.id}`} className="btn small" style={{ marginTop: 6 }}>Done</Link>
+        <Link prefetch={false} href={`/train/session/${s.id}`} className="btn small" style={{ marginTop: 6 }}>Done</Link>
       </div>
       <p className="cap">Tap the red minus to remove a lift, or reorder with the arrows. Logged lifts are locked so history stays intact.</p>
 

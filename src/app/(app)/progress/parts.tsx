@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 export function ProgressTabs({ active }: { active: "body" | "lifting" }) {
   return (
     <nav className="segc" aria-label="Progress view">
-      <Link href="/progress" className={active === "body" ? "on" : ""} aria-current={active === "body" ? "page" : undefined}>Body</Link>
-      <Link href="/progress/lifting" className={active === "lifting" ? "on" : ""} aria-current={active === "lifting" ? "page" : undefined}>Strength</Link>
+      <Link prefetch={false} href="/progress" className={active === "body" ? "on" : ""} aria-current={active === "body" ? "page" : undefined}>Body</Link>
+      <Link prefetch={false} href="/progress/lifting" className={active === "lifting" ? "on" : ""} aria-current={active === "lifting" ? "page" : undefined}>Strength</Link>
     </nav>
   );
 }

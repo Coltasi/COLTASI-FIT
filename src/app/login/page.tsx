@@ -17,7 +17,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       </div>
       <h1 className="disp" style={{ fontSize: 26, textAlign: "center" }}>Welcome back</h1>
       <LoginForm notice={notice} />
-      <p className="cap" style={{ textAlign: "center", marginTop: "auto" }}>New here? <Link href="/signup" style={{ fontWeight: 600 }}>Create an account</Link></p>
+      <p className="cap" style={{ textAlign: "center", marginTop: "auto" }}>New here? <Link prefetch={false} href="/signup" style={{ fontWeight: 600 }}>Create an account</Link></p>
     </main>
   );
 }

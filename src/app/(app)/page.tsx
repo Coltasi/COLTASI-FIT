@@ -71,11 +71,11 @@ export default async function OverviewPage() {
   }
 
   const action = week.inProgress ? (
-    <Link href={`/train/session/${week.inProgress.id}`} className="btn">
+    <Link prefetch={false} href={`/train/session/${week.inProgress.id}`} className="btn">
       Resume {week.inProgress.title}<IconChevron stroke="currentColor" />
     </Link>
   ) : doneToday ? (
-    <Link href={`/train/session/${doneToday[doneToday.length - 1].id}`} className="btn">
+    <Link prefetch={false} href={`/train/session/${doneToday[doneToday.length - 1].id}`} className="btn">
       Review today&apos;s workout<IconChevron stroke="currentColor" />
     </Link>
   ) : day ? (
@@ -126,7 +126,7 @@ export default async function OverviewPage() {
   return (
     <main className="screen" style={{ gap: 28 }}>
       <PageHeader
-        right={<Link href="/settings" className="iconbtn" aria-label="Settings"><IconGear /></Link>}
+        right={<Link prefetch={false} href="/settings" className="iconbtn" aria-label="Settings"><IconGear /></Link>}
         above={fmtLong(today)}
         title={headline}
       />
@@ -143,15 +143,15 @@ export default async function OverviewPage() {
         </section>
       )}
 
-      <Section title="Daily targets" right={<Link href="/food">Food log →</Link>}>
+      <Section title="Daily targets" right={<Link prefetch={false} href="/food">Food log →</Link>}>
         <div className="tiles">
-          <Link href="/food" className="tile" aria-label="Calories today">
+          <Link prefetch={false} href="/food" className="tile" aria-label="Calories today">
             <span className="lab">Calories</span>
             <span className="big">{Math.round(foodKcal).toLocaleString("en-US")}</span>
             <span className="cap">{tKcal ? (kcalLeft! >= 0 ? `${kcalLeft!.toLocaleString("en-US")} left of ${tKcal.toLocaleString("en-US")}` : `${Math.abs(kcalLeft!).toLocaleString("en-US")} over ${tKcal.toLocaleString("en-US")}`) : "Set a target"}</span>
             <span className="meter"><i style={{ width: `${tKcal ? Math.min(100, (foodKcal / tKcal) * 100) : 0}%`, background: kcalLeft != null && kcalLeft < 0 ? "var(--crimson)" : "var(--kingfisher)" }} /></span>
           </Link>
-          <Link href="/food" className="tile" aria-label="Protein today">
+          <Link prefetch={false} href="/food" className="tile" aria-label="Protein today">
             <span className="lab">Protein</span>
             <span className="big">{Math.round(foodProtein)} g</span>
             <span className="cap">{tProt ? (protLeft! > 0 ? `${protLeft} g to go of ${tProt}` : "Target hit") : "Set a target"}</span>
@@ -186,7 +186,7 @@ export default async function OverviewPage() {
             const done = trainedOn.has(date);
             const isToday = date === today;
             return (
-              <Link key={date} href={`/train/history?day=${date}`} aria-label={`${date}${done ? ", trained" : ""}${isToday ? ", today" : ""}`}
+              <Link prefetch={false} key={date} href={`/train/history?day=${date}`} aria-label={`${date}${done ? ", trained" : ""}${isToday ? ", today" : ""}`}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, minHeight: 44, color: "inherit" }}>
                 <span className="cap" style={{ fontWeight: isToday ? 800 : 500, color: isToday ? "var(--navy)" : undefined }}>{d}</span>
                 <span style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",

@@ -47,21 +47,21 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         sub={week.doneToday.length ? `${week.doneToday.map((x) => x.title).join(" + ")} completed today` : `${week.doneThisWeek} ${week.doneThisWeek === 1 ? "workout" : "workouts"} this week`}
         right={
           <div style={{ display: "flex", gap: 8 }}>
-            <Link href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
-            <Link href="/train/history" className="iconbtn" aria-label="Workout history"><IconClock /></Link>
+            <Link prefetch={false} href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
+            <Link prefetch={false} href="/train/history" className="iconbtn" aria-label="Workout history"><IconClock /></Link>
           </div>
         }
       />
 
       {sp.finished ? (
-        <Link href="/coach" className="card cream" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", color: "var(--navy)" }}>
+        <Link prefetch={false} href="/coach" className="card cream" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", color: "var(--navy)" }}>
           <CoachMark size={28} />
           <span className="ln" style={{ flexGrow: 1 }}>Workout saved. Your coach is reviewing it.</span>
         </Link>
       ) : null}
 
       {week.inProgress ? (
-        <Link href={`/train/session/${week.inProgress.id}`} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", border: "2px solid var(--rust)", color: "var(--navy)" }}>
+        <Link prefetch={false} href={`/train/session/${week.inProgress.id}`} className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", border: "2px solid var(--rust)", color: "var(--navy)" }}>
           <div>
             <p className="lab" style={{ color: "var(--rust)" }}>In progress</p>
             <p className="ln" style={{ marginTop: 2 }}>{week.inProgress.title}</p>
@@ -74,14 +74,14 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         <section className="feature">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
             <p className="eyebrow">{suggested ? (week.doneToday.length ? "Next session" : "Today's session") : "Picked session"}</p>
-            <Link href="/train/choose" className="btn2" style={{ flexShrink: 0 }}>Change</Link>
+            <Link prefetch={false} href="/train/choose" className="btn2" style={{ flexShrink: 0 }}>Change</Link>
           </div>
           <h2 className="feature-title" style={{ fontSize: 32 }}>{day.name}</h2>
           <p style={{ fontSize: 17 }}>{day.exercises.length} exercises · {totalSets} sets</p>
           <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>{lastAgo ? `Last trained ${lastAgo}` : "First time on this day"}</p>
           {!suggested && week.nextDay ? (
             <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
-              Next in The Split is {week.nextDay.name}. <Link href="/train" style={{ fontWeight: 700 }}>Switch back</Link>
+              Next in The Split is {week.nextDay.name}. <Link prefetch={false} href="/train" style={{ fontWeight: 700 }}>Switch back</Link>
             </p>
           ) : null}
         </section>
@@ -95,7 +95,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + split.filter((d) => !week.done.has(d.id)).length)}, minmax(0, 1fr))`, gap: 6 }}>
           {weekDone.map((x) => (
-            <Link key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
+            <Link prefetch={false} key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
               <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
               <IconCheck size={14} />
@@ -104,7 +104,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           {split.filter((d) => !week.done.has(d.id)).map((d) => {
             const isNext = week.nextDay?.id === d.id;
             return (
-              <Link key={d.id} href={`/train?day=${d.id}`} className="card flat"
+              <Link prefetch={false} key={d.id} href={`/train?day=${d.id}`} className="card flat"
                 style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
                 <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
                 <span style={{ fontSize: 13, fontWeight: 700 }}>{d.name}</span>

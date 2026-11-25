@@ -47,7 +47,7 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
       <SessionCounts supabase={supabase} today={today} />
 
       {filter === "All" && latestPr ? (
-        <Link href={`/progress/exercise/${latestPr.id}`} className="feature" style={{ color: "var(--on-navy)" }}>
+        <Link prefetch={false} href={`/progress/exercise/${latestPr.id}`} className="feature" style={{ color: "var(--on-navy)" }}>
           <p className="eyebrow">Latest recorded best · {fmtShort(latestPr.bestDate)}</p>
           <p className="feature-title">{latestPr.name} · {w(latestPr.best, units)} {unit(units)}</p>
           {prFirst != null && prFirst !== latestPr.best ? <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>First logged at {w(prFirst, units)} {unit(units)}</p> : null}
@@ -60,7 +60,7 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
       <Section title="Exercise progression" gap={10}>
         <div className="chips">
           {["All", ...groupsOrder.filter((g) => g !== "Other")].map((g) => (
-            <Link key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>
+            <Link prefetch={false} key={g} href={g === "All" ? "/progress/lifting" : `/progress/lifting?day=${encodeURIComponent(g)}`} className={`chip${filter === g ? " on" : ""}`}>{g}</Link>
           ))}
         </div>
       </Section>
@@ -81,7 +81,7 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
                 ? `Latest ${latestTop != null ? `${w(latestTop, units)} ${unit(units)}` : "–"}${lastS ? ` · ${fmtShort(lastS.date)}` : ""}`
                 : `Bodyweight · ${h.sessions.length} ${h.sessions.length === 1 ? "session" : "sessions"}${lastS ? ` · ${fmtShort(lastS.date)}` : ""}`;
               return (
-                <Link key={h.exercise_id} href={`/progress/exercise/${h.exercise_id}`} className="li">
+                <Link prefetch={false} key={h.exercise_id} href={`/progress/exercise/${h.exercise_id}`} className="li">
                   <div style={{ flexGrow: 1, minWidth: 0 }}>
                     <p className="t" style={{ fontSize: 16 }}>{h.name}</p>
                     <p className="s">{sub}</p>
