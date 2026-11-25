@@ -28,7 +28,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
   dayId: string; dayName: string; units: Units; disabled: boolean; finishers: Finisher[];
   lifts: { key: string; position: number; name: string; plan: string; lastKg: number | null; hasLast: boolean; coach: { tone: "up" | "down"; text: string } | null }[];
 }) {
-  const [warmup, setWarmup] = useState("stairs");
+  const [warmup, setWarmup] = useState("treadmill");
   const [warmupMin, setWarmupMin] = useState(DEFAULT_WARMUP_MIN);
   const [finisherOn, setFinisherOn] = useState(true);
   const [cooldown, setCooldown] = useState(true);

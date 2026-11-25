@@ -65,7 +65,7 @@ function parseMoves(raw: FormDataEntryValue | null): { name: string; dose: strin
 
 /**
  * Starts a program day. Builds from the user's plan override for that day when there is one.
- * With quick=1 (the Start button on Overview) it uses the defaults: 10 min Stairs warm-up, the default
+ * With quick=1 (the Start button on Overview) it uses the defaults: 10 min Treadmill warm-up, the default
  * finisher and a cool-down.
  */
 export async function startSession(formData: FormData) {
@@ -89,7 +89,7 @@ export async function startSession(formData: FormData) {
   let finisher: string | null = null;
   let moves: { name: string; dose: string; done: boolean }[] | null = null;
   if (quick) {
-    warmup = "stairs";
+    warmup = "treadmill";
     cooldown = true;
     const f = ((fins ?? []) as any[]).find((x) => x.is_default) ?? (fins ?? [])[0];
     if (f) { finisher = f.name; moves = ((f.moves ?? []) as any[]).map((m) => ({ name: m.name, dose: m.dose, done: false })); }
