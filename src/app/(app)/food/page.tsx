@@ -61,6 +61,13 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
           <Ring value={kcal} target={tK} left={kLeft} unit="kcal" label="Calories" color="var(--lagoon)" />
           <Ring value={protein} target={tP} left={pLeft} unit="g" label="Protein" color="#f0a67f" />
         </div>
+        <div style={{ borderTop: "1px solid var(--navy-2)", marginTop: 16, paddingTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 17, fontWeight: 700 }}>Your TDEE</p>
+            <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Calories you burn in a day</p>
+          </div>
+          <p className="num" style={{ fontSize: 26, fontWeight: 800 }}>{energy.tdee ? energy.tdee.toLocaleString("en-US") : "–"}<span style={{ fontSize: 15, color: "var(--on-navy-muted)", fontWeight: 600 }}> kcal</span></p>
+        </div>
       </section>
 
       {edit ? null : (
@@ -94,11 +101,11 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
         )}
       </Section>
 
-      <Section title="Adaptive energy model" right={<span className={`tag ${energy.source === "measured" ? "jade" : "ember"}`}>{energy.source === "measured" ? "Personalised" : "Collecting data"}</span>}>
+      <Section title="How your TDEE is worked out" right={<span className={`tag ${energy.source === "measured" ? "jade" : "ember"}`}>{energy.source === "measured" ? "Personalised" : "Collecting data"}</span>}>
         <div className="card" style={{ padding: "16px", display: "grid", gap: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
             <div>
-              <p className="lab">Estimated burn</p>
+              <p className="lab">TDEE (daily burn)</p>
               <p className="num" style={{ fontSize: 26 }}>{energy.tdee ? `${energy.tdee.toLocaleString("en-US")}` : "–"}<span className="cap"> kcal</span></p>
             </div>
             <div>

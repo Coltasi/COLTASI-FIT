@@ -78,7 +78,6 @@ export default async function CoachPage() {
       <section className="feature" aria-label="Weekly briefing">
         <p className="eyebrow"><CoachMark size={24} />Your weekly briefing</p>
         <p className="feature-title" style={{ fontSize: 22 }}>{head ?? "Your briefing builds as you log workouts, sleep and weigh-ins."}</p>
-        {latest ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Written {ago(latest.created_at)} after your latest {(KIND[latest.kind as keyof typeof KIND] ?? KIND.weigh_in).label.toLowerCase()}</p> : null}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
           {ind("Workouts", String(week.doneThisWeek), "this week")}
           {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need more weigh-ins", behind ? "#f2b89c" : undefined)}
