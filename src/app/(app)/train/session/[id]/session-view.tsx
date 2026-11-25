@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { IconCheck, IconPlus, IconPen } from "@/components/icons";
+import { IconCheck, IconFlame, IconPlus, IconPen, IconSmile, IconX } from "@/components/icons";
 import { Ring, Sheet, linkBtn } from "@/components/sheet";
 import { toKg, unit, w, type Units } from "@/lib/units";
 import { fmtShort } from "@/lib/dates";
@@ -14,7 +14,7 @@ import { lastLine, searchCandidates } from "@/components/exercise-search";
 import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, moveExerciseAfter, saveSet, saveSetEffort, setExtra, setWarmup, setWarmupMin, skipLift, swapLift } from "../../actions";
 import { WarmupLength } from "@/components/warmup-length";
 import { CheckInCard } from "./check-in-card";
-import { GRIND_CUE, SET_EFFORTS, SET_EFFORT_LABEL, isHardSet, type SetEffort } from "@/lib/set-effort";
+import { GRIND_CUE, SET_EFFORT_LABEL, isHardSet, type SetEffort } from "@/lib/set-effort";
 import { FINISHER_CUE, PRIMER_CUE, balanceRoles, type Role } from "@/lib/placement";
 import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
 
@@ -38,6 +38,8 @@ type Session = {
 
 const WARMUP_LABEL: Record<string, string> = { stairs: "Stairs", elliptical: "Elliptical", treadmill: "Treadmill", rower: "Rower" };
 const WARMUP_KEYS = Object.keys(WARMUP_LABEL);
+/** How long to wait after a rating tap before moving to the next lift. */
+const RATE_PAUSE_MS = 2000;
 const isDone = (e: SEx) => !!e.skipped || (e.sets.length > 0 && e.sets.every((s) => s.done));
 const SKIP_REASONS: SkipReason[] = ["sore", "equipment", "time"];
 const actBtn: CSSProperties = { flex: 1, height: 48, fontSize: 16, borderRadius: 12, textDecoration: "none" };
@@ -105,6 +107,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
     (initialOpen && initial.some((e) => e.id === initialOpen) ? initialOpen : null) ?? initial.find((e) => !isDone(e))?.id ?? null);
   const [rampTicks, setRampTicks] = useState<boolean[]>([false, false, false]);
   const [owed, setOwed] = useState(initialOwed);
+  /** Pending move to the next lift after the last rating tap. */
+  const advance = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (advance.current) clearTimeout(advance.current); }, []);
   const [skipFor, setSkipFor] = useState<SEx | null>(null);
   const [sheet, setSheet] = useState<{ mode: "swap" | "add"; ex?: SEx } | null>(() => (session.kind === "custom" && !initial.length ? { mode: "add" } : null));
   const [pending, start] = useTransition();
@@ -149,14 +154,21 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const label = session.kind === "custom" ? "Custom" : session.kind === "kettlebell" ? "Kettlebell" : "The Split";
 
   function patchSet(exId: string, setId: string, patch: Partial<SSet>) {
-    setExs((prev) => {
-      const next = prev.map((e) => (e.id !== exId ? e : { ...e, sets: e.sets.map((s) => (s.id === setId ? { ...s, ...patch } : s)) }));
-      const ex = next.find((e) => e.id === exId);
-      // Working sets ask how hard they were, so move on once the last one is rated, not the moment it's ticked.
-      const finished = ex && isDone(ex) && (!rated(ex) ? patch.done : patch.effort != null && ex.sets.every((z) => z.effort));
-      if (finished) setOpenId(next.find((e) => !isDone(e))?.id ?? null);
-      return next;
+    if (advance.current) clearTimeout(advance.current);
+    setExs((prev) => prev.map((e) => (e.id !== exId ? e : { ...e, sets: e.sets.map((z) => (z.id === setId ? { ...z, ...patch } : z)) })));
+    // Move on once every set is ticked, and for working sets rated too. Ratings are cycled with
+    // taps on the same button, so wait for the tapping to stop before closing the lift.
+    const ex = exs.find((e) => e.id === exId);
+    const move = () => setExs((prev) => {
+      const cur = prev.find((e) => e.id === exId);
+      if (cur && isDone(cur) && (!rated(cur) || cur.sets.every((z) => z.effort))) {
+        const next = prev.find((e) => !isDone(e))?.id ?? null;
+        setOpenId((id) => (id === exId ? next : id));
+      }
+      return prev;
     });
+    if (ex && !rated(ex)) { if (patch.done) move(); }
+    else if (patch.effort) advance.current = setTimeout(move, RATE_PAUSE_MS);
   }
 
   function toggleExtra(field: keyof typeof extras) {
@@ -281,6 +293,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
           onSwap={() => setSheet({ mode: "swap", ex: open.ex })}
           onSkip={() => (open.ex.skill ? skip(open.ex, "time") : setSkipFor(open.ex))}
           onPatch={patchSet}
+          onPress={() => { if (advance.current) clearTimeout(advance.current); }}
           onAddSet={(s) => setExs((prev) => prev.map((e) => (e.id === open.ex.id ? { ...e, sets: [...e.sets, s] } : e)))} />
       ) : null}
 
@@ -446,9 +459,6 @@ function summary(e: SEx, units: Units): { text: string; beat: boolean } {
   return { text: `${n} · top set ${w(top.weight_kg!, units)} ${unit(units)} × ${top.reps ?? "?"}`, beat };
 }
 
-/** Colours for a rated set: Easy stays quiet, Hard is terracotta, Failed is navy. */
-const EFFORT_BG: Record<SetEffort, string> = { easy: "var(--tint-neutral)", hard: "var(--rust)", failed: "var(--navy)" };
-const EFFORT_FG: Record<SetEffort, string> = { easy: "var(--navy)", hard: "#fff", failed: "#fff" };
 
 /** Bells you own (kg). Tap one to fill the current set's weight on kettlebell lifts. */
 const BELLS_KG = [8, 12, 16, 20, 24, 30];
@@ -494,13 +504,15 @@ function rampRows(ex: SEx, units: Units): string[] {
   return rampSets(kg, units).map((r) => `${r.w} ${unit(units)} × ${r.reps}`);
 }
 
-function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, onSwap, onSkip, onPatch, onAddSet }: {
+function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, onSwap, onSkip, onPatch, onPress, onAddSet }: {
   ex: SEx; units: Units; sessionId: string;
   /** Balance work's place in today's order (Bosu, Turkish Get-Up). */
   role: Role; lastHeavyName: string | null; onMoveAfter?: () => void;
   onSwap: () => void;
   onSkip: () => void;
   onPatch: (exId: string, setId: string, patch: Partial<SSet>) => void;
+  /** A finger went down on a set button: hold off moving to the next lift. */
+  onPress: () => void;
   onAddSet: (s: SSet) => void;
 }) {
   const [vals, setVals] = useState<Record<string, { w: string; r: string }>>(() =>
@@ -508,10 +520,8 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
   );
   const [, start] = useTransition();
   const [flash, setFlash] = useState<string | null>(null);
-  /** The set whose "How hard was that?" buttons are showing. */
-  const [askFor, setAskFor] = useState<string | null>(null);
   const current = ex.sets.find((s) => !s.done)?.id;
-  /** Primers (and skill blocks) aren't meant to be hard, so they don't ask. */
+  /** Primers (and skill blocks) aren't meant to be hard, so they get a plain tick. */
   const rates = !ex.skill && role !== "primer";
   const bells = !ex.skill && isBellLift(ex.name);
   const lastFor = (s: SSet) => ex.last?.sets[s.set_no - 1];
@@ -539,12 +549,10 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
     if (done) setVals({ ...vals, [s.id]: { w: wStr, r: rStr } });
     if (done && beat(kg, reps, lastFor(s), units)) { setFlash(s.id); setTimeout(() => setFlash((f) => (f === s.id ? null : f)), 1400); }
     onPatch(ex.id, s.id, { done, weight_kg: kg, reps, ...(done ? {} : { effort: null }) });
-    setAskFor(done && rates ? s.id : null);
     start(() => saveSet(s.id, kg, reps, done));
   }
 
-  function rate(s: SSet, effort: SetEffort) {
-    setAskFor(null);
+  function rate(s: SSet, effort: SetEffort | null) {
     onPatch(ex.id, s.id, { effort });
     start(() => saveSetEffort(s.id, effort));
   }
@@ -617,35 +625,16 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
                 <input inputMode="numeric" value={v.r} placeholder={ph.r} style={fld(active, s.done)}
                   onChange={(e) => setVals({ ...vals, [s.id]: { ...v, r: e.target.value.replace(/\D/g, "") } })} />
               </label>
-              <button type="button" className={`chk${s.done ? " on" : ""}`} aria-pressed={s.done} aria-label={`Set ${s.set_no} done`} onClick={() => toggle(s)}>
-                {s.done ? <IconCheck size={18} /> : null}
-              </button>
-              {s.done && rates ? (
-                askFor === s.id ? (
-                  <div style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 10, background: "var(--field)", border: "1.5px solid var(--navy)", borderRadius: 14, padding: 12 }}>
-                    <p className="ln" style={{ margin: 0 }}>How hard was set {s.set_no}?</p>
-                    <div role="group" aria-label={`How hard was set ${s.set_no}`} style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
-                      {SET_EFFORTS.map((o) => (
-                        <button key={o.id} type="button" aria-pressed={s.effort === o.id} onClick={() => rate(s, o.id)}
-                          style={{ minHeight: 68, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", padding: "8px 4px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2,
-                            background: s.effort === o.id ? EFFORT_BG[o.id] : "#fff", color: s.effort === o.id ? EFFORT_FG[o.id] : o.id === "hard" ? "var(--rust)" : "var(--navy)",
-                            border: `2px solid ${o.id === "easy" ? "var(--line-strong)" : o.id === "hard" ? "var(--ember)" : "var(--navy)"}` }}>
-                          <span style={{ fontSize: 17, fontWeight: 700 }}>{o.label}</span>
-                          <span style={{ fontSize: 15 }}>{o.sub}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: -2 }}>
-                    <button type="button" onClick={() => setAskFor(s.id)} aria-label={s.effort ? `Set ${s.set_no} felt ${SET_EFFORT_LABEL[s.effort]}. Change` : `Rate set ${s.set_no}`}
-                      style={{ minHeight: 36, borderRadius: 999, padding: "4px 14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-                        background: s.effort ? EFFORT_BG[s.effort] : "#fff", color: s.effort ? EFFORT_FG[s.effort] : "var(--muted)",
-                        border: s.effort ? "none" : "1.5px dashed var(--mist)" }}>
-                      {s.effort ? SET_EFFORT_LABEL[s.effort] : "How hard?"}
-                    </button>
-                  </div>
-                )
+              {rates ? (
+                <EffortTick set={s} onPress={onPress} onUntick={() => toggle(s)}
+                  onTap={() => (s.done ? rate(s, NEXT_EFFORT[s.effort ?? "none"]) : toggle(s))} />
+              ) : (
+                <button type="button" className={`chk${s.done ? " on" : ""}`} aria-pressed={s.done} aria-label={`Set ${s.set_no} done`} onClick={() => toggle(s)}>
+                  {s.done ? <IconCheck size={18} /> : null}
+                </button>
+              )}
+              {rates && s.done && s.effort ? (
+                <span aria-hidden="true" style={{ gridColumn: 4, marginTop: -6, fontSize: 13, lineHeight: "16px", fontWeight: 700, textAlign: "center", color: EFFORT_LOOK[s.effort].word }}>{SET_EFFORT_LABEL[s.effort]}</span>
               ) : null}
             </div>
           );
@@ -677,5 +666,51 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
         + Add set
       </button>
     </div>
+  );
+}
+
+/** Tap order is deliberate: Done, Hard, Failed, Easy, then back to Done. */
+const NEXT_EFFORT: Record<SetEffort | "none", SetEffort | null> = { none: "hard", hard: "failed", failed: "easy", easy: null };
+const EFFORT_LOOK: Record<SetEffort, { style: CSSProperties; word: string; icon: ReactNode }> = {
+  hard: { style: { background: "#D96B29", borderColor: "#D96B29", color: "#fff" }, word: "#D96B29", icon: <IconFlame size={20} /> },
+  failed: { style: { background: "#B0401D", borderColor: "#B0401D", color: "#fff" }, word: "#B0401D", icon: <IconX size={18} /> },
+  easy: { style: { background: "#fff", borderColor: "var(--check-line)", color: "var(--muted)" }, word: "var(--muted)", icon: <IconSmile size={20} /> },
+};
+const LONG_PRESS_MS = 500;
+
+/** Set tick that also rates effort: tap cycles, a long press un-ticks. */
+function EffortTick({ set: s, onTap, onUntick, onPress }: { set: SSet; onTap: () => void; onUntick: () => void; onPress: () => void }) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const from = useRef({ x: 0, y: 0 });
+  const held = useRef(false);
+  const stop = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const look = s.done && s.effort ? EFFORT_LOOK[s.effort] : null;
+  const next = s.done ? NEXT_EFFORT[s.effort ?? "none"] : null;
+  const label = !s.done ? `Set ${s.set_no} not done. Tap for done`
+    : `Set ${s.set_no} ${s.effort ?? "done"}. Tap ${next ? `for ${next}` : "to clear the rating"}, hold to untick`;
+  return (
+    <button type="button" className={`chk${s.done ? " on" : ""}`} aria-label={label}
+      style={{ ...look?.style, touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      onPointerDown={(e) => {
+        stop();
+        held.current = false;
+        if (!e.isPrimary || e.button !== 0) return;
+        onPress();
+        if (!s.done) return;
+        from.current = { x: e.clientX, y: e.clientY };
+        timer.current = setTimeout(() => { timer.current = null; held.current = true; onUntick(); }, LONG_PRESS_MS);
+      }}
+      onPointerMove={(e) => { if (Math.hypot(e.clientX - from.current.x, e.clientY - from.current.y) > 10) stop(); }}
+      onPointerUp={stop} onPointerCancel={stop} onPointerLeave={stop}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={(e) => {
+        // The click that ends a long press isn't a tap (keyboard clicks have detail 0).
+        if (held.current && e.detail !== 0) { held.current = false; return; }
+        onTap();
+      }}>
+      {look ? look.icon : s.done ? <IconCheck size={18} /> : null}
+    </button>
   );
 }
