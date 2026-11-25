@@ -5,6 +5,8 @@ import { useFormStatus } from "react-dom";
 import { startSession } from "./actions";
 import { unit, w, type Units } from "@/lib/units";
 import type { Finisher } from "@/lib/data";
+import { WarmupLength } from "@/components/warmup-length";
+import { DEFAULT_WARMUP_MIN } from "@/lib/warmup";
 
 const WARMUPS = [
   { v: "stairs", l: "Stairs" },
@@ -27,6 +29,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
   lifts: { key: string; position: number; name: string; plan: string; lastKg: number | null; hasLast: boolean; coach: { tone: "up" | "down"; text: string } | null }[];
 }) {
   const [warmup, setWarmup] = useState("stairs");
+  const [warmupMin, setWarmupMin] = useState(DEFAULT_WARMUP_MIN);
   const [finisherOn, setFinisherOn] = useState(true);
   const [cooldown, setCooldown] = useState(true);
   const fin = (finishers.find((f) => f.is_default) ?? finishers[0]) as Finisher | undefined;
@@ -35,6 +38,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
     <form action={startSession} style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       <input type="hidden" name="day_id" value={dayId} />
       <input type="hidden" name="warmup" value={warmup} />
+      <input type="hidden" name="warmup_min" value={warmupMin} />
       <input type="hidden" name="finisher" value={finisherOn && fin ? fin.name : ""} />
       <input type="hidden" name="finisher_moves" value={finisherOn && fin ? JSON.stringify(fin.moves) : ""} />
       {cooldown ? <input type="hidden" name="cooldown" value="on" /> : null}
@@ -70,12 +74,12 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
         <summary style={{ listStyle: "none", minHeight: 60, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
           <span>
             <span className="ln" style={{ display: "block" }}>Workout preparation</span>
-            <span className="cap">{[WARMUPS.find((o) => o.v === warmup)?.l ?? "No warm-up", finisherOn && fin ? "Ab finisher" : null, cooldown ? "Cool-down" : null].filter(Boolean).join(" · ")}</span>
+            <span className="cap">{[warmup ? `${WARMUPS.find((o) => o.v === warmup)?.l} ${warmupMin} min` : "No warm-up", finisherOn && fin ? "Ab finisher" : null, cooldown ? "Cool-down" : null].filter(Boolean).join(" · ")}</span>
           </span>
           <span style={{ color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>Edit</span>
         </summary>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
-          <p className="ln">Warm-up · 10 min</p>
+          <p className="ln">Warm-up · {warmupMin} min</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
             {WARMUPS.map((o) => {
               const on = warmup === o.v;
@@ -91,6 +95,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
               );
             })}
           </div>
+          {warmup ? <WarmupLength value={warmupMin} onChange={setWarmupMin} /> : null}
           <div className="row" style={{ justifyContent: "space-between", padding: "14px 0", marginTop: 6 }}>
             <div>
               <p className="ln" style={{ marginBottom: 2 }}>Ab finisher</p>
