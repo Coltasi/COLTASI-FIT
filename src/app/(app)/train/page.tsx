@@ -38,6 +38,11 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
   const totalSets = day ? day.exercises.reduce((s, e) => s + e.target_sets, 0) : 0;
   const suggested = !!day && day.id === week.nextDay?.id;
 
+  // "This week" follows the workout picked with Change. A picked Kettlebell day, or a Split day already
+  // done this week, has no to-do tile of its own, so it gets one.
+  const todo = split.filter((d) => !week.done.has(d.id));
+  const todoTiles = day && !suggested && !todo.some((d) => d.id === day.id) ? [day, ...todo] : todo;
+
   const lastAgo = lastOfDay?.[0] ? ago(daysBetween(lastOfDay[0].session_date, today)) : null;
 
   return (
@@ -93,7 +98,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           <p className="lab" style={{ textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>This week</p>
           <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + split.filter((d) => !week.done.has(d.id)).length)}, minmax(0, 1fr))`, gap: 6 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + todoTiles.length)}, minmax(0, 1fr))`, gap: 6 }}>
           {weekDone.map((x) => (
             <Link prefetch={false} key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
               <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
@@ -101,13 +106,13 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
               <IconCheck size={14} />
             </Link>
           ))}
-          {split.filter((d) => !week.done.has(d.id)).map((d) => {
-            const isNext = week.nextDay?.id === d.id;
+          {todoTiles.map((d) => {
+            const isNext = day?.id === d.id;
             return (
               <Link prefetch={false} key={d.id} href={`/train?day=${d.id}`} className="card flat"
                 style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
                 <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{d.name}</span>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{d.program === "kettlebell" ? "KB" : d.name}</span>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
               </Link>
             );
