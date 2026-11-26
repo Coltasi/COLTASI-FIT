@@ -4,15 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateFoods, type FoodEdit } from "./actions";
 
-type Row = { id: string; name: string; kcal: string; protein: string; day: string; remove: boolean };
+const g1 = (v: number | string | null) => (v == null ? "" : String(Math.round(Number(v) * 10) / 10));
+/** Empty carbs/fat stays "not known" rather than 0. */
+const optNum = (v: string) => (v.trim() ? Number(v.replace(",", ".")) : null);
+
+type Row = { id: string; name: string; kcal: string; protein: string; carbs: string; fat: string; day: string; remove: boolean };
 
 /** Food's edit mode: every entry for the day becomes editable (name, numbers, which day), or removable. Saved together. */
 export function EditFoods({ items, day, today, min, exitHref }: {
-  items: { id: string; name: string; kcal: number; protein_g: number }[];
+  items: { id: string; name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null }[];
   day: string; today: string; min: string; exitHref: string;
 }) {
   const router = useRouter();
-  const start = items.map((r) => ({ id: r.id, name: r.name, kcal: String(r.kcal), protein: String(Math.round(Number(r.protein_g) * 10) / 10), day, remove: false }));
+  const start = items.map((r) => ({ id: r.id, name: r.name, kcal: String(r.kcal), protein: String(Math.round(Number(r.protein_g) * 10) / 10), carbs: g1(r.carbs_g), fat: g1(r.fat_g), day, remove: false }));
   const [rows, setRows] = useState<Row[]>(start);
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -22,7 +26,7 @@ export function EditFoods({ items, day, today, min, exitHref }: {
   async function save() {
     setErr(null);
     if (!changed.length) { router.push(exitHref); return; }
-    const edits: FoodEdit[] = changed.map((r) => ({ id: r.id, name: r.name, kcal: Number(r.kcal.replace(",", ".")), protein_g: Number((r.protein || "0").replace(",", ".")), day: r.day, remove: r.remove }));
+    const edits: FoodEdit[] = changed.map((r) => ({ id: r.id, name: r.name, kcal: Number(r.kcal.replace(",", ".")), protein_g: Number((r.protein || "0").replace(",", ".")), carbs_g: optNum(r.carbs), fat_g: optNum(r.fat), day: r.day, remove: r.remove }));
     setSaving(true);
     const res = await updateFoods(edits);
     setSaving(false);
@@ -48,10 +52,12 @@ export function EditFoods({ items, day, today, min, exitHref }: {
             </button>
           </div>
           {!r.remove ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.4fr", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 8 }}>
               <label><span className="flab" style={{ fontSize: 14 }}>kcal</span><input className="fld" inputMode="numeric" value={r.kcal} onChange={(e) => set(i, { kcal: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 14 }}>Protein g</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 14 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>Protein</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>Carbs</span><input className="fld" inputMode="decimal" value={r.carbs} onChange={(e) => set(i, { carbs: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 14 }}>Fat</span><input className="fld" inputMode="decimal" value={r.fat} onChange={(e) => set(i, { fat: e.target.value })} style={{ height: 40 }} /></label>
+              <label style={{ gridColumn: "1 / -1" }}><span className="flab" style={{ fontSize: 14 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
             </div>
           ) : null}
         </div>
