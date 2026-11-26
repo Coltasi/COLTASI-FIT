@@ -7,6 +7,7 @@ import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
 import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
+import type { FoodRow, HistoryRow, Num, NightRow, WeighRow } from "@/lib/rows";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
 
@@ -69,23 +70,24 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     getProgram(supabase),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(14),
     supabase.from("sessions").select("day_id, session_date").eq("status", "done").eq("kind", "split").not("day_id", "is", null).order("session_date", { ascending: false }).limit(200),
-    fetchAll<any>((a, b) => supabase
+    fetchAll((a, b) => supabase
       .from("session_exercises")
       .select("id, exercise_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done, effort)")
       .eq("sessions.status", "done")
       .order("id")
-      .range(a, b)),
+      .range(a, b)
+      .overrideTypes<HistoryRow[], { merge: false }>()),
   ]);
   const kettlebells = ((prof?.kettlebells_kg as number[] | null) ?? [8, 12, 16, 20, 24, 30]).map(Number);
 
   // History grouped by exercise (synonyms like "KB Swing" / "Kettlebell Swing" are one lift), oldest first.
   const { keyById } = groupExercises((exRows ?? []) as ExerciseRow[]);
-  const modality = new Map(((exRows ?? []) as any[]).map((e) => [e.id, e.modality as string | null]));
+  const modality = new Map(((exRows ?? []) as { id: string; modality: string | null }[]).map((e) => [e.id, e.modality]));
   const keyOf = (id: string) => keyById.get(id) ?? id;
   const perfs = new Map<string, Perf[]>();
   for (const r of [...history].sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? -1 : 1))) {
-    const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no)
-      .map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps, effort: s.effort ?? null }));
+    const sets = (r.session_sets ?? []).filter((s) => s.done).sort((a, b) => a.set_no - b.set_no)
+      .map((s) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps, effort: s.effort ?? null }));
     if (!sets.length) continue;
     const k = keyOf(r.exercise_id);
     if (!perfs.has(k)) perfs.set(k, []);
@@ -94,10 +96,10 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
 
   // Split days, most overdue first.
   const lastDone = new Map<string, string>();
-  for (const s of (splitSessions ?? []) as any[]) if (!lastDone.has(s.day_id)) lastDone.set(s.day_id, s.session_date);
+  for (const s of (splitSessions ?? []) as { day_id: string; session_date: string }[]) if (!lastDone.has(s.day_id)) lastDone.set(s.day_id, s.session_date);
   const due = splitDue(program.filter((d) => d.program === "split"), lastDone, today);
 
-  const sleep = sleepSignal(((nights ?? []) as any[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today);
+  const sleep = sleepSignal(((nights ?? []) as NightRow[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today);
   let ease = sleep.call === "ease";
 
   // Which lifts get a call: the session just finished, or the most overdue split day.
@@ -123,14 +125,14 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
         const { data: recent } = await supabase.from("sessions").select("pain_areas").eq("status", "done").gte("session_date", since).overlaps("pain_areas", pains);
         repeats = pains.map((p) => ({
           area: PAIN_LABEL[p as PainArea] ?? p,
-          times30d: Math.max(1, ((recent ?? []) as any[]).filter((r) => (r.pain_areas ?? []).includes(p)).length),
+          times30d: Math.max(1, ((recent ?? []) as { pain_areas: string[] | null }[]).filter((r) => (r.pain_areas ?? []).includes(p)).length),
         }));
       }
       checkIn = { feel: (s?.feel as Feel | null) ?? null, pains: pains.map((p) => PAIN_LABEL[p as PainArea] ?? p), note: s?.notes ?? null, repeats };
       if (s?.feel === "sick") { ease = true; easeWhy = "sick"; }
     }
     liftsFor = sessionTitle;
-    const rows = ((s?.session_exercises ?? []) as any[]).filter((x) => !x.skill);
+    const rows = ((s?.session_exercises ?? []) as unknown as { exercise_id: string; position: number; rep_range: string | null; skipped_reason: string | null; skill: boolean; exercises: { name: string } | null }[]).filter((x) => !x.skill);
     skipped = rows.filter((x) => x.skipped_reason).map((x) => ({ lift: x.exercises?.name ?? "", reason: SKIP_LABEL[x.skipped_reason as SkipReason] ?? x.skipped_reason }));
     plan = rows.sort((a, b) => a.position - b.position)
       .map((x) => ({ exercise_id: x.exercise_id, name: x.exercises?.name ?? "", rep_range: x.rep_range }));
@@ -151,14 +153,14 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       getSteps(supabase, today, 14),
       supabase.from("scans").select("scanned_on, weight_kg, body_fat_pct, muscle_mass_kg").order("scanned_on", { ascending: false }).limit(2),
     ]);
-    const pts = ((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
+    const pts = ((wis ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
     const rate = weeklyRate(pts.slice(0, 4));
     const target = prof?.target_rate_kg_week == null ? null : Number(prof.target_rate_kg_week);
     const behind = rate != null && target != null && (target < 0 ? rate > target * 0.75 : rate < target * 0.75);
     const lines: string[] = [];
     if (kind === "scan" && scans?.length) {
-      const [a, b] = scans as any[];
-      const part = (v: any, pv: any, label: string, u: string) =>
+      const [a, b] = scans as { scanned_on: string; weight_kg: Num | null; body_fat_pct: Num | null; muscle_mass_kg: Num | null }[];
+      const part = (v: Num | null, pv: Num | null | undefined, label: string, u: string) =>
         v == null ? null : `${label} ${r1(Number(v))}${u}${pv != null ? ` (${Number(v) - Number(pv) >= 0 ? "up" : "down"} ${r1(Math.abs(Number(v) - Number(pv)))}${u} since ${b.scanned_on})` : ""}`;
       const bits = [part(a.body_fat_pct, b?.body_fat_pct, "Body fat", "%"), part(a.muscle_mass_kg, b?.muscle_mass_kg, "muscle", " kg")].filter(Boolean);
       if (bits.length) lines.push(`Scan: ${bits.join(", ")}.`);
@@ -297,9 +299,9 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
   });
   const m = text?.match(/\{[\s\S]*\}/);
   if (!m) return { read: base, model: "rules" };
-  let j: any;
+  let j: { headline?: unknown; recovery?: unknown };
   try { j = JSON.parse(m[0]); } catch { return { read: base, model: "rules" }; }
-  const ok = (v: unknown) => typeof v === "string" && v.trim().length > 0 && numbersOk(v, factsText) && !/—/.test(v);
+  const ok = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0 && numbersOk(v, factsText) && !/—/.test(v);
   const headline = ok(j.headline) && !(s.kind === "session" && WEIGHT_TALK.test(j.headline)) ? j.headline.trim() : base.headline;
   const recovery = ok(j.recovery) && !WEIGHT_TALK.test(j.recovery) ? j.recovery.trim() : base.recovery;
   const used = headline !== base.headline || recovery !== base.recovery;
@@ -329,7 +331,7 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
   const me = await currentUser(supabase);
   const { data: prof } = await supabase.from("profiles").select("target_kcal, protein_g, tdee_kcal").eq("id", me?.id ?? "").maybeSingle();
   const byDay = new Map<string, { kcal: number; protein_g: number }>();
-  for (const r of (food ?? []) as any[]) {
+  for (const r of (food ?? []) as FoodRow[]) {
     const t = byDay.get(r.day) ?? { kcal: 0, protein_g: 0 };
     t.kcal += Number(r.kcal); t.protein_g += Math.round(Number(r.protein_g));
     byDay.set(r.day, t);

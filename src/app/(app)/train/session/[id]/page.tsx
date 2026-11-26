@@ -7,6 +7,7 @@ import { liftChange } from "@/components/coach-plan";
 import { getOwed, owedFor } from "@/lib/owed";
 import { isSetEffort } from "@/lib/set-effort";
 import { gradeSession, liftOutcome, type LiftLike } from "@/lib/effort";
+import type { NightRow, SessionLiftRow, SignalsJson } from "@/lib/rows";
 
 export default async function SessionPage({ params, searchParams }: PageProps<"/train/session/[id]">) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
@@ -18,11 +19,11 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     .single();
   if (!s) notFound();
 
-  const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
+  const ses = ((s.session_exercises ?? []) as unknown as SessionLiftRow[]).sort((a, b) => a.position - b.position);
 
   if (s.status !== "in_progress") {
     const { data: rd } = await supabase.from("coach_reads").select("signals").eq("kind", "session").eq("source_id", s.id).order("created_at", { ascending: false }).limit(1);
-    const sigLifts = ((rd?.[0]?.signals as any)?.lifts ?? []) as LiftLike[];
+    const sigLifts = (rd?.[0]?.signals as SignalsJson<LiftLike>)?.lifts ?? [];
     const verdict = gradeSession(sigLifts, ses.filter((x) => x.skipped_reason && !x.skill).length);
     // Hard sets across this session's week (Sunday to Saturday), finished workouts only.
     const d = new Date(s.session_date + "T12:00:00Z");
@@ -56,7 +57,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
           skipped: x.skipped_reason ?? null,
           skill: !!x.skill,
           outcome: outcomeByName.get((x.exercises?.name ?? "").toLowerCase()) ?? null,
-          sets: ((x.session_sets ?? []) as any[]).filter((z) => z.done).sort((a, b) => a.set_no - b.set_no)
+          sets: (x.session_sets ?? []).filter((z) => z.done).sort((a, b) => a.set_no - b.set_no)
             .map((z) => ({ weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, effort: isSetEffort(z.effort) ? z.effort : null })),
         }))}
       />
@@ -64,8 +65,8 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
   }
 
   const { data: allEx } = await supabase.from("exercises").select("id, name, created_by").order("name");
-  const exRows = ((allEx ?? []) as any[]);
-  const nameById = new Map(exRows.map((e) => [e.id as string, e.name as string]));
+  const exRows = (allEx ?? []) as { id: string; name: string }[];
+  const nameById = new Map(exRows.map((e) => [e.id, e.name]));
   const [last, { data: reads }, { data: nights }, owedAll] = await Promise.all([
     getLastTimes(supabase, [...new Set(ses.map((x) => x.exercise_id))], s.id),
     supabase.from("coach_reads").select("signals").not("signals", "is", null).order("created_at", { ascending: false }).limit(15),
@@ -76,11 +77,11 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
 
   // Coach's call for each lift: the newest read that mentions it. Going up waits for a good night.
   const calls = new Map<string, LiftSignal>();
-  for (const r of (reads ?? []) as any[]) for (const l of (r.signals?.lifts ?? []) as LiftSignal[]) {
+  for (const r of (reads ?? []) as { signals: SignalsJson<LiftSignal> }[]) for (const l of r.signals?.lifts ?? []) {
     const k = l.name.toLowerCase();
     if (!calls.has(k)) calls.set(k, l);
   }
-  const easeOff = sleepSignal(((nights ?? []) as any[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today).call === "ease";
+  const easeOff = sleepSignal(((nights ?? []) as NightRow[]).map((n) => ({ ...n, hours: Number(n.hours), flags: n.flags ?? [] })) as Night[], today).call === "ease";
   const coachFor = (name: string) => {
     const l = calls.get(name.toLowerCase());
     if (!l || (easeOff && l.call === "up")) return null;
@@ -98,7 +99,7 @@ export default async function SessionPage({ params, searchParams }: PageProps<"/
     skill: !!x.skill,
     last: last.get(x.exercise_id) ?? null,
     coach: coachFor(x.exercises?.name ?? ""),
-    sets: ((x.session_sets ?? []) as any[])
+    sets: [...(x.session_sets ?? [])]
       .sort((a, b) => a.set_no - b.set_no)
       .map((z) => ({ id: z.id, set_no: z.set_no, weight_kg: z.weight_kg == null ? null : Number(z.weight_kg), reps: z.reps, done: z.done, effort: isSetEffort(z.effort) ? z.effort : null })),
   }));

@@ -5,10 +5,17 @@ import { getContext } from "@/lib/data";
 import { addDays, fmtDay, mondayOf } from "@/lib/dates";
 import { EffortTag } from "@/components/effort";
 import { EFFORT_LABEL, gradeSession, isEffort } from "@/lib/effort";
+import type { SignalsJson } from "@/lib/rows";
+import type { LiftLike } from "@/lib/effort";
 
 const FILTERS = [
   { k: "all", l: "All" }, { k: "split", l: "Split" }, { k: "kettlebell", l: "Kettlebell" }, { k: "custom", l: "Custom" },
 ];
+
+type HistSession = {
+  id: string; kind: string; title: string; session_date: string; status: string; effort: string | null;
+  session_exercises: { id: string; skipped_reason: string | null; skill: boolean; exercises: { name: string } | null; session_sets: { done: boolean }[] | null }[] | null;
+};
 
 export default async function HistoryPage({ searchParams }: PageProps<"/train/history">) {
   const sp = await searchParams;
@@ -36,16 +43,17 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
   for (let w = wk(today); weeks.has(w); w = addDays(w, -7)) streak++;
   const monthDays = new Set(doneDates.filter((d) => d.startsWith(today.slice(0, 7)))).size;
   // The Coach's honest grade per workout, from the read written after it.
-  const ids = ((data ?? []) as any[]).map((s) => s.id);
+  const sessions = (data ?? []) as unknown as HistSession[];
+  const ids = sessions.map((s) => s.id);
   const { data: reads } = ids.length
     ? await supabase.from("coach_reads").select("source_id, signals").eq("kind", "session").in("source_id", ids).order("created_at", { ascending: false })
-    : { data: [] as any[] };
-  const liftsBySession = new Map<string, any>();
-  for (const r of (reads ?? []) as any[]) if (!liftsBySession.has(r.source_id)) liftsBySession.set(r.source_id, r.signals?.lifts);
+    : { data: [] };
+  const liftsBySession = new Map<string, LiftLike[] | undefined>();
+  for (const r of (reads ?? []) as { source_id: string; signals: SignalsJson<LiftLike> }[]) if (!liftsBySession.has(r.source_id)) liftsBySession.set(r.source_id, r.signals?.lifts);
 
   const thisMon = mondayOf(today);
-  const groups = new Map<string, any[]>();
-  for (const s of (data ?? []) as any[]) {
+  const groups = new Map<string, HistSession[]>();
+  for (const s of sessions) {
     const mon = mondayOf(s.session_date);
     const label = mon === thisMon ? "This week" : mon === addDays(thisMon, -7) ? "Last week" : `Week of ${fmtDay(mon)}`;
     if (!groups.has(label)) groups.set(label, []);
@@ -84,8 +92,8 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
           <h2 className="sec" style={{ marginBottom: 2 }}>{label}</h2>
           <div className="list">
             {list.map((s) => {
-              const ses = (s.session_exercises ?? []) as any[];
-              const logged = ses.filter((x) => (x.session_sets ?? []).some((z: any) => z.done));
+              const ses = s.session_exercises ?? [];
+              const logged = ses.filter((x) => (x.session_sets ?? []).some((z) => z.done));
               const skipped = ses.filter((x) => x.skipped_reason).length;
               const all = ses.length - skipped;
               // Four separate dimensions: type, completion, your effort, the Coach's read of performance.

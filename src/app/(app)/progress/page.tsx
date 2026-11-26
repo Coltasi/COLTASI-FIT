@@ -9,6 +9,7 @@ import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 import { FoodTrend } from "./food-trend";
 import { StepsTrend } from "./steps-trend";
+import type { Num, WeighRow } from "@/lib/rows";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -17,8 +18,8 @@ export default async function ProgressBodyPage() {
     supabase.from("weigh_ins").select("measured_on, weight_kg").gte("measured_on", since).order("measured_on"),
     supabase.from("scans").select("id, scanned_on, weight_kg, body_fat_pct, fat_mass_kg, muscle_mass_kg, water_pct").order("scanned_on", { ascending: false }).limit(40),
   ]);
-  const weighIns = ((wiRows ?? []) as any[]).map((r) => ({ measured_on: r.measured_on as string, weight_kg: Number(r.weight_kg) }));
-  const scans = ((scanRows ?? []) as any[]).map((r) => ({ ...r, weight_kg: r.weight_kg == null ? null : Number(r.weight_kg) }));
+  const weighIns = ((wiRows ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
+  const scans = ((scanRows ?? []) as ({ id: string; scanned_on: string; weight_kg: Num | null; body_fat_pct: number | null; fat_mass_kg: number | null; muscle_mass_kg: number | null; water_pct: number | null })[]).map((r) => ({ ...r, weight_kg: r.weight_kg == null ? null : Number(r.weight_kg) }));
 
   // Headline weight: latest of weigh-ins and scans.
   const series = [

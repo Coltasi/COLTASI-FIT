@@ -1,6 +1,6 @@
 import { CoachMark, PageHeader, Section } from "@/components/ui";
 import { PARTS, ReadText } from "@/components/coach-read-parts";
-import { CoachPlan, liftChange } from "@/components/coach-plan";
+import { CoachPlan, liftChange, type PlanSignals } from "@/components/coach-plan";
 import { headline } from "@/lib/points";
 import type { LiftSignal } from "@/lib/coach-signals";
 import { RefreshRead } from "./refresh-read";
@@ -11,6 +11,14 @@ import { signed, unit, w } from "@/lib/units";
 import { weeklyRate } from "@/lib/coach";
 import { fmtK, getSteps, stepSummary } from "@/lib/steps";
 import { AskBox } from "./ask-box";
+import type { Num, WeighRow } from "@/lib/rows";
+
+/** A Coach read as stored. `signals` is what the read was built from (older reads may lack parts of it). */
+type ReadRow = {
+  id: string; kind: string; source_id: string | null; headline: string; lifting: string | null; weight: string | null;
+  recovery: string | null; next_session?: string | null; model: string | null; created_at: string;
+  signals: (PlanSignals & { lifts?: LiftSignal[] }) | null;
+};
 
 function ago(iso: string) {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -39,18 +47,18 @@ export default async function CoachPage() {
     getSteps(supabase, today, 14),
   ]);
   const stepAvg = stepSummary(stepRows, today).avg7;
-  const rate = weeklyRate(((wis ?? []) as any[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })));
+  const rate = weeklyRate(((wis ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })));
   const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);
   const behind = rate != null && target != null && (target < 0 ? rate > target * 0.75 : rate < target * 0.75);
-  const sl = ((sleeps ?? []) as any[]).map((r) => Number(r.hours));
+  const sl = ((sleeps ?? []) as { hours: Num }[]).map((r) => Number(r.hours));
   const avgSleep = sl.length ? sl.reduce((a, b) => a + b) / sl.length : null;
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
-  const latest = ((reads ?? []) as any[])[0];
+  const latest = ((reads ?? []) as ReadRow[])[0];
   const dayIso = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(iso));
   const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
   // Reads grouped by the day they were written, newest day first.
-  const days: [string, any[]][] = [];
-  for (const r of (reads ?? []) as any[]) {
+  const days: [string, ReadRow[]][] = [];
+  for (const r of (reads ?? []) as ReadRow[]) {
     const d = dayIso(r.created_at);
     if (days.length && days[days.length - 1][0] === d) days[days.length - 1][1].push(r);
     else days.push([d, [r]]);
@@ -142,7 +150,7 @@ export default async function CoachPage() {
                         {r.signals?.sleep && Array.isArray(r.signals.lifts) ? (
                           <div style={{ marginTop: 8 }}><CoachPlan s={r.signals} weight={r.weight} units={units} /></div>
                         ) : PARTS.filter(([, key]) => r[key]).map(([l, key]) => (
-                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key]} /></div>
+                          <div key={key} style={{ marginTop: 8 }}><p style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>{l}</p><ReadText text={r[key] ?? ""} /></div>
                         ))}
                       </details>
                     );

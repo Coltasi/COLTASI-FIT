@@ -25,7 +25,7 @@ async function shrinkToDataUrl(file: File, max = 1024): Promise<string> {
 
 /** Reads a barcode off a photo with the browser's built-in detector (Chrome on Android has it). */
 async function detectBarcode(file: File): Promise<string | null> {
-  const BD = (globalThis as any).BarcodeDetector;
+  const BD = (globalThis as { BarcodeDetector?: new (o: { formats: string[] }) => { detect: (img: ImageBitmap) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
   if (!BD) return null;
   try {
     const det = new BD({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });

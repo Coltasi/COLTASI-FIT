@@ -1,6 +1,7 @@
 import type { Supa } from "@/lib/data";
 import { addDays, daysBetween } from "@/lib/dates";
 import { weeklyRate } from "@/lib/coach";
+import type { FoodRow, Num, WeighRow } from "@/lib/rows";
 
 /** kcal per kg of body weight change (the Built With Science spreadsheet's figure). */
 export const KCAL_PER_KG = 7716;
@@ -51,10 +52,10 @@ export async function getEnergy(supabase: Supa, today: string, sex: string | nul
     supabase.from("scans").select("weight_kg, body_fat_pct").not("body_fat_pct", "is", null).not("weight_kg", "is", null).order("scanned_on", { ascending: false }).limit(1),
   ]);
 
-  const days = dayTotals((food ?? []) as any[]).filter((d) => d.kcal >= MIN_DAY_KCAL);
+  const days = dayTotals((food ?? []) as FoodRow[]).filter((d) => d.kcal >= MIN_DAY_KCAL);
   const byDate = new Map<string, number>();
-  for (const w of (weighs ?? []) as any[]) byDate.set(w.measured_on, Number(w.weight_kg));
-  for (const s of (scans ?? []) as any[]) if (!byDate.has(s.scanned_on)) byDate.set(s.scanned_on, Number(s.weight_kg));
+  for (const w of (weighs ?? []) as WeighRow[]) byDate.set(w.measured_on, Number(w.weight_kg));
+  for (const s of (scans ?? []) as { scanned_on: string; weight_kg: Num }[]) if (!byDate.has(s.scanned_on)) byDate.set(s.scanned_on, Number(s.weight_kg));
   const points = [...byDate].map(([measured_on, weight_kg]) => ({ measured_on, weight_kg }));
   const span = points.length >= 2 ? daysBetween(points.map((p) => p.measured_on).sort()[0], points.map((p) => p.measured_on).sort().at(-1)!) : 0;
   const rate = weeklyRate(points);

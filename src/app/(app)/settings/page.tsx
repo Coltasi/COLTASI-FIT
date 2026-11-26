@@ -13,7 +13,7 @@ export default async function SettingsPage() {
     supabase.from("profiles").select("id, display_name").neq("id", user.id),
   ]);
   const name = displayName(profile, user.email);
-  const others = (members ?? []) as any[];
+  const others = (members ?? []) as { id: string; display_name: string | null }[];
   const rate = profile.target_rate_kg_week;
   const kbs = profile.kettlebells_kg ?? [];
 

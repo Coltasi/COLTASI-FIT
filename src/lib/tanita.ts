@@ -67,16 +67,16 @@ const toNum = (v: unknown) => {
 export function parseRead(text: string | null): PageRead | null {
   const m = text?.match(/\{[\s\S]*\}/);
   if (!m) return null;
-  let j: any;
+  let j: { page?: unknown; weight_kg?: unknown; middle?: unknown; bottom?: unknown; left?: unknown; printout?: unknown } | null;
   try { j = JSON.parse(m[0]); } catch { return null; }
-  const l = j?.left && typeof j.left === "object" ? j.left : null;
+  const l = j?.left && typeof j.left === "object" ? (j.left as Record<string, unknown>) : null;
   return {
     page: typeof j?.page === "string" ? j.page.toLowerCase() : "unknown",
     weight_kg: toNum(j?.weight_kg),
     middle: toNum(j?.middle),
     bottom: toNum(j?.bottom),
     left: l ? { trunk: toNum(l.trunk), arm_l: toNum(l.arm_l), arm_r: toNum(l.arm_r), leg_l: toNum(l.leg_l), leg_r: toNum(l.leg_r) } : null,
-    printout: j?.printout && typeof j.printout === "object" ? j.printout : null,
+    printout: j?.printout && typeof j.printout === "object" ? (j.printout as PageRead["printout"]) : null,
   };
 }
 
