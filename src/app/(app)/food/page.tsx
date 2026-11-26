@@ -7,19 +7,24 @@ import { getEnergy, dayTotals, FOOD_DAYS_BACK } from "@/lib/energy";
 import { applySuggestedTarget } from "./actions";
 import { DayNav } from "./day-nav";
 import { EditFoods } from "./edit-foods";
+import { macroLine } from "@/lib/portion";
 
 export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string }> }) {
   const { supabase, today, profile } = await getContext();
   const sp = await searchParams;
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -FOOD_DAYS_BACK) ? sp.day : today;
   const [{ data: rows }, energy, { data: week }] = await Promise.all([
-    supabase.from("food_logs").select("id, name, kcal, protein_g, source").eq("day", day).order("created_at"),
+    supabase.from("food_logs").select("id, name, kcal, protein_g, carbs_g, fat_g, portion, source").eq("day", day).order("created_at"),
     getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week)),
     supabase.from("food_logs").select("day, kcal, protein_g").gte("day", addDays(today, -6)).lte("day", today),
   ]);
-  const items = (rows ?? []) as { id: string; name: string; kcal: number; protein_g: number; source: string }[];
+  const items = (rows ?? []) as { id: string; name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null; portion: string | null; source: string }[];
   const kcal = items.reduce((s, r) => s + Number(r.kcal), 0);
   const protein = items.reduce((s, r) => s + Number(r.protein_g), 0);
+  const carbs = items.reduce((s, r) => s + Number(r.carbs_g ?? 0), 0);
+  const fat = items.reduce((s, r) => s + Number(r.fat_g ?? 0), 0);
+  // Entries from before carbs and fat were tracked (or estimates without them) don't count toward those totals.
+  const missing = items.filter((r) => r.carbs_g == null || r.fat_g == null).length;
   const tK = profile.target_kcal ?? null, tP = profile.protein_g ?? null;
   const totals = new Map(dayTotals((week ?? []) as any[]).map((d) => [d.day, d]));
   const maxK = Math.max(tK ?? 2500, ...[...totals.values()].map((d) => d.kcal));
@@ -61,6 +66,11 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
           <Ring value={kcal} target={tK} left={kLeft} unit="kcal" label="Calories" color="var(--lagoon)" />
           <Ring value={protein} target={tP} left={pLeft} unit="g" label="Protein" color="#f0a67f" />
         </div>
+        <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
+          <MacroBar label="Carbs" value={carbs} target={profile.carbs_g ?? null} color="#9fd0de" />
+          <MacroBar label="Fat" value={fat} target={profile.fat_g ?? null} color="#f2c879" />
+          {missing ? <p style={{ fontSize: 14, color: "var(--on-navy-muted)" }}>{missing} {missing === 1 ? "entry has" : "entries have"} no carbs or fat yet. Add them in Edit to count them.</p> : null}
+        </div>
         <div style={{ borderTop: "1px solid var(--navy-2)", marginTop: 16, paddingTop: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
             <p style={{ fontSize: 17, fontWeight: 700 }}>Your TDEE</p>
@@ -87,7 +97,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
               <div key={r.id} className="li">
                 <div style={{ flexGrow: 1, minWidth: 0 }}>
                   <p className="t" style={{ fontSize: 16, lineHeight: 1.3 }}>{r.name}</p>
-                  <p className="s">{Math.round(Number(r.protein_g))} g protein</p>
+                  <p className="s">{r.portion ? `${r.portion} · ` : ""}{macroLine(r)}</p>
                 </div>
                 <p className="v">{Number(r.kcal).toLocaleString("en-US")} kcal</p>
               </div>
@@ -185,6 +195,25 @@ const legend = { display: "inline-flex", alignItems: "center", gap: 6 } as const
 const sw = { display: "inline-block", width: 12, height: 12, borderRadius: 3 } as const;
 
 const fmtShortDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** Carbs or fat so far against the day's target, on the navy summary. */
+function MacroBar({ label, value, target, color }: { label: string; value: number; target: number | null; color: string }) {
+  const over = target != null && value > target;
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 16 }}>
+        <span style={{ fontWeight: 700 }}>{label}</span>
+        <span className="num" style={{ fontWeight: 600 }}>
+          {Math.round(value)}{target ? <span style={{ color: "var(--on-navy-muted)" }}> / {target} g</span> : " g"}
+          {target ? <span style={{ color: "var(--on-navy-muted)", fontSize: 14 }}> · {over ? `${Math.round(value - target)} over` : `${Math.round(target - value)} left`}</span> : null}
+        </span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: "var(--navy-2)", marginTop: 6, overflow: "hidden" }}>
+        <div style={{ width: `${target ? Math.min(100, (value / target) * 100) : 0}%`, height: "100%", borderRadius: 4, background: over ? "#f08a7a" : color }} />
+      </div>
+    </div>
+  );
+}
 
 /** Remaining-first progress ring for the navy nutrition summary. */
 function Ring({ value, target, left, unit, label, color }: { value: number; target: number | null; left: number | null; unit: string; label: string; color: string }) {
