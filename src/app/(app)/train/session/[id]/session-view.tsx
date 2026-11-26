@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { IconCheck, IconFlame, IconPlus, IconPen, IconSmile, IconX } from "@/components/icons";
-import { Ring, Sheet, linkBtn } from "@/components/sheet";
+import { IconCheck, IconDown, IconFlame, IconPlus, IconPen, IconSmile, IconX } from "@/components/icons";
+import { Ring, Sheet } from "@/components/sheet";
 import { toKg, unit, w, type Units } from "@/lib/units";
 import { fmtShort } from "@/lib/dates";
 import { GUIDES } from "@/lib/exercise-guides";
@@ -88,7 +88,7 @@ function WarmupRow({ warmup, min, done, onToggle, onChange }: { warmup: string |
         <p className="ln" style={{ color: done ? "var(--muted)" : "var(--navy)" }}>{warmup ? `Warm-up · ${WARMUP_LABEL[warmup] ?? warmup}` : "Warm-up"}</p>
         <p className="cap">{warmup ? `${min} min` : `${min} min · pick a machine`}</p>
       </button>
-      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 15, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
+      <button type="button" onClick={onChange} className="pill">{warmup ? "Change" : "Choose"}</button>
     </div>
   );
 }
@@ -193,10 +193,9 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const rampEx = editing ? null : rampLift(exs);
   const rampLogged = !!rampEx && rampEx.sets.some((s) => s.done);
   const ramp = rampEx ? rampRows(rampEx, units) : [];
-  type Item = { kind: "ramp"; id: string; ex: SEx; i: number } | { kind: "ex"; id: string; ex: SEx };
-  const items: Item[] = exs.flatMap((e): Item[] => (rampEx && e.id === rampEx.id
-    ? [...ramp.map((_, i): Item => ({ kind: "ramp", id: `${RAMP}${i}`, ex: e, i })), { kind: "ex", id: e.id, ex: e }]
-    : [{ kind: "ex", id: e.id, ex: e }]));
+  // Ramp-ups live inside their lift's card (a dropdown above the working sets), not as rows of their own.
+  type Item = { kind: "ex"; id: string; ex: SEx };
+  const items: Item[] = exs.map((e): Item => ({ kind: "ex", id: e.id, ex: e }));
 
   const tickRamp = (i: number) => setRampTicks((t) => t.map((v, j) => (j === i ? !v : v)));
 
@@ -204,11 +203,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
   const openPos = items.findIndex((it) => it.id === openId);
   const cut = openPos < 0 ? items.length : openPos;
   const open = openPos < 0 ? null : items[openPos];
-  const itemRow = (it: Item) => {
-    if (it.kind === "ex") return exRow(it.ex);
-    const on = rampTicks[it.i] || rampLogged;
-    return <Row key={it.id} done={on} muted={on} dashed name={`Ramp-up · ${ramp[it.i]}`} onClick={() => tickRamp(it.i)} />;
-  };
+  const itemRow = (it: Item) => exRow(it.ex);
   const exRow = (e: SEx) => e.skipped
     ? <Row key={e.id} done={false} dashed muted name={e.name} sub={e.skill ? "Skipped · tap to undo" : `Skipped · ${SKIP_LABEL[e.skipped]} · Coach will remind you · tap to undo`} onClick={() => skip(e, null)} />
     : isDone(e)
@@ -218,7 +213,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       ); })()
     : <Row key={e.id} done={false} name={e.name} onClick={() => setOpenId(e.id)}
         tag={roles.get(e.id) === "misplaced" ? <span className="tag ember">Move after your heavy lifts</span> : e.coach ? <CoachTag call={e.coach} /> : undefined}
-        sub={`${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
+        sub={`${rampEx && e.id === rampEx.id && ramp.length ? `${ramp.length} ramp-ups, then ` : ""}${e.plan}${e.last?.top != null ? ` · last ${w(e.last.top, units)} ${unit(units)}` : ""}${e.subFor ? ` · for ${e.subFor}` : ""}`} />;
 
   const top: ReactNode[] = [
     <WarmupRow key="warmup" warmup={warmup} min={warmMin} done={extras.warmup_done}
@@ -277,7 +272,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
                 {o.skips30 >= 3 ? <p className="cap" style={{ color: "var(--rust)" }}>{o.skips30} skips this month. Is it soreness, or should we swap it?</p> : null}
               </div>
               <button type="button" className="btn2" disabled={pending} onClick={() => takeOwed(o)} style={{ flexShrink: 0 }}>Add</button>
-              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 15, flexShrink: 0 }}>Drop</button>
+              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} className="pill">Drop</button>
             </div>
           ))}
           <p className="cap" style={{ fontSize: 15 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
@@ -298,7 +293,8 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
           onSkip={() => (open.ex.skill ? skip(open.ex, "time") : setSkipFor(open.ex))}
           onPatch={patchSet}
           onPress={() => { if (advance.current) clearTimeout(advance.current); }}
-          onAddSet={(s) => setExs((prev) => prev.map((e) => (e.id === open.ex.id ? { ...e, sets: [...e.sets, s] } : e)))} />
+          onAddSet={(s) => setExs((prev) => prev.map((e) => (e.id === open.ex.id ? { ...e, sets: [...e.sets, s] } : e)))}
+          ramp={rampEx && open.ex.id === rampEx.id && ramp.length ? { rows: ramp, ticks: rampLogged ? ramp.map(() => true) : rampTicks, onTick: tickRamp } : null} />
       ) : null}
 
       {exs.some((e) => !e.skill) ? (
@@ -491,7 +487,43 @@ function rampSets(kg: number, units: Units): { w: string; reps: string }[] {
   });
 }
 
-const RAMP = "__ramp";
+/** Ramp-up sets as a dropdown inside the lift's card. Open until all are ticked, then it folds itself away. */
+function RampUps({ ramp }: { ramp: { rows: string[]; ticks: boolean[]; onTick: (i: number) => void } }) {
+  const done = ramp.ticks.slice(0, ramp.rows.length).filter(Boolean).length;
+  const all = done === ramp.rows.length;
+  const [open, setOpen] = useState(!all);
+  const [wasAll, setWasAll] = useState(all);
+  if (all !== wasAll) { setWasAll(all); if (all) setOpen(false); }
+  return (
+    <div style={{ marginTop: 14, background: "var(--tint-ember-soft)", borderRadius: 14, padding: "2px 14px" }}>
+      <button type="button" aria-expanded={open} onClick={() => setOpen(!open)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minHeight: 52, background: "none", border: 0, padding: 0, cursor: "pointer", font: "inherit", textAlign: "left" }}>
+        <span style={{ fontSize: 17, fontWeight: 700, color: "var(--rust)" }}>Ramp up first</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, color: all ? "var(--jade)" : "var(--muted)" }}>
+          {all ? "Done" : `${done} of ${ramp.rows.length} done`}
+          <IconDown style={{ color: "var(--ember-text)", transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} />
+        </span>
+      </button>
+      {open ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 12 }}>
+          {ramp.rows.map((r, i) => {
+            const on = !!ramp.ticks[i];
+            return (
+              <div key={r + i} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 44px", gap: 10, alignItems: "center" }}>
+                <span style={{ fontSize: 17, fontWeight: 600, color: on ? "var(--muted)" : "var(--navy)" }}>{r}</span>
+                <button type="button" className={`chk${on ? " on" : ""}`} aria-pressed={on} aria-label={`Ramp-up ${i + 1}, ${r}, done`} onClick={() => ramp.onTick(i)}>
+                  {on ? <IconCheck size={18} /> : null}
+                </button>
+              </div>
+            );
+          })}
+          <p className="cap">Light and easy. Not logged.</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 const rampKg = (ex: SEx) => ex.coach?.kg ?? ex.last?.sets[0]?.weight_kg ?? ex.last?.top ?? null;
 
 /** The lift that gets ramp-up sets: first weighted lift still to do (skips skill blocks, skipped lifts, bells and bodyweight). */
@@ -508,7 +540,7 @@ function rampRows(ex: SEx, units: Units): string[] {
   return rampSets(kg, units).map((r) => `${r.w} ${unit(units)} × ${r.reps}`);
 }
 
-function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, onSwap, onSkip, onPatch, onPress, onAddSet }: {
+function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, onSwap, onSkip, onPatch, onPress, onAddSet, ramp }: {
   ex: SEx; units: Units; sessionId: string;
   /** Balance work's place in today's order (Bosu, Turkish Get-Up). */
   role: Role; lastHeavyName: string | null; onMoveAfter?: () => void;
@@ -518,6 +550,8 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
   /** A finger went down on a set button: hold off moving to the next lift. */
   onPress: () => void;
   onAddSet: (s: SSet) => void;
+  /** Ramp-up sets for this lift (first weighted lift of the day): tick-only, not logged. */
+  ramp: { rows: string[]; ticks: boolean[]; onTick: (i: number) => void } | null;
 }) {
   const [vals, setVals] = useState<Record<string, { w: string; r: string }>>(() =>
     Object.fromEntries(ex.sets.map((s) => [s.id, { w: s.weight_kg == null ? "" : w(s.weight_kg, units), r: s.reps == null ? "" : String(s.reps) }])),
@@ -603,7 +637,9 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
         </p>
       ) : <p className="cap" style={{ marginTop: 4 }}>First time logging this one.</p>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: "14px 0 6px" }}>
+      {ramp ? <RampUps ramp={ramp} /> : null}
+      {ramp ? <p style={{ fontSize: 17, fontWeight: 700, marginTop: 16 }}>Working sets</p> : null}
+      <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: ramp ? "8px 0 6px" : "14px 0 6px" }}>
         <span className="lab" style={{ fontSize: 15 }}>Set</span>
         <span className="lab" style={{ fontSize: 15, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
         <span className="lab" style={{ fontSize: 15, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>

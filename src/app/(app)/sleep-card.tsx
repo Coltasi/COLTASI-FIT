@@ -30,7 +30,7 @@ export function SleepCard({ night, logged, bars }: {
           <p className="ln">Log last night&apos;s sleep</p>
           <span style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
             <span className="cap">{fmtDow(night)} night</span>
-            <button type="button" onClick={() => setEditing(false)} style={{ background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, minHeight: 44, cursor: "pointer" }}>Cancel</button>
+            <button type="button" onClick={() => setEditing(false)} className="pill">Cancel</button>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

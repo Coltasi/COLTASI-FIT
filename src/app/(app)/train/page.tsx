@@ -86,7 +86,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>{lastAgo ? `Last trained ${lastAgo}` : "First time on this day"}</p>
           {!suggested && week.nextDay ? (
             <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
-              Next in The Split is {week.nextDay.name}. <Link prefetch={false} href="/train" style={{ fontWeight: 700 }}>Switch back</Link>
+              Next in The Split is {week.nextDay.name}. <Link prefetch={false} href="/train" className="pill" style={{ marginLeft: 6 }}>Switch back</Link>
             </p>
           ) : null}
         </section>

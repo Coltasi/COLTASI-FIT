@@ -66,7 +66,7 @@ export function InstallCard() {
       ) : (
         <p className="cap" style={{ lineHeight: 1.45 }}>
           In Chrome, tap <b style={{ color: "var(--navy)" }}>⋮</b> then <b style={{ color: "var(--navy)" }}>Install app</b> (or Add to Home screen, then pick <b style={{ color: "var(--navy)" }}>Install</b>, not Create shortcut).{" "}
-          <button type="button" onClick={dismiss} style={{ background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontWeight: 600, cursor: "pointer" }}>Hide</button>
+          <button type="button" onClick={dismiss} className="pill" style={{ marginTop: 8 }}>Hide</button>
         </p>
       )}
     </div>

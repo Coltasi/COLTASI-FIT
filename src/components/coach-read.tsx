@@ -36,7 +36,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
         {head ? <p className="feature-title" style={{ fontSize: 22 }}>{head}</p> : null}
         {more ? (
           <button type="button" onClick={() => setNotesOpen(!notesOpen)} aria-expanded={notesOpen}
-            style={{ display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start", minHeight: 44, background: "none", border: 0, padding: 0, cursor: "pointer", color: "#f2b89c", fontSize: 16, fontWeight: 700 }}>
+            className="pill" style={{ alignSelf: "flex-start" }}>
             {notesOpen ? "Hide coaching notes" : "Coaching notes"}
             <IconDown style={{ transition: "transform .15s", transform: notesOpen ? "rotate(180deg)" : "none" }} />
           </button>
@@ -49,7 +49,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
             </ul>
             {parts.length || plan ? (
               <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
-                style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 44, background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>
+                className="pill" style={{ alignSelf: "flex-start" }}>
                 {open ? "Hide the plan" : "Next session plan"}
                 <IconDown style={{ transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} />
               </button>
@@ -75,7 +75,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
         <button type="button" onClick={() => setNotesOpen(!notesOpen)} aria-expanded={notesOpen}
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", background: "none", border: 0, padding: "2px 0 10px", cursor: "pointer", color: "var(--navy)", textAlign: "left" }}>
           {label}
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, color: "var(--ember-text)" }}>
+          <span className="pill">
             {notesOpen ? "Hide" : "Coaching"}
             <IconDown style={{ transition: "transform .15s", transform: notesOpen ? "rotate(180deg)" : "none" }} />
           </span>
@@ -88,7 +88,7 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
       </ul>
       {parts.length || plan ? (
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
-          style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 44, background: "none", border: 0, padding: 0, cursor: "pointer", color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>
+          className="pill" style={{ alignSelf: "flex-start" }}>
           {open ? "Hide the plan" : "Next session plan"}
           <IconDown style={{ transition: "transform .15s", transform: open ? "rotate(180deg)" : "none" }} />
         </button>

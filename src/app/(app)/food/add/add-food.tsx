@@ -200,7 +200,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
           )}
           {saved.length ? (
             <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
-              <button type="button" onClick={() => setManage((m) => !m)} style={{ ...linkBtn, minHeight: 44 }}>{manage ? "Done removing" : "Remove saved foods"}</button>
+              <button type="button" onClick={() => setManage((m) => !m)} className="pill">{manage ? "Done removing" : "Remove saved foods"}</button>
             </div>
           ) : null}
         </div>
@@ -220,5 +220,4 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 const tile = { padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", font: "inherit", color: "var(--navy)" } as const;

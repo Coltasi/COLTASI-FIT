@@ -21,9 +21,9 @@ export function StepsCard({ today, bars, avg7 }: {
       <div className="card" style={{ gridColumn: "1 / -1", padding: "14px 16px", border: "2px solid var(--kingfisher)", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <p className="ln">Log steps</p>
-          <span style={{ display: "flex", gap: 14 }}>
-            <Link prefetch={false} href="/steps" style={{ fontSize: 15, fontWeight: 600 }}>History</Link>
-            <button type="button" onClick={() => setEditing(false)} style={linkBtn}>Cancel</button>
+          <span style={{ display: "flex", gap: 8 }}>
+            <Link prefetch={false} href="/steps" className="pill">History</Link>
+            <button type="button" onClick={() => setEditing(false)} className="pill">Cancel</button>
           </span>
         </div>
         <StepsForm
@@ -52,4 +52,3 @@ export function StepsCard({ today, bars, avg7 }: {
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", minHeight: 44 } as const;

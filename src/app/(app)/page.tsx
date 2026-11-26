@@ -146,7 +146,7 @@ export default async function OverviewPage() {
         </section>
       )}
 
-      <Section title="Daily targets" right={<Link prefetch={false} href="/food">Food log →</Link>}>
+      <Section title="Daily targets" right={<Link prefetch={false} href="/food" className="pill">Food log</Link>}>
         <div className="tiles">
           <Link prefetch={false} href="/food" className="tile" aria-label="Calories today">
             <span className="lab">Calories</span>
@@ -202,7 +202,7 @@ export default async function OverviewPage() {
         </div>
         <details className="card" style={{ padding: "0 16px" }}>
           <summary style={{ listStyle: "none", minHeight: 52, display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontSize: 16, fontWeight: 700 }}>
-            Month calendar <span style={{ color: "var(--ember-text)", fontSize: 15 }}>Show</span>
+            Month calendar <span className="pill">Show</span>
           </summary>
           <div style={{ paddingBottom: 16 }}><WorkoutCalendar bare sessions={calSessions} today={today} /></div>
         </details>

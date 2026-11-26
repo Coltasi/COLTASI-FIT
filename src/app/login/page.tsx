@@ -17,7 +17,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       </div>
       <h1 className="disp" style={{ fontSize: 26, textAlign: "center" }}>Welcome back</h1>
       <LoginForm notice={notice} />
-      <p className="cap" style={{ textAlign: "center", marginTop: "auto" }}>New here? <Link prefetch={false} href="/signup" style={{ fontWeight: 600 }}>Create an account</Link></p>
+      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8, alignItems: "stretch" }}>
+        <p className="cap" style={{ textAlign: "center" }}>New here?</p>
+        <Link prefetch={false} href="/signup" className="ghost">Create an account</Link>
+      </div>
     </main>
   );
 }

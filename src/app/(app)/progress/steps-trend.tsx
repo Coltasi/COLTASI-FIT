@@ -16,7 +16,8 @@ export async function StepsTrend({ supabase, today }: { supabase: Supa; today: s
     return (
       <div className="card" style={{ padding: "16px 18px" }}>
         <p className="sec">Steps</p>
-        <p className="cap" style={{ marginTop: 6 }}>Log steps on <Link prefetch={false} href="/">Today</Link> to see your trend here.</p>
+        <p className="cap" style={{ marginTop: 6 }}>Log your steps to see your trend here.</p>
+        <Link prefetch={false} href="/steps" className="pill" style={{ marginTop: 12 }}>Log steps</Link>
       </div>
     );
   }

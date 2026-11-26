@@ -7,7 +7,7 @@ export default function CheckEmailPage() {
       <img src="/brand/coltasi-bird.svg" alt="" width={88} height={88} style={{ marginTop: 48 }} />
       <h1 className="disp" style={{ fontSize: 26 }}>Check your email</h1>
       <p className="cap" style={{ fontSize: 15, lineHeight: 1.5 }}>We sent you a link to confirm your account. Open it on this phone and you&apos;ll land straight in the app.</p>
-      <Link prefetch={false} href="/login" style={{ fontWeight: 600 }}>Back to log in</Link>
+      <Link prefetch={false} href="/login" className="ghost">Back to log in</Link>
     </main>
   );
 }

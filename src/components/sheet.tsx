@@ -34,4 +34,3 @@ export function Ring({ on }: { on: boolean }) {
   return <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: on ? "7px solid var(--ember)" : "1.5px solid var(--check-line)" }} />;
 }
 
-export const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontWeight: 600, cursor: "pointer" } as const;

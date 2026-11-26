@@ -48,7 +48,7 @@ export function StartForm({ dayId, dayName, units, lifts, finishers, disabled }:
         <details className="card">
           <summary style={{ listStyle: "none", padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
             <span className="ln">{warmup ? `${WARMUPS.find((o) => o.v === warmup)?.l} · ${warmupMin} min` : "No warm-up"}</span>
-            <span style={{ color: "var(--ember-text)", fontSize: 15, fontWeight: 700 }}>Edit</span>
+            <span className="pill">Edit</span>
           </summary>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, borderTop: "1px solid var(--line-soft)" }}>
             <p className="lab">Machine</p>

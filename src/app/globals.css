@@ -120,6 +120,14 @@ a.row:hover { background: #faf8f3; color: var(--navy); }
   border: 1px solid var(--line-strong); background: var(--surface); font-size: 15px; font-weight: 600; color: var(--ember-text); cursor: pointer;
 }
 .feature .btn2 { background: var(--navy-2); border-color: transparent; color: #fff; }
+/* Small button: replaces every text link. Also used as a visual cue (span) inside rows that are clickable as a whole. */
+.pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 12px;
+  border: 1px solid var(--line-strong); background: var(--surface); font-family: inherit; font-size: 15px; font-weight: 600; color: var(--ember-text);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; text-decoration: none;
+}
+.pill:hover { color: var(--rust-deep); }
+.feature .pill { background: var(--navy-2); border-color: transparent; color: #fff; }
 .ghost {
   display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 12px; border: 1px solid var(--line-strong);
   background: var(--surface); font-size: 16px; font-weight: 600; color: var(--navy); cursor: pointer; width: 100%;

@@ -78,7 +78,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
       {day ? (
         <div className="card cream" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", minHeight: 52 }}>
           <span className="ln">{fmtDay(day)}</span>
-          <Link prefetch={false} href="/train/history" style={{ fontSize: 15, fontWeight: 700 }}>Show all</Link>
+          <Link prefetch={false} href="/train/history" className="pill">Show all</Link>
         </div>
       ) : null}
       <div className="chips">
