@@ -21,7 +21,7 @@ export async function FoodTrend({ supabase, today, targetKcal, targetProtein }: 
     return (
       <div className="card" style={{ padding: "16px 18px" }}>
         <p className="sec">Food</p>
-        <p className="cap" style={{ marginTop: 6, fontSize: 14 }}>Log meals in <Link prefetch={false} href="/food">Food</Link> to see your trend here.</p>
+        <p className="cap" style={{ marginTop: 6, fontSize: 15 }}>Log meals in <Link prefetch={false} href="/food">Food</Link> to see your trend here.</p>
       </div>
     );
   }
@@ -34,7 +34,7 @@ export async function FoodTrend({ supabase, today, targetKcal, targetProtein }: 
     <Link prefetch={false} href="/food" className="card" style={{ padding: "16px 18px", display: "grid", gap: 16, color: "var(--navy)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
         <p className="sec">Food</p>
-        <p className="cap" style={{ fontSize: 14 }}>4 weeks</p>
+        <p className="cap" style={{ fontSize: 15 }}>4 weeks</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>

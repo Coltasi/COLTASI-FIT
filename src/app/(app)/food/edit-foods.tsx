@@ -36,7 +36,7 @@ export function EditFoods({ items, day, today, min, exitHref }: {
   }
 
   if (!items.length) {
-    return <p className="cap" style={{ fontSize: 14 }}>Nothing logged this day, so nothing to edit. Pick another day above.</p>;
+    return <p className="cap" style={{ fontSize: 15 }}>Nothing logged this day, so nothing to edit. Pick another day above.</p>;
   }
 
   return (
@@ -47,17 +47,17 @@ export function EditFoods({ items, day, today, min, exitHref }: {
             <input className="fld" aria-label="Name" value={r.name} disabled={r.remove} onChange={(e) => set(i, { name: e.target.value })}
               style={{ flexGrow: 1, height: 40, textDecoration: r.remove ? "line-through" : undefined }} />
             <button type="button" onClick={() => set(i, { remove: !r.remove })} aria-label={r.remove ? `Keep ${r.name}` : `Remove ${r.name}`}
-              style={{ height: 40, padding: "0 12px", borderRadius: 10, border: "1.5px solid var(--rust)", background: r.remove ? "var(--rust)" : "transparent", color: r.remove ? "#fff" : "var(--rust)", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              style={{ height: 40, padding: "0 12px", borderRadius: 10, border: "1.5px solid var(--rust)", background: r.remove ? "var(--rust)" : "transparent", color: r.remove ? "#fff" : "var(--rust)", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
               {r.remove ? "Undo" : "Remove"}
             </button>
           </div>
           {!r.remove ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 8 }}>
-              <label><span className="flab" style={{ fontSize: 14 }}>kcal</span><input className="fld" inputMode="numeric" value={r.kcal} onChange={(e) => set(i, { kcal: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 14 }}>Protein</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 14 }}>Carbs</span><input className="fld" inputMode="decimal" value={r.carbs} onChange={(e) => set(i, { carbs: e.target.value })} style={{ height: 40 }} /></label>
-              <label><span className="flab" style={{ fontSize: 14 }}>Fat</span><input className="fld" inputMode="decimal" value={r.fat} onChange={(e) => set(i, { fat: e.target.value })} style={{ height: 40 }} /></label>
-              <label style={{ gridColumn: "1 / -1" }}><span className="flab" style={{ fontSize: 14 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
+              <label><span className="flab" style={{ fontSize: 15 }}>kcal</span><input className="fld" inputMode="numeric" value={r.kcal} onChange={(e) => set(i, { kcal: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 15 }}>Protein</span><input className="fld" inputMode="decimal" value={r.protein} onChange={(e) => set(i, { protein: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 15 }}>Carbs</span><input className="fld" inputMode="decimal" value={r.carbs} onChange={(e) => set(i, { carbs: e.target.value })} style={{ height: 40 }} /></label>
+              <label><span className="flab" style={{ fontSize: 15 }}>Fat</span><input className="fld" inputMode="decimal" value={r.fat} onChange={(e) => set(i, { fat: e.target.value })} style={{ height: 40 }} /></label>
+              <label style={{ gridColumn: "1 / -1" }}><span className="flab" style={{ fontSize: 15 }}>Day</span><input className="fld" type="date" min={min} max={today} value={r.day} onChange={(e) => set(i, { day: e.target.value })} style={{ height: 40, padding: "0 6px" }} /></label>
             </div>
           ) : null}
         </div>

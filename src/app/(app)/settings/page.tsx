@@ -34,7 +34,7 @@ export default async function SettingsPage() {
           <details className="row" style={{ display: "block" }}>
             <summary style={{ listStyle: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", minHeight: 32 }}>
               <span style={{ fontSize: 16, fontWeight: 600 }}>Manage household</span>
-              <span style={{ fontSize: 15, color: "var(--muted)" }}>{others.length ? `${others.length} other login${others.length > 1 ? "s" : ""}` : "just you"}</span>
+              <span style={{ fontSize: 15, color: "var(--muted)" }}>{others.length ? `${others.length} other login${others.length > 1 ? "s" : ""}` : "Just you"}</span>
             </summary>
             <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
               {others.map((m) => <p key={m.id} className="cap">• {m.display_name ?? "Member"}</p>)}
@@ -95,7 +95,7 @@ export default async function SettingsPage() {
             <PrefToggle field="notify_workout" on={profile.notify_workout} label="Workout day reminder" />
           </div>
         </div>
-        <p className="cap" style={{ marginTop: 8, lineHeight: 1.45 }}>Sleep and weigh-in reminders skip themselves if you have already logged. Workout day reminders are saved but not sent yet (not built).</p>
+        <p className="cap" style={{ marginTop: 8, lineHeight: 1.45 }}>Sleep and weigh-in reminders skip themselves if you have already logged. Workout-day reminders are coming soon.</p>
       </div>
 
       <div>

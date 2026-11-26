@@ -42,15 +42,19 @@ const MESSAGES: Record<Kind, { title: string; body: string; url: string }> = {
   weigh_in_nudge: { title: "No weigh-in logged this week", body: "Log it now so the trend stays honest.", url: "/progress" },
 };
 
+type Sub = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
+type PushError = { statusCode?: number; body?: unknown; message?: string };
+
 /** Sends to every device; drops devices the push service says are gone. Returns how many accepted it. */
-async function sendToDevices(userSubs: any[], payload: string) {
+async function sendToDevices(userSubs: Sub[], payload: string) {
   let ok = 0;
   const errors: string[] = [];
   for (const s of userSubs) {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 6 * 3600 });
       ok++;
-    } catch (e: any) {
+    } catch (err) {
+      const e = err as PushError;
       errors.push(`${e?.statusCode ?? "?"} ${String(e?.body ?? e?.message ?? e).slice(0, 120)}`);
       if (e?.statusCode === 404 || e?.statusCode === 410) await admin.from("push_subscriptions").delete().eq("id", s.id);
     }
@@ -82,8 +86,8 @@ Deno.serve(async (req) => {
     webpush.setVapidDetails("https://www.coltasi.com", await secret("vapid_public_key"), await secret("vapid_private_key"));
 
     const { data: subs } = await admin.from("push_subscriptions").select("*");
-    const byUser = new Map<string, any[]>();
-    for (const s of subs ?? []) byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]);
+    const byUser = new Map<string, Sub[]>();
+    for (const s of (subs ?? []) as Sub[]) byUser.set(s.user_id, [...(byUser.get(s.user_id) ?? []), s]);
     if (!byUser.size) return Response.json({ users: 0, sent: [] });
 
     const { data: profiles } = await admin

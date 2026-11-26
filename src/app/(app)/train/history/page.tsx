@@ -67,11 +67,10 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
       <BackHeader href="/train" label="Train" title="Workout history" />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10 }}>
-        {[[doneDates.length, "Workouts", "logged"], [monthDays, "This month", "days trained"], [streak, "Streak", streak === 1 ? "week" : "weeks"]].map(([v, l, u]) => (
-          <div key={l as string} className="tile" style={{ padding: "14px 12px" }}>
-            <span className="lab">{l}</span>
-            <span className="big" style={{ fontSize: 28 }}>{v}</span>
-            <span className="cap">{u}</span>
+        {[[doneDates.length, "workouts"], [monthDays, "days this month"], [streak, "week streak"]].map(([v, l]) => (
+          <div key={l as string} className="tile" style={{ padding: "14px 12px", justifyContent: "flex-start" }}>
+            <span className="big" style={{ fontSize: 28, marginTop: 0 }}>{v}</span>
+            <span className="cap" style={{ lineHeight: 1.3 }}>{l}</span>
           </div>
         ))}
       </div>
@@ -107,7 +106,7 @@ export default async function HistoryPage({ searchParams }: PageProps<"/train/hi
                 <Link prefetch={false} key={s.id} href={`/train/session/${s.id}`} className="li" style={{ alignItems: "flex-start" }}>
                   <div aria-hidden style={{ width: 50, flexShrink: 0, borderRadius: 12, background: "var(--surface)", border: "1px solid var(--line)", textAlign: "center", padding: "6px 0" }}>
                     <p className="num" style={{ fontSize: 20, lineHeight: 1.1 }}>{d.getUTCDate()}</p>
-                    <p className="cap" style={{ fontSize: 14 }}>{d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</p>
+                    <p className="cap" style={{ fontSize: 15 }}>{d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" })}</p>
                   </div>
                   <div style={{ flexGrow: 1, minWidth: 0 }}>
                     <p className="t">{s.title}</p>

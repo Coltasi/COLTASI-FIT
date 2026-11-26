@@ -16,7 +16,7 @@ type Mode = "mass" | "pct";
 const METRICS: { key: MetricKey; label: string; pctLabel: string; color: string; goodDown: boolean | null }[] = [
   { key: "weight", label: "Weight", pctLabel: "Weight", color: "var(--navy)", goodDown: true },
   { key: "fat", label: "Fat mass", pctLabel: "Body fat", color: "var(--ember)", goodDown: true },
-  { key: "muscle", label: "Muscle mass", pctLabel: "Muscle", color: "var(--kingfisher)", goodDown: false },
+  { key: "muscle", label: "Muscle", pctLabel: "Muscle", color: "var(--kingfisher)", goodDown: false },
   { key: "water", label: "Body water", pctLabel: "Body water", color: "var(--kingfisher-text)", goodDown: null },
 ];
 const STORE_KEY = "coltasi.bodycomp.selected";
@@ -156,7 +156,7 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
           if (!p.length) {
             return (
               <div key={m.key} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--tint-neutral)", opacity: 0.5 }}>
-                <p className="cap" style={{ fontSize: 14 }}>{m.label}</p><p className="cap" style={{ marginTop: 4 }}>No data</p>
+                <p className="cap" style={{ fontSize: 15 }}>{m.label}</p><p className="cap" style={{ marginTop: 4 }}>No data</p>
               </div>
             );
           }
@@ -166,11 +166,11 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
               style={{ textAlign: "left", padding: "12px 14px", borderRadius: 14, cursor: "pointer", fontFamily: "inherit", minWidth: 0,
                 background: isSel ? "#fff" : "var(--tint-neutral)", border: `2px solid ${isSel ? m.color : "transparent"}` }}>
               <span style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>{nameOf(m)}</span>
-                {p.length > 1 ? <span style={{ fontSize: 14, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}{isPct(m.key) ? "%" : ""}</span> : null}
+                <span style={{ fontSize: 15, fontWeight: 600, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nameOf(m)}</span>
+                {p.length > 1 ? <span style={{ fontSize: 15, fontWeight: 700, color: goodColor(d, m.goodDown) }}>{signed(d)}{isPct(m.key) ? "%" : ""}</span> : null}
               </span>
               <span className="num" style={{ display: "block", fontSize: 24, fontWeight: 800, color: "var(--navy)", whiteSpace: "nowrap", marginTop: 2, letterSpacing: "-0.02em" }}>
-                {fmt(val(m.key, p.at(-1)!))}<span style={{ fontSize: 14, fontWeight: 600, color: "var(--muted)", marginLeft: isPct(m.key) ? 1 : 4 }}>{suffix(m.key)}</span>
+                {fmt(val(m.key, p.at(-1)!))}<span style={{ fontSize: 15, fontWeight: 600, color: "var(--muted)", marginLeft: isPct(m.key) ? 1 : 4 }}>{suffix(m.key)}</span>
               </span>
             </button>
           );
@@ -181,10 +181,10 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span className="num" style={{ fontSize: 28, color: "var(--navy)" }}>{fmt(val(sel.key, active))}{isPct(sel.key) ? "" : " "}<span className="cap">{suffix(sel.key)}</span></span>
           {active.d !== first.d ? (
-            <span style={{ fontSize: 14, fontWeight: 700, color: goodColor(change, sel.goodDown) }}>{signed(change)}{isPct(sel.key) ? "%" : ` ${unit(units)}`} since {fmtShort(first.d)}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: goodColor(change, sel.goodDown) }}>{signed(change)}{isPct(sel.key) ? "%" : ` ${unit(units)}`} since {fmtShort(first.d)}</span>
           ) : null}
         </div>
-        <p className="cap" style={{ marginTop: 2, fontSize: 14 }}>{nameOf(sel)}{isPct(sel.key) ? " (% of body weight)" : ""} · {fmtShort(active.d)}{active.src === "scan" ? " · scan" : ""}</p>
+        <p className="cap" style={{ marginTop: 2, fontSize: 15 }}>{nameOf(sel)}{isPct(sel.key) ? " (% of body weight)" : ""} · {fmtShort(active.d)}{active.src === "scan" ? " · scan" : ""}</p>
 
         <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
           aria-label={`${nameOf(sel)} over time, ${isPct(sel.key) ? "% of body weight" : unit(units)}. Tap to see a date.`}
@@ -194,7 +194,7 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
           {ticks.map((t, i) => (
             <g key={i}>
               <line x1={0} x2={right} y1={sy(t)} y2={sy(t)} stroke={i === 2 ? "var(--line-strong)" : "var(--line-soft)"} />
-              <text x={W} y={sy(t) + 4} textAnchor="end" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{t % 1 ? t.toFixed(1) : t}</text>
+              <text x={W} y={sy(t) + 4} textAnchor="end" fontSize={13} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{t % 1 ? t.toFixed(1) : t}</text>
             </g>
           ))}
           <line x1={sx(active.d)} x2={sx(active.d)} y1={top} y2={bottom} stroke="var(--mist)" strokeDasharray="3 3" />
@@ -208,7 +208,7 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
             return <circle key={p.d} cx={sx(p.d)} cy={sy(val(sel.key, p))} r={r} fill={hit ? "#fff" : sel.color} stroke={sel.color} strokeWidth={hit ? 2.5 : 0} />;
           })}
           {months.map((m) => (
-            <text key={m.l} x={Math.min(Math.max(sx(m.d), 14), right - 10)} y={H - 4} textAnchor="middle" fontSize={11} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{m.l}</text>
+            <text key={m.l} x={Math.min(Math.max(sx(m.d), 14), right - 10)} y={H - 4} textAnchor="middle" fontSize={13} fill="var(--muted)" fontFamily="Inter Variable, Inter, sans-serif">{m.l}</text>
           ))}
         </svg>
         <p className="cap" style={{ marginTop: 10, lineHeight: 1.45 }}>

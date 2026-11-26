@@ -58,12 +58,11 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
     <main className="screen" style={{ gap: 24 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <PageHeader
-          title="Nutrition"
+          title="Food"
           above={edit ? <span style={{ color: "var(--rust)", fontWeight: 700 }}>Editing</span> : undefined}
           right={edit ? undefined : <Link prefetch={false} href={editHref} className="btn2"><IconPen size={16} />Edit</Link>}
         />
-        <p className="ln" style={{ fontSize: 17 }}>{dayTitle}</p>
-        <DayNav day={day} today={today} min={min} edit={edit} />
+        <DayNav day={day} today={today} min={min} edit={edit} label={dayTitle} />
       </div>
 
       {edit ? (
@@ -100,10 +99,10 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 16 }}>
               <MacroBar label="Carbs" value={carbs} target={profile.carbs_g ?? null} color="#9fd0de" />
-              <MacroBar label="Fat" value={fat} target={profile.fat_g ?? null} color="#f2c879" />
+              <MacroBar label="Fat" value={fat} target={profile.fat_g ?? null} color="#d9d0bd" />
             </div>
             {missing ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)", marginTop: -8 }}>{missing} {missing === 1 ? "entry has" : "entries have"} no carbs or fat yet. Add them in Edit to count them.</p> : null}
-            <TdeeBlock energy={energy} sub={tK ? `kcal a day · target ${tK.toLocaleString("en-US")}` : "kcal a day"} />
+            <TdeeBlock energy={energy} sub={tK ? `Your target: ${tK.toLocaleString("en-US")} kcal` : null} />
           </>
         ) : (
           <WeekView today={today} day={day} totals={totals} energy={energy} proteinTarget={tP} currentKg={currentKg} goalKg={profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg)} units={units} />
@@ -197,18 +196,21 @@ function sundayOf(iso: string): string {
 const FULL_DAY_KCAL = 1000;
 const C_EATEN = "#5cc0d8", C_DEFICIT = "#4fc59f", C_OVER = "#e0605a", C_PROTEIN = "#f0a67f";
 
-/** The terracotta TDEE block, the same on both tabs. */
-function TdeeBlock({ energy, sub }: { energy: Energy; sub: string }) {
+/** The terracotta TDEE block, the same on both tabs: label row, then one big number with its unit beside it. */
+function TdeeBlock({ energy, sub }: { energy: Energy; sub: string | null }) {
   return (
-    <div style={{ background: "var(--rust)", borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase" }}>Your TDEE</span>
+    <div style={{ background: "var(--rust)", borderRadius: 16, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 15, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", whiteSpace: "nowrap" }}>Your TDEE</span>
         {energy.source !== "measured" ? <span style={{ background: "rgba(255,255,255,.22)", fontSize: 15, fontWeight: 600, padding: "2px 10px", borderRadius: 999 }}>Estimate</span> : null}
       </span>
-      <span style={{ textAlign: "right" }}>
-        <span className="num" style={{ display: "block", fontSize: 32, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.02em" }}>{energy.tdee ? energy.tdee.toLocaleString("en-US") : "–"}</span>
-        <span style={{ display: "block", fontSize: 15, fontWeight: 600, marginTop: 4 }}>{energy.tdee ? sub : "Log a scan to work it out"}</span>
-      </span>
+      {energy.tdee ? (
+        <span style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span className="num" style={{ fontSize: 34, fontWeight: 800, lineHeight: 1, letterSpacing: "-0.02em" }}>{energy.tdee.toLocaleString("en-US")}</span>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>kcal burned a day</span>
+        </span>
+      ) : <span style={{ fontSize: 16, fontWeight: 600 }}>Log a scan to work it out</span>}
+      {energy.tdee && sub ? <span style={{ fontSize: 15, fontWeight: 600, color: "rgba(255,255,255,.85)" }}>{sub}</span> : null}
     </div>
   );
 }
@@ -279,7 +281,7 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
         ) : null}
       </div>
 
-      <TdeeBlock energy={energy} sub="kcal burned a day" />
+      <TdeeBlock energy={energy} sub={null} />
 
       {tdee ? (
         <div>

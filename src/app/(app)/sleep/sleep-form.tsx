@@ -48,7 +48,7 @@ export function SleepForm({ night, initial }: {
             const on = mood === m.v;
             return (
               <button key={m.v} type="button" aria-pressed={on} onClick={() => setMood(on ? "" : m.v)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "12px 2px", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 600, color: "var(--navy)", border: on ? "2px solid var(--navy)" : "1px solid var(--line-strong)", background: on ? "var(--cream)" : "#fff" }}>
                 <span style={{ width: 12, height: 12, borderRadius: "50%", background: m.c }} />{m.l}
               </button>
             );

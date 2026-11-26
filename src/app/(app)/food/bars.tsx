@@ -16,7 +16,7 @@ export function IntakeBars({ kcal, protein, targetKcal, targetProtein, compact }
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: compact ? 13 : 14 }}>
               <span style={{ fontWeight: 600 }}>{r.label}</span>
               <span className="num" style={{ fontSize: compact ? 14 : 16 }}>
-                {r.val.toLocaleString("en-US")}{r.target ? <span className="cap" style={{ fontSize: 14 }}> / {r.target.toLocaleString("en-US")}{r.unit}</span> : r.unit}
+                {r.val.toLocaleString("en-US")}{r.target ? <span className="cap" style={{ fontSize: 15 }}> / {r.target.toLocaleString("en-US")}{r.unit}</span> : r.unit}
               </span>
             </div>
             <div style={{ height: compact ? 6 : 8, borderRadius: 4, background: "var(--line-soft)", marginTop: 4, overflow: "hidden" }}>

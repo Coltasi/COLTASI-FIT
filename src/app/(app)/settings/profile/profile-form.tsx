@@ -13,7 +13,7 @@ function Field({ label, name, value, hint, inputMode = "decimal", placeholder }:
     <label style={{ display: "block" }}>
       <span className="flab">{label}</span>
       <input name={name} className="fld" inputMode={inputMode} defaultValue={value ?? ""} placeholder={placeholder} />
-      {hint ? <span className="cap" style={{ display: "block", marginTop: 4, fontSize: 14 }}>{hint}</span> : null}
+      {hint ? <span className="cap" style={{ display: "block", marginTop: 4, fontSize: 15 }}>{hint}</span> : null}
     </label>
   );
 }

@@ -132,7 +132,8 @@ export function liftSignal(l: LiftInput, kettlebells: number[], easeOff: boolean
       && !S.slice(-flatFor).some((x) => x.anyHard) ? stepUp(last.top as number, l.modality, kettlebells) : null;
     if (flatUp != null) {
       call = "up"; upWhy = "flat"; nextKg = flatUp; stalledFor = 0;
-    } else if (stalledFor >= 3) {
+    } else if (stalledFor >= 3 && !(change?.kg != null && change.kg > 0)) {
+      // Never tell someone who just went heavier to back off: a heavier top set with fewer reps is progress in the making.
       call = "back_off";
       nextKg = bodyweight ? null : stepDown(last.top as number, l.modality, kettlebells);
     } else stalledFor = 0;

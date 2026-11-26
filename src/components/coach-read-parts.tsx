@@ -16,7 +16,7 @@ export function ReadText({ text }: { text: string }) {
   return (
     <>
       {text.split(/\n\s*\n/).map((para, i) => (
-        <p key={i} style={{ fontSize: 14, lineHeight: 1.45, marginTop: i ? 8 : 0 }}>
+        <p key={i} style={{ fontSize: 15, lineHeight: 1.45, marginTop: i ? 8 : 0 }}>
           {para.split("\n").map((line, j) => <span key={j} style={{ display: "block", marginTop: j ? 4 : 0 }}>{line}</span>)}
         </p>
       ))}

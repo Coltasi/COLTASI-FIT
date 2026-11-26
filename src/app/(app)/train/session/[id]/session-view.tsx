@@ -87,7 +87,7 @@ function WarmupRow({ warmup, min, done, onToggle, onChange }: { warmup: string |
         <p className="ln" style={{ color: done ? "var(--muted)" : "var(--navy)" }}>{warmup ? `Warm-up · ${WARMUP_LABEL[warmup] ?? warmup}` : "Warm-up"}</p>
         <p className="cap">{warmup ? `${min} min` : `${min} min · pick a machine`}</p>
       </button>
-      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 14, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
+      <button type="button" onClick={onChange} style={{ ...linkBtn, fontSize: 15, flexShrink: 0 }}>{warmup ? "Change" : "Choose"}</button>
     </div>
   );
 }
@@ -247,7 +247,7 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
       {editing ? (
         <div style={{ background: "var(--tint-ember)", border: "1.5px solid var(--ember)", borderRadius: 14, padding: "12px 14px", display: "flex", gap: 10, alignItems: "center", color: "var(--rust)" }}>
           <IconPen size={18} />
-          <p style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Editing a finished workout. Changes save to the original date.</p>
+          <p style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>Editing a finished workout. Changes save to the original date.</p>
         </div>
       ) : null}
 
@@ -273,10 +273,10 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
                 {o.skips30 >= 3 ? <p className="cap" style={{ color: "var(--rust)" }}>{o.skips30} skips this month. Is it soreness, or should we swap it?</p> : null}
               </div>
               <button type="button" className="btn2" disabled={pending} onClick={() => takeOwed(o)} style={{ flexShrink: 0 }}>Add</button>
-              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 14, flexShrink: 0 }}>Drop</button>
+              <button type="button" disabled={pending} onClick={() => leaveOwed(o)} style={{ ...linkBtn, fontSize: 15, flexShrink: 0 }}>Drop</button>
             </div>
           ))}
-          <p className="cap" style={{ fontSize: 14 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
+          <p className="cap" style={{ fontSize: 15 }}>Added for today only. It won&apos;t change this day&apos;s plan.</p>
         </div>
       ) : null}
 
@@ -600,9 +600,9 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
       ) : <p className="cap" style={{ marginTop: 4 }}>First time logging this one.</p>}
 
       <div style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr) minmax(0,1fr) 44px", gap: 8, alignItems: "center", margin: "14px 0 6px" }}>
-        <span className="lab" style={{ fontSize: 14 }}>Set</span>
-        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
-        <span className="lab" style={{ fontSize: 14, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>
+        <span className="lab" style={{ fontSize: 15 }}>Set</span>
+        <span className="lab" style={{ fontSize: 15, textAlign: "center" }}>{ex.skill ? "" : unit(units)}</span>
+        <span className="lab" style={{ fontSize: 15, textAlign: "center" }}>{ex.skill ? "Secs held" : "Reps"}</span>
         <span />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -634,7 +634,7 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
                 </button>
               )}
               {rates && s.done && s.effort ? (
-                <span aria-hidden="true" style={{ gridColumn: 4, marginTop: -6, fontSize: 13, lineHeight: "16px", fontWeight: 700, textAlign: "center", color: EFFORT_LOOK[s.effort].word }}>{SET_EFFORT_LABEL[s.effort]}</span>
+                <span aria-hidden="true" style={{ gridColumn: 4, marginTop: -6, fontSize: 15, lineHeight: "16px", fontWeight: 700, textAlign: "center", color: EFFORT_LOOK[s.effort].word }}>{SET_EFFORT_LABEL[s.effort]}</span>
               ) : null}
             </div>
           );
@@ -652,13 +652,13 @@ function ExerciseCard({ ex, units, sessionId, role, lastHeavyName, onMoveAfter, 
                 <button key={kg} type="button" aria-pressed={on}
                   onClick={() => setVals({ ...vals, [current]: { ...v, w: shown } })}
                   style={{ height: 40, borderRadius: 10, border: `1.5px solid ${on ? "var(--navy)" : "var(--line-strong)"}`, background: on ? "var(--navy)" : "#fff",
-                    color: on ? "#fff" : "var(--navy)", fontWeight: 700, fontSize: 14, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+                    color: on ? "#fff" : "var(--navy)", fontWeight: 700, fontSize: 15, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
                   {kg}
                 </button>
               );
             })}
           </div>
-          {units === "imperial" ? <p className="cap" style={{ marginTop: 4, fontSize: 14 }}>Bells are kg. The set saves as {unit(units)}.</p> : null}
+          {units === "imperial" ? <p className="cap" style={{ marginTop: 4, fontSize: 15 }}>Bells are kg. The set saves as {unit(units)}.</p> : null}
         </div>
       ) : null}
       <button type="button" className="btn2" style={{ marginTop: 12, width: "100%" }}

@@ -98,10 +98,15 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px 6px 16px", minHeight: 56 }}>
         <label htmlFor="f-day" className="ln" style={{ flexGrow: 1 }}>Scan date</label>
         <input id="f-day" type="date" name="scanned_on" value={day} max={today} required onChange={(e) => { setDay(e.target.value); setDayNote(null); }}
-          style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--field)", border: "1px solid var(--line-strong)" }} />
+          style={{ height: 40, borderRadius: 10, padding: "0 10px", fontSize: 16, color: "var(--navy)", background: dayNote?.warn ? "var(--tint-ember)" : "var(--surface)", border: "1px solid var(--line-strong)" }} />
       </div>
-      {dayNote ? <p role="status" style={{ fontSize: 14, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
+      {dayNote ? <p role="status" style={{ fontSize: 15, marginTop: -8, fontWeight: 600, color: dayNote.warn ? "var(--rust)" : "var(--kingfisher-text)" }}>{dayNote.text}</p> : null}
       {photos.map((p) => <input key={p.path} type="hidden" name="photo_path" value={p.path} />)}
+      {photos.length === 0 ? (
+        <p className="cap" style={{ display: "flex", gap: 10, alignItems: "flex-start", lineHeight: 1.45 }}>
+          <IconDoc size={20} style={{ flexShrink: 0, marginTop: 1 }} />Take one photo per Tanita screen (fat, muscle, water, visceral, BMR). Coach reads the numbers and the date.
+        </p>
+      ) : null}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8 }}>
         {photos.map((p) => (
           // eslint-disable-next-line @next/next/no-img-element
@@ -110,23 +115,18 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
         {photos.length < MAX ? (
           <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading || reading}
             style={{ height: 96, borderRadius: 14, border: "1.5px dashed var(--mist)", background: "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", cursor: "pointer" }}>
-            {uploading ? <span className="cap">Uploading…</span> : <><span style={{ fontSize: 22, lineHeight: 1 }}>+</span><span className="cap" style={{ fontSize: 14, fontWeight: 600 }}>Add photo</span></>}
+            {uploading ? <span className="cap">Uploading…</span> : <><span style={{ fontSize: 22, lineHeight: 1 }}>+</span><span className="cap" style={{ fontSize: 15, fontWeight: 600 }}>Add photo</span></>}
           </button>
-        ) : null}
-        {photos.length === 0 ? (
-          <div style={{ height: 96, borderRadius: 14, background: "var(--tint-neutral)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "var(--stone)", gridColumn: "span 2", padding: 10, textAlign: "center" }}>
-            <IconDoc size={22} /><span className="cap" style={{ fontSize: 14, fontWeight: 600 }}>One photo per screen: Fat, Muscle, Water, Visceral, BMR. The date comes from the photos.</span>
-          </div>
         ) : null}
       </div>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { onFiles(e.target.files); e.target.value = ""; }} />
 
       {reading ? (
         <div className="card cream" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }} role="status">
-          <CoachMark /><span style={{ fontSize: 14, fontWeight: 600 }}>Reading your scan…</span>
+          <CoachMark /><span style={{ fontSize: 15, fontWeight: 600 }}>Reading your scan…</span>
         </div>
       ) : null}
-      {msg ? <p role="status" style={{ fontSize: 14, marginTop: -6, fontWeight: 600, color: msg.err ? "var(--rust)" : "var(--kingfisher-text)" }}>{msg.text}</p> : null}
+      {msg ? <p role="status" style={{ fontSize: 15, marginTop: -6, fontWeight: 600, color: msg.err ? "var(--rust)" : "var(--kingfisher-text)" }}>{msg.text}</p> : null}
 
       <div className="card clip">
         {FIELDS.map((f, i) => (
@@ -136,14 +136,14 @@ export function ScanForm({ userId, today }: { userId: string; today: string }) {
               onChange={(e) => { setProblems([]); const v = e.target.value.replace(",", "."); setVals((x) => ({ ...x, [f.name]: v })); setFilled((x) => ({ ...x, [f.name]: false })); }}
               style={{
                 width: 86, height: 40, borderRadius: 10, textAlign: "right", padding: "0 10px", fontSize: 16, color: "var(--navy)",
-                border: `1px solid ${filled[f.name] ? "var(--kingfisher)" : "var(--line-strong)"}`, background: filled[f.name] ? "var(--tint-blue)" : "var(--field)",
+                border: `1px solid ${filled[f.name] ? "var(--kingfisher)" : "var(--line-strong)"}`, background: filled[f.name] ? "var(--tint-blue)" : "var(--surface)",
               }} />
             <span className="cap" style={{ width: 36 }}>{f.unit}</span>
           </div>
         ))}
       </div>
       {problems.length ? (
-        <div className="card" style={{ padding: "10px 14px", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 14, fontWeight: 600, display: "grid", gap: 4 }} role="alert">
+        <div className="card" style={{ padding: "10px 14px", background: "var(--tint-ember)", color: "var(--rust)", fontSize: 15, fontWeight: 600, display: "grid", gap: 4 }} role="alert">
           {problems.map((p) => <p key={p}>{p}</p>)}
         </div>
       ) : null}

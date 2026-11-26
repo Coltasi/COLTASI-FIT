@@ -18,7 +18,7 @@ export function StepsForm({ days, initialDay, next }: {
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <input type="hidden" name="next" value={next} />
       <input type="hidden" name="day" value={day} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="chips" role="group" aria-label="Day">
         {days.map((d) => (
           <button key={d.day} type="button" aria-pressed={day === d.day} className={`chip${day === d.day ? " on" : ""}`}
             onClick={() => { setDay(d.day); setValue(existing(d.day)?.toString() ?? ""); }}>{d.label}</button>

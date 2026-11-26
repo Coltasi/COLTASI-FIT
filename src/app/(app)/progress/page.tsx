@@ -130,11 +130,11 @@ export default async function ProgressBodyPage() {
       <details className="card clip scans" style={{ marginTop: 4 }}>
         <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", cursor: "pointer", listStyle: "none" }}>
           <span><span className="sec" style={{ display: "block" }}>Tanita scan history</span><span className="cap">{scans.length} scans · bioimpedance estimates</span></span>
-          <span aria-hidden className="chev" style={{ color: "var(--muted)", fontSize: 18, transition: "transform .15s" }}>⌄</span>
+          <svg className="chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ember-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform .15s" }}><path d="m6 9 6 6 6-6" /></svg>
         </summary>
         {scans.length ? (
           <div style={{ padding: "0 18px 8px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 14, fontWeight: 600, color: "var(--muted)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr 1fr 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line-soft)", fontSize: 15, fontWeight: 600, color: "var(--muted)" }}>
               <span>Date</span><span style={{ textAlign: "right" }}>Body fat</span><span style={{ textAlign: "right" }}>Muscle</span><span style={{ textAlign: "right" }}>Weight</span>
             </div>
             {scans.map((s) => (
@@ -147,7 +147,7 @@ export default async function ProgressBodyPage() {
             ))}
             <p className="cap" style={{ padding: "8px 0 4px" }}>Muscle and weight in {unit(units)}</p>
           </div>
-        ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 14 }}>No scans yet.</p>}
+        ) : <p className="cap" style={{ padding: "0 18px 12px", fontSize: 15 }}>No scans yet.</p>}
         <div style={{ padding: "4px 18px 16px" }}>
           <Link prefetch={false} href="/progress/scan" className="btn2" style={{ width: "100%" }}>+ Add scan</Link>
         </div>

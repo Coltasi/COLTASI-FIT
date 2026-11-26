@@ -209,7 +209,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
 
       {busy === "estimate" || busy === "barcode" ? (
         <div className="card cream" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }} role="status">
-          <CoachMark /><span style={{ fontSize: 14, fontWeight: 600 }}>{busy === "estimate" ? "Estimating…" : "Looking it up…"}</span>
+          <CoachMark /><span style={{ fontSize: 15, fontWeight: 600 }}>{busy === "estimate" ? "Estimating…" : "Looking it up…"}</span>
         </div>
       ) : null}
       {err ? <p className="err">{err}</p> : null}
@@ -221,5 +221,5 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   );
 }
 
-const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer" } as const;
+const linkBtn = { background: "none", border: 0, padding: 0, color: "var(--ember-text)", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 const tile = { padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer", font: "inherit", color: "var(--navy)" } as const;

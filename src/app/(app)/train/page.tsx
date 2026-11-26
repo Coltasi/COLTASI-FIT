@@ -95,14 +95,14 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <p className="lab" style={{ textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>This week</p>
+          <h2 className="sec">This week</h2>
           <p className="cap"><span className="num" style={{ color: "var(--navy)" }}>{week.doneThisWeek}</span> {week.doneThisWeek === 1 ? "workout" : "workouts"}</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(5, weekDone.length + todoTiles.length)}, minmax(0, 1fr))`, gap: 6 }}>
           {weekDone.map((x) => (
             <Link prefetch={false} key={x.id} href={`/train/session/${x.id}`} className="card flat" style={{ ...tileBase, background: "var(--navy)", borderColor: "var(--navy)", color: "#fff" }}>
-              <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.8 }}>{x.session_date === today ? "Today" : fmtDow(x.session_date)}</span>
+              <span style={{ fontSize: 15, fontWeight: 700 }}>{x.kind === "custom" ? "Custom" : x.kind === "kettlebell" ? "KB" : x.title}</span>
               <IconCheck size={14} />
             </Link>
           ))}
@@ -111,8 +111,8 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
             return (
               <Link prefetch={false} key={d.id} href={`/train?day=${d.id}`} className="card flat"
                 style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
-                <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{d.program === "kettlebell" ? "KB" : d.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{d.program === "kettlebell" ? "KB" : d.name}</span>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
               </Link>
             );

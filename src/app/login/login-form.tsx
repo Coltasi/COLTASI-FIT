@@ -11,7 +11,7 @@ export function LoginForm({ notice }: { notice?: string }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <label><span className="flab">Email</span><input className="fld" name="email" type="email" autoComplete="email" placeholder="you@email.com" required /></label>
         <label><span className="flab">Password</span><input className="fld" name="password" type="password" autoComplete="current-password" required /></label>
-        <Link prefetch={false} href="/login/forgot" style={{ fontSize: 14, fontWeight: 600, alignSelf: "flex-end" }}>Forgot password?</Link>
+        <Link prefetch={false} href="/login/forgot" style={{ fontSize: 15, fontWeight: 600, alignSelf: "flex-end" }}>Forgot password?</Link>
       </div>
       {notice ? <p className="cap" style={{ color: "var(--kingfisher-text)", fontWeight: 600 }}>{notice}</p> : null}
       {state.error ? <p className="err">{state.error}</p> : null}

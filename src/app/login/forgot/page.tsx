@@ -13,7 +13,7 @@ export default function ForgotPage() {
         <p style={{ fontSize: 15, lineHeight: 1.45 }}>Check your email for a link to set a new password.</p>
       ) : (
         <form action={action} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <p className="cap" style={{ fontSize: 14, lineHeight: 1.45 }}>Enter your email and we&apos;ll send you a reset link.</p>
+          <p className="cap" style={{ fontSize: 15, lineHeight: 1.45 }}>Enter your email and we&apos;ll send you a reset link.</p>
           <label><span className="flab">Email</span><input className="fld" name="email" type="email" autoComplete="email" required /></label>
           {state.error ? <p className="err">{state.error}</p> : null}
           <button className="btn" type="submit" disabled={pending}>{pending ? "Sending…" : "Send reset link"}</button>

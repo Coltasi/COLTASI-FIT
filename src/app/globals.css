@@ -145,7 +145,7 @@ textarea.fld { height: 92px; padding: 12px 14px; resize: none; line-height: 1.4;
 .chip.on { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 700; }
 .chips { display: flex; gap: 8px; overflow-x: auto; margin-right: -20px; padding-right: 20px; scrollbar-width: none; }
 
-.tag { font-size: 14px; font-weight: 700; padding: 3px 10px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
+.tag { font-size: 15px; font-weight: 700; padding: 3px 10px; border-radius: 999px; flex-shrink: 0; white-space: nowrap; }
 .tag.blue { background: var(--tint-blue); color: var(--kingfisher-text); }
 .tag.ember { background: var(--tint-ember); color: var(--rust); }
 .tag.jade { background: var(--tint-jade); color: var(--jade); }
@@ -171,7 +171,7 @@ textarea.fld { height: 92px; padding: 12px 14px; resize: none; line-height: 1.4;
   position: fixed; left: 0; right: 0; bottom: 0; height: calc(76px + env(safe-area-inset-bottom)); padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   background: #fff; border-top: 1px solid var(--line); display: flex; gap: 4px; z-index: 30;
 }
-.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 14px; font-weight: 600; color: var(--tab-idle); border-radius: 14px; }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 15px; font-weight: 600; color: var(--tab-idle); border-radius: 14px; }
 .tab.on { color: var(--rust); background: var(--tint-ember); font-weight: 800; }
 .tab:hover { color: var(--navy); }
 .tab.on:hover { color: var(--rust); }
@@ -181,7 +181,7 @@ textarea.fld { height: 92px; padding: 12px 14px; resize: none; line-height: 1.4;
 /* Train: a set that beats the same set last time */
 @keyframes beatFlash { 0% { background: rgba(217,107,41,.35); } 100% { background: transparent; } }
 .beat-flash { animation: beatFlash 1.4s ease-out; }
-.beat-badge { position: absolute; top: -8px; left: 22px; background: var(--ember); color: #fff; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
+.beat-badge { position: absolute; top: -8px; left: 22px; background: var(--ember); color: #fff; font-size: 13px; font-weight: 800; padding: 2px 7px; border-radius: 6px; pointer-events: none; z-index: 1; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .beat-flash { animation: none; } }
 
 details.scans > summary::-webkit-details-marker { display: none; }

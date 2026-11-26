@@ -75,7 +75,7 @@ export default async function CoachPage() {
     <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
       <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>{label}</p>
       <p className="num" style={{ fontSize: 24, color: tone ?? "var(--on-navy)" }}>{value}</p>
-      <p style={{ fontSize: 14, color: "var(--on-navy-muted)" }}>{sub}</p>
+      <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>{sub}</p>
     </div>
   );
 

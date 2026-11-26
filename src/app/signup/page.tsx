@@ -13,11 +13,11 @@ export default function SignUpPage() {
         <Link prefetch={false} href="/login" className="iconbtn" aria-label="Back to Log in"><IconBack /></Link>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand/coltasi-bird.svg" alt="" width={34} height={34} />
-        <span className="disp" style={{ fontSize: 14, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>
+        <span className="disp" style={{ fontSize: 15, letterSpacing: "0.08em", textTransform: "uppercase" }}>Coltasi Fit</span>
       </div>
       <div>
         <h1 className="disp" style={{ fontSize: 26 }}>Create your account</h1>
-        <p className="cap" style={{ fontSize: 14, marginTop: 6, lineHeight: 1.45 }}>Your own login. Workouts, weigh-ins, scans and sleep stay separate from anyone else on the app.</p>
+        <p className="cap" style={{ fontSize: 15, marginTop: 6, lineHeight: 1.45 }}>Your own login. Workouts, weigh-ins, scans and sleep stay separate from anyone else on the app.</p>
       </div>
       <form action={action} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -37,7 +37,7 @@ export default function SignUpPage() {
         </div>
         {state.error ? <p className="err">{state.error}</p> : null}
         <button className="btn" type="submit" disabled={pending}>{pending ? "Creating…" : "Create account"}</button>
-        <p className="cap" style={{ fontSize: 14, lineHeight: 1.45, textAlign: "center" }}>Your training, weight, sleep and body-composition data is stored privately in your own account.</p>
+        <p className="cap" style={{ fontSize: 15, lineHeight: 1.45, textAlign: "center" }}>Your training, weight, sleep and body-composition data is stored privately in your own account.</p>
       </form>
     </main>
   );

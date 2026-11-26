@@ -49,7 +49,7 @@ function nextPill(l: LiftSignal, ease: boolean, units: Units): Pill {
   return { text: "Same", bg: "var(--tint-neutral)", fg: "var(--muted)", rank: 3 };
 }
 
-const th = { fontSize: 14, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)" } as const;
+const th = { fontSize: 15, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)" } as const;
 const grid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 64px 92px", alignItems: "center", gap: 8 } as const;
 
 function Tile({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
@@ -57,7 +57,7 @@ function Tile({ label, value, sub, color }: { label: string; value: string; sub?
     <div style={{ background: "#fff", borderRadius: 10, padding: "10px 10px 8px", minWidth: 0 }}>
       <p style={th}>{label}</p>
       <p className="num" style={{ fontSize: 18, marginTop: 2, color: color ?? "var(--navy)" }}>{value}</p>
-      {sub ? <p className="cap" style={{ fontSize: 14 }}>{sub}</p> : null}
+      {sub ? <p className="cap" style={{ fontSize: 15 }}>{sub}</p> : null}
     </div>
   );
 }
@@ -123,12 +123,12 @@ export function CoachPlan({ s, weight, units }: { s: PlanSignals; weight: string
           </div>
           {shown.map(({ l, p }, i) => (
             <div key={l.name} style={{ ...grid, padding: "9px 12px", borderTop: i ? "1px solid var(--line-soft)" : 0 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.25, minWidth: 0, color: p.rank === 3 ? "var(--muted)" : "var(--navy)" }}>{l.name}</span>
-              <span className="num" style={{ fontSize: 14, textAlign: "right", color: "var(--muted)", whiteSpace: "nowrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.25, minWidth: 0, color: p.rank === 3 ? "var(--muted)" : "var(--navy)" }}>{l.name}</span>
+              <span className="num" style={{ fontSize: 15, textAlign: "right", color: "var(--muted)", whiteSpace: "nowrap" }}>
                 {l.bodyweight || l.top == null ? "BW" : `${w(l.top, units)} ${u}`}
               </span>
               <span style={{ textAlign: "right" }}>
-                <span className="tag num" style={{ background: p.bg, color: p.fg, fontSize: 14 }}>{p.text}</span>
+                <span className="tag num" style={{ background: p.bg, color: p.fg, fontSize: 15 }}>{p.text}</span>
               </span>
             </div>
           ))}
@@ -136,10 +136,10 @@ export function CoachPlan({ s, weight, units }: { s: PlanSignals; weight: string
       ) : null}
 
       {same ? (
-        <p className="cap" style={{ fontSize: 14, marginTop: 8 }}>{shown.length ? `+ ${same} more: same as last time` : `All ${same} lifts: same as last time`}</p>
+        <p className="cap" style={{ fontSize: 15, marginTop: 8 }}>{shown.length ? `+ ${same} more: same as last time` : `All ${same} lifts: same as last time`}</p>
       ) : null}
 
-      {s.weight ? <WeightTiles wt={s.weight} units={units} /> : weight ? <p style={{ fontSize: 14, marginTop: 10, lineHeight: 1.4 }}><b>Weight · </b>{weight}</p> : null}
+      {s.weight ? <WeightTiles wt={s.weight} units={units} /> : weight ? <p style={{ fontSize: 15, marginTop: 10, lineHeight: 1.4 }}><b>Weight · </b>{weight}</p> : null}
     </div>
   );
 }

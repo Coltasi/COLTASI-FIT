@@ -76,7 +76,7 @@ export function Portion({ draft: d, onChange, saveIt, onSaveIt, busy, onSubmit }
       {saved ? (
         <div>
           <p className="ln" style={{ fontSize: 17 }}>{d.name}</p>
-          <p className="cap" style={{ fontSize: 14 }}>
+          <p className="cap" style={{ fontSize: 15 }}>
             {label ? `${macroLine({ ...label })} · ${label.kcal} kcal ${grams ? `per ${fmt(base)} g` : "per pack"}` : ""}
           </p>
         </div>
@@ -118,7 +118,7 @@ export function Portion({ draft: d, onChange, saveIt, onSaveIt, busy, onSubmit }
         ) : null}
         {picks.length ? (
           <>
-            {grams ? <span className="cap" style={{ fontSize: 14 }}>Or part of the {fmt(pack!)} g pack</span> : null}
+            {grams ? <span className="cap" style={{ fontSize: 15 }}>Or part of the {fmt(pack!)} g pack</span> : null}
             <div role="group" aria-label={grams ? "Part of the pack" : "Packs or servings"}
               style={{ display: "grid", gridTemplateColumns: `repeat(${grams ? picks.length : 4}, minmax(0, 1fr))`, gap: 8 }}>
               {picks.map((p) => (
@@ -127,7 +127,7 @@ export function Portion({ draft: d, onChange, saveIt, onSaveIt, busy, onSubmit }
               ))}
             </div>
           </>
-        ) : grams && !saved ? <span className="cap" style={{ fontSize: 14 }}>Add the pack size above to pick ⅓, ½ and so on.</span> : null}
+        ) : grams && !saved ? <span className="cap" style={{ fontSize: 15 }}>Add the pack size above to pick ⅓, ½ and so on.</span> : null}
       </div>
 
       <div role="status" style={{ background: "var(--tint-neutral)", borderRadius: 12, padding: "12px 14px" }}>
@@ -160,7 +160,7 @@ export function Portion({ draft: d, onChange, saveIt, onSaveIt, busy, onSubmit }
 function Num({ label, value, onChange, numeric }: { label: string; value: string; onChange: (v: string) => void; numeric?: boolean }) {
   return (
     <label style={{ display: "block" }}>
-      <span className="flab" style={{ fontSize: 14 }}>{label}</span>
+      <span className="flab" style={{ fontSize: 15 }}>{label}</span>
       <input className="fld" inputMode={numeric ? "numeric" : "decimal"} value={value} onChange={(e) => onChange(e.target.value)} />
     </label>
   );

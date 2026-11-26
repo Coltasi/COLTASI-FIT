@@ -21,7 +21,6 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
   const logged = lifts.filter((l) => l.sets.length);
   const skipped = lifts.filter((l) => !l.sets.length && l.skipped);
   const missed = lifts.filter((l) => !l.sets.length && !l.skipped);
-  const setCount = logged.reduce((n, l) => n + l.sets.length, 0);
   const planned = lifts.length;
   const working = logged.filter((l) => !l.skill).flatMap((l) => l.sets);
   const hardSets = working.filter((z) => isHardSet(z.effort)).length;
@@ -46,7 +45,7 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
   return (
     <main className="screen" style={{ gap: 22 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <BackHeader href="/train/history" label="History" eyebrow={status === "skipped" ? `Skipped · ${fmtLong(date)}` : `Workout complete · ${fmtLong(date)}`} title={title} />
+        <BackHeader href="/train/history" label="History" eyebrow={status === "skipped" ? `Skipped · ${fmtLong(date)}` : fmtLong(date)} title={title} />
         {status === "done" ? (
           <form action={reopenSession.bind(null, id)}>
             <button type="submit" className="btn2" style={{ flexShrink: 0 }}><IconPen size={15} />Edit</button>
@@ -73,16 +72,20 @@ export function LoggedView({ id, saved, title, date, status, units, lifts, check
             <span className="big" style={{ fontSize: 22, marginTop: 0 }}>{weekHard} hard {weekHard === 1 ? "set" : "sets"}</span>
           </div>
           {!rated ? <p className="cap">No sets were rated in this workout. Tap Easy, Hard or Failed after each set next time.</p> : null}
-          <div className="tiles">
-            <div className="tile"><span className="lab">Lifts logged</span><span className="big">{logged.length}/{planned}</span><span className="cap">{skipped.length ? `${skipped.length} skipped` : missed.length ? `${missed.length} not logged` : "All done"}</span></div>
-            <div className="tile"><span className="lab">Improved</span><span className="big" style={{ color: verdict?.better ? "var(--jade)" : undefined }}>{verdict ? verdict.better : "–"}</span><span className="cap">{verdict ? `of ${verdict.compared} compared` : "Not enough history"}</span></div>
-            <div className="tile"><span className="lab">Sets</span><span className="big">{setCount}</span><span className="cap">Logged</span></div>
-            <div className="tile">
-              <span className="lab">Effort</span>
-              <span className="big" style={{ fontSize: 24 }}>{mine ? EFFORT_LABEL[mine] : "–"}</span>
-              <span className="cap">Your rating</span>
-              {verdict ? <span style={{ marginTop: 6, display: "flex" }}><EffortTag grade={verdict.grade} prefix="Coach" /></span> : null}
+          <div className="card" style={{ padding: "0 16px" }}>
+            <div className="list">
+              <div className="li"><span className="t">Lifts</span><span className="v">{logged.length} of {planned}</span></div>
+              <div className="li"><span className="t">Beat last time</span><span className="v" style={{ color: verdict?.better ? "var(--jade)" : undefined }}>{verdict ? `${verdict.better} of ${verdict.compared}` : "–"}</span></div>
+              <div className="li" style={{ borderBottom: 0, flexWrap: "wrap", rowGap: 8 }}>
+                <span className="t">Effort</span>
+                <span style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {mine ? <span className="tag neutral">You: {EFFORT_LABEL[mine]}</span> : null}
+                  {verdict ? <EffortTag grade={verdict.grade} prefix="Coach" /> : null}
+                  {!mine && !verdict ? <span className="v">–</span> : null}
+                </span>
+              </div>
             </div>
+            {skipped.length || missed.length ? <p className="cap" style={{ paddingBottom: 12, marginTop: -4 }}>{skipped.length ? `${skipped.length} skipped` : `${missed.length} not logged`}</p> : null}
           </div>
           {verdict || callout ? (
             <div className="card cream" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
