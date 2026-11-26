@@ -81,6 +81,3 @@ export const IconCamera = ({ size = 22, ...p }: P) => (
 export const IconGlass = ({ size = 22, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M7 3h10l-1 8a4 4 0 0 1-8 0z" /><path d="M12 15v6M8 21h8" /></svg>
 );
-export const IconBarcode = ({ size = 22, ...p }: P) => (
-  <svg {...base(size)} {...p}><path d="M4 6v12" /><path d="M7 6v12" /><path d="M11 6v12" /><path d="M14 6v12" /><path d="M17 6v12" /><path d="M20 6v12" /></svg>
-);

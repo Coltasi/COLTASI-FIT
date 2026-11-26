@@ -4,8 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CoachMark } from "@/components/ui";
-import { IconBarcode, IconGlass, IconCamera, IconPen } from "@/components/icons";
-import { deleteSaved, estimateFood, logFood, logSaved, lookupBarcode } from "../actions";
+import { IconGlass, IconCamera, IconPen } from "@/components/icons";
+import { deleteSaved, estimateFood, logFood, logSaved } from "../actions";
 import { Portion, type Draft, draftLabel, draftAmount } from "./portion";
 import { macroLine, portionText, scale, type Label } from "@/lib/portion";
 
@@ -24,17 +24,6 @@ async function shrinkToDataUrl(file: File, max = 1024): Promise<string> {
   return c.toDataURL("image/jpeg", 0.8);
 }
 
-/** Reads a barcode off a photo with the browser's built-in detector (Chrome on Android has it). */
-async function detectBarcode(file: File): Promise<string | null> {
-  const BD = (globalThis as { BarcodeDetector?: new (o: { formats: string[] }) => { detect: (img: ImageBitmap) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-  if (!BD) return null;
-  try {
-    const det = new BD({ formats: ["ean_13", "ean_8", "upc_a", "upc_e"] });
-    const codes = await det.detect(await createImageBitmap(file));
-    return codes?.[0]?.rawValue ?? null;
-  } catch { return null; }
-}
-
 export function AddFood({ day, back, saved }: { day: string; back: string; saved: Saved[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -43,11 +32,9 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   const [photo, setPhoto] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saveIt, setSaveIt] = useState(false);
-  const [code, setCode] = useState("");
   const [manage, setManage] = useState(false);
   const [, startTransition] = useTransition();
   const photoRef = useRef<HTMLInputElement>(null);
-  const codeRef = useRef<HTMLInputElement>(null);
 
   const done = () => { router.push(back); router.refresh(); };
 
@@ -93,27 +80,6 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
     else setDraft(fromEstimate(r, photo ? "photo" : "text"));
   }
 
-  async function findCode(c: string) {
-    if (!c) return;
-    setErr(null); setDraft(null); setBusy("barcode");
-    const r = await lookupBarcode(c);
-    setBusy(null);
-    if ("error" in r) { setErr(r.error); setDraft(blank); return; }
-    setSaveIt(false);
-    setDraft({ name: r.name, kcal: str(r.per100.kcal), protein: str(r.per100.protein_g), carbs: str(r.per100.carbs_g), fat: str(r.per100.fat_g),
-      per: "100g", packG: str(r.packG), amount: str(r.servingG ?? r.packG ?? 100), source: "barcode" });
-  }
-
-  async function onBarcodePhoto(f: File | undefined) {
-    if (!f) return;
-    setErr(null); setBusy("barcode");
-    const c = await detectBarcode(f);
-    setBusy(null);
-    if (!c) { setErr("Couldn't read the barcode. Type the number under it instead."); return; }
-    setCode(c);
-    findCode(c);
-  }
-
   function fromEstimate(e: { name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null; note?: string | null }, source: "photo" | "text"): Draft {
     setSaveIt(false);
     return { name: e.name, kcal: str(e.kcal), protein: str(e.protein_g), carbs: str(e.carbs_g), fat: str(e.fat_g), per: "pack", packG: "", amount: "1", source, note: e.note };
@@ -137,29 +103,21 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h2 className="sec">Something new</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
-          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates</span>
-        </button>
-        <button type="button" className="card" disabled={!!busy} onClick={() => codeRef.current?.click()} style={tile}>
-          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap">Packaged</span>
+          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates it</span>
         </button>
         <Link prefetch={false} href={`/food/add/drink${day ? `?day=${day}` : ""}`} className="card" style={{ ...tile, textDecoration: "none" }}>
           <IconGlass /><span style={{ fontWeight: 700 }}>Drink</span><span className="cap">Beer, wine…</span>
         </Link>
       </div>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
-      <input ref={codeRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onBarcodePhoto(e.target.files?.[0]); e.target.value = ""; }} />
 
       <div style={{ display: "grid", gap: 8 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <input id="desc" className="fld" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Describe it" placeholder="Describe it" style={{ flexGrow: 1 }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onDescribe(); } }} />
           <button type="button" className="btn2" disabled={!!busy} onClick={onDescribe} style={{ height: 50, whiteSpace: "nowrap" }}>Estimate</button>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input className="fld" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Barcode number" style={{ flexGrow: 1 }} />
-          <button type="button" className="btn2" disabled={!!busy || !code} onClick={() => findCode(code)} style={{ height: 50, whiteSpace: "nowrap" }}>Look up</button>
         </div>
         <button type="button" className="btn2" disabled={!!busy} onClick={() => { setErr(null); setSaveIt(false); setDraft(blank); }} style={{ height: 50, width: "100%", gap: 8 }}>
           <IconPen size={16} />Enter it yourself
@@ -210,9 +168,9 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
         </div>
       </details>
 
-      {busy === "estimate" || busy === "barcode" ? (
+      {busy === "estimate" ? (
         <div className="card cream" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }} role="status">
-          <CoachMark /><span style={{ fontSize: 15, fontWeight: 600 }}>{busy === "estimate" ? "Estimating…" : "Looking it up…"}</span>
+          <CoachMark /><span style={{ fontSize: 15, fontWeight: 600 }}>Estimating…</span>
         </div>
       ) : null}
       {err ? <p className="err">{err}</p> : null}

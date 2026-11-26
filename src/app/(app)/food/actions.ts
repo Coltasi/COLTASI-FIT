@@ -170,40 +170,6 @@ export async function estimateFood(input: { photo?: string | null; text?: string
   return est ?? { error: "Couldn't estimate that right now. Enter the numbers yourself below." };
 }
 
-export type Product = { name: string; per100: { kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null }; servingG: number | null; packG: number | null };
-
-/** Looks a barcode up in Open Food Facts (free, strong on Spanish supermarket products). */
-export async function lookupBarcode(code: string): Promise<Product | { error: string }> {
-  await ctx();
-  const c = code.replace(/\D/g, "");
-  if (c.length < 8 || c.length > 14) return { error: "That barcode doesn't look right." };
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${c}.json?fields=product_name,product_name_es,product_name_en,brands,nutriments,serving_quantity,product_quantity,product_quantity_unit`, {
-      headers: { "user-agent": "ColtasiFit/1.0 (www.coltasi.com)" },
-      cache: "no-store",
-    });
-    if (!res.ok) return { error: "Product not found. Enter it yourself below." };
-    const j = await res.json();
-    const p = j?.product;
-    const n = p?.nutriments ?? {};
-    const kcal = Number(n["energy-kcal_100g"] ?? (n["energy_100g"] ? n["energy_100g"] / 4.184 : NaN));
-    if (!p || !Number.isFinite(kcal)) return { error: "Product found but it has no calories listed. Enter it yourself below." };
-    const name = [p.product_name_en || p.product_name_es || p.product_name, p.brands?.split(",")[0]].filter(Boolean).join(" · ").slice(0, 70) || "Product";
-    const sq = Number(p.serving_quantity);
-    const pq = Number(p.product_quantity);
-    const per = (v: unknown) => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Math.round(Number(v) * 10) / 10);
-    return {
-      name,
-      per100: { kcal: Math.round(kcal), protein_g: per(n.proteins_100g) ?? 0, carbs_g: per(n.carbohydrates_100g), fat_g: per(n.fat_100g) },
-      servingG: Number.isFinite(sq) && sq > 0 ? sq : null,
-      // Pack weight in grams (or ml, close enough for food), so "⅓ of the pack" works.
-      packG: Number.isFinite(pq) && pq > 0 && pq <= 5000 && (!p.product_quantity_unit || /^(g|ml)$/i.test(p.product_quantity_unit)) ? pq : null,
-    };
-  } catch {
-    return { error: "Couldn't reach the food database. Enter it yourself below." };
-  }
-}
-
 export type FoodEdit = { id: string; name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null; day: string; remove?: boolean };
 
 /** Saves every change made in Food's edit mode at once: renames, new numbers, moves to another day, removals. */
