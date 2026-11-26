@@ -10,6 +10,7 @@ import { SessionCounts } from "./session-counts";
 import { FoodTrend } from "./food-trend";
 import { StepsTrend } from "./steps-trend";
 import type { Num, WeighRow } from "@/lib/rows";
+import { onPace, trendRate } from "@/lib/coach";
 
 export default async function ProgressBodyPage() {
   const { supabase, today, units, profile } = await getContext();
@@ -62,22 +63,14 @@ export default async function ProgressBodyPage() {
 
   // Hero: where weight is, how far it has come, and the recent rate against the target rate.
   const firstPt = series[0];
-  const recent = series.filter((p) => p.d >= addDays(today, -42));
-  let rate: number | null = null;
-  if (recent.length >= 3 && daysBetween(recent[0].d, recent.at(-1)!.d) >= 14) {
-    // Least-squares slope in kg per week over the last six weeks.
-    const xs = recent.map((p) => daysBetween(recent[0].d, p.d)), ys = recent.map((p) => p.kg);
-    const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
-    const num2 = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0), den = xs.reduce((a, x) => a + (x - mx) ** 2, 0);
-    rate = den ? (num2 / den) * 7 : null;
-  }
+  const rate = trendRate(series.map((p) => ({ measured_on: p.d, weight_kg: p.kg })), today);
   const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);
   const phase = profile.phase ? profile.phase[0].toUpperCase() + profile.phase.slice(1) : null;
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
   const total = latest && firstPt && latest.d !== firstPt.d ? conv(latest.kg) - conv(firstPt.kg) : null;
   // Binary progress colour: green when moving the right way at (or above) roughly target pace, red otherwise.
   const goingRight = (v: number | null) => (v == null || target == null || target === 0 ? null : Math.sign(v) === Math.sign(target));
-  const onPace = rate != null && target != null && target !== 0 ? goingRight(rate) && Math.abs(rate) >= Math.abs(target) * 0.7 : null;
+  const paced = onPace(rate, target);
   const GOOD = "#4fc59f", BAD = "#f08a7a";
   const totalGood = goingRight(total);
 
@@ -92,8 +85,8 @@ export default async function ProgressBodyPage() {
           <p className="feature-title" style={{ fontSize: 40 }}>{w(latest.kg, units)} {unit(units)}</p>
           {total != null ? <p style={{ fontSize: 17 }}><b style={{ color: totalGood == null ? undefined : totalGood ? GOOD : BAD }}>{signed(total)} {unit(units)}</b> since {fmtDay(firstPt.d)}</p> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
-            <div style={{ background: onPace == null ? "var(--navy-2)" : onPace ? "var(--jade)" : "var(--crimson)", borderRadius: 14, padding: "12px 14px" }}>
-              <p style={{ fontSize: 15, color: onPace == null ? "var(--on-navy-muted)" : "#fff" }}>Recent rate</p>
+            <div style={{ background: paced == null ? "var(--navy-2)" : paced ? "var(--jade)" : "var(--crimson)", borderRadius: 14, padding: "12px 14px" }}>
+              <p style={{ fontSize: 15, color: paced == null ? "var(--on-navy-muted)" : "#fff" }}>Recent rate</p>
               <p className="num" style={{ fontSize: 20 }}>{rate != null ? `${signed(conv(rate))} ${unit(units)}/wk` : "Need more weigh-ins"}</p>
             </div>
             <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
@@ -101,12 +94,12 @@ export default async function ProgressBodyPage() {
               <p className="num" style={{ fontSize: 20 }}>{target != null ? `${signed(conv(target))} ${unit(units)}/wk` : "Not set"}</p>
             </div>
           </div>
-          {onPace != null ? (
-            <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, color: onPace ? GOOD : BAD }}>
-              <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: onPace ? GOOD : BAD, color: "var(--navy)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">{onPace ? <path d="m5 12 5 5 9-10" /> : <path d="M12 7v6M12 17h.01" />}</svg>
+          {paced != null ? (
+            <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, color: paced ? GOOD : BAD }}>
+              <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: paced ? GOOD : BAD, color: "var(--navy)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">{paced ? <path d="m5 12 5 5 9-10" /> : <path d="M12 7v6M12 17h.01" />}</svg>
               </span>
-              {!onPace
+              {!paced
                 ? (Math.sign(rate!) !== Math.sign(target!) ? "Moving the wrong way over the last six weeks." : "Behind your target over the last six weeks.")
                 : Math.abs(rate!) > Math.abs(target!) * 1.3 ? "Ahead of your target over the last six weeks." : "On pace with your target over the last six weeks."}
             </p>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@/lib/supabase/user";
+import { DRINKS, drinkName, isDrinkKind } from "@/lib/drinks";
 import { getContext } from "@/lib/data";
 import { addDays } from "@/lib/dates";
 import { FOOD_DAYS_BACK } from "@/lib/energy";
@@ -69,6 +70,23 @@ export async function logFood(input: LogInput): Promise<{ error: string | null }
   const { error } = await supabase.from("food_logs").insert({
     day, name, kcal: clampKcal(input.kcal), protein_g: clampP(input.protein_g), carbs_g: optG(input.carbs_g), fat_g: optG(input.fat_g),
     portion: input.portion?.slice(0, 24) || null, source: input.source, saved_food_id: savedId,
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { error: null };
+}
+
+/** Logs drinks as one food entry tagged as a drink, so they count toward calories and Coach can see them. */
+export async function logDrink(kind: string, count: number, dayIn: string): Promise<{ error: string | null }> {
+  const { supabase } = await ctx();
+  if (!isDrinkKind(kind)) return { error: "Pick what you had." };
+  const n = Math.round(count);
+  if (!Number.isFinite(n) || n < 1 || n > 20) return { error: "Between 1 and 20 drinks." };
+  const day = await okDay(dayIn);
+  const d = DRINKS[kind];
+  const { error } = await supabase.from("food_logs").insert({
+    day, name: drinkName(kind, n), kcal: d.kcal * n, protein_g: 0, carbs_g: Math.min(500, d.carbs * n), fat_g: 0,
+    portion: `${n} × ${d.label.toLowerCase()}`.slice(0, 24), source: "drink", drinks: n,
   });
   if (error) return { error: error.message };
   revalidatePath("/", "layout");

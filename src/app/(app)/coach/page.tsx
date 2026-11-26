@@ -8,10 +8,10 @@ import { getContext, getProgram, getWeekState } from "@/lib/data";
 import { addDays, fmtDay } from "@/lib/dates";
 
 import { signed, unit, w } from "@/lib/units";
-import { weeklyRate } from "@/lib/coach";
+import { onPace, trendPoints, trendRate } from "@/lib/coach";
 import { fmtK, getSteps, stepSummary } from "@/lib/steps";
 import { AskBox } from "./ask-box";
-import type { Num, WeighRow } from "@/lib/rows";
+import type { Num } from "@/lib/rows";
 
 /** A Coach read as stored. `signals` is what the read was built from (older reads may lack parts of it). */
 type ReadRow = {
@@ -38,18 +38,18 @@ const KIND = {
 export default async function CoachPage() {
   const { supabase, today, units, profile, tz } = await getContext();
   const programP = getProgram(supabase);
-  const [, week, { data: reads }, { data: wis }, { data: sleeps }, stepRows] = await Promise.all([
+  const [, week, { data: reads }, wis, { data: sleeps }, stepRows] = await Promise.all([
     programP,
     getWeekState(supabase, today, programP),
     supabase.from("coach_reads").select("*").order("created_at", { ascending: false }).limit(12),
-    supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(4),
+    trendPoints(supabase, today),
     supabase.from("sleep_logs").select("hours").gte("night_of", addDays(today, -7)),
     getSteps(supabase, today, 14),
   ]);
   const stepAvg = stepSummary(stepRows, today).avg7;
-  const rate = weeklyRate(((wis ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })));
+  const rate = trendRate(wis, today);
   const target = profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week);
-  const behind = rate != null && target != null && (target < 0 ? rate > target * 0.75 : rate < target * 0.75);
+  const behind = onPace(rate, target) === false;
   const sl = ((sleeps ?? []) as { hours: Num }[]).map((r) => Number(r.hours));
   const avgSleep = sl.length ? sl.reduce((a, b) => a + b) / sl.length : null;
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
@@ -88,7 +88,7 @@ export default async function CoachPage() {
         <p className="feature-title" style={{ fontSize: 22 }}>{head ?? "Your briefing builds as you log workouts, sleep and weigh-ins."}</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
           {ind("Workouts", String(week.doneThisWeek), "this week")}
-          {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need more weigh-ins", rate == null || target == null ? undefined : behind ? "#f08a7a" : "#4fc59f")}
+          {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need 3 weigh-ins over 2 weeks", rate == null || target == null ? undefined : behind ? "#f08a7a" : "#4fc59f")}
           {ind("Avg sleep", avgSleep != null ? `${avgSleep.toFixed(1)} h` : "–", avgSleep != null ? "last 7 nights" : "log sleep on Today")}
           {ind("Avg steps", stepAvg != null ? fmtK(stepAvg) : "–", stepAvg != null ? "last 7 days" : "log steps on Today")}
         </div>

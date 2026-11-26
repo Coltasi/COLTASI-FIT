@@ -26,6 +26,39 @@ export function weeklyRate(points: { measured_on: string; weight_kg: number }[])
   return slope * 7;
 }
 
+/** Days of history the weight trend uses everywhere (Progress, Coach tab, Coach reads). */
+export const TREND_DAYS = 42;
+
+/**
+ * The one weight trend for the whole app: kg per week over the last six weeks of weigh-ins and scan weights.
+ * Needs at least 3 points spanning 2 weeks, so a single odd weigh-in can't swing it.
+ */
+export function trendRate(points: { measured_on: string; weight_kg: number }[], today: string): number | null {
+  const cutoff = new Date(Date.parse(today + "T12:00:00Z") - TREND_DAYS * 86400000).toISOString().slice(0, 10);
+  const recent = points.filter((p) => p.measured_on >= cutoff && Number.isFinite(p.weight_kg)).sort((a, b) => (a.measured_on < b.measured_on ? -1 : 1));
+  if (recent.length < 3 || daysBetween(recent[0].measured_on, recent.at(-1)!.measured_on) < 14) return null;
+  return weeklyRate(recent);
+}
+
+/** Green or red: moving the right way at 70% of the target pace or better. null when there's no rate or target. */
+export function onPace(rate: number | null, target: number | null): boolean | null {
+  if (rate == null || target == null || target === 0) return null;
+  return Math.sign(rate) === Math.sign(target) && Math.abs(rate) >= Math.abs(target) * 0.7;
+}
+
+/** Weigh-ins and scan weights from the trend window, as one list. */
+export async function trendPoints(supabase: Supa, today: string) {
+  const since = new Date(Date.parse(today + "T12:00:00Z") - TREND_DAYS * 86400000).toISOString().slice(0, 10);
+  const [{ data: wis }, { data: scans }] = await Promise.all([
+    supabase.from("weigh_ins").select("measured_on, weight_kg").gte("measured_on", since),
+    supabase.from("scans").select("scanned_on, weight_kg").gte("scanned_on", since).not("weight_kg", "is", null),
+  ]);
+  return [
+    ...((wis ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) })),
+    ...((scans ?? []) as { scanned_on: string; weight_kg: Num }[]).map((r) => ({ measured_on: r.scanned_on, weight_kg: Number(r.weight_kg) })),
+  ];
+}
+
 /** One Messages API call with the app's key. Returns the reply text, or null when there's no key or the call fails. */
 export async function callClaude(body: { system?: string; max_tokens: number; messages: unknown[]; model?: string }): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -59,7 +92,29 @@ export type Signals = {
   sleep: SleepSignal;
   /** Only on weigh-in and scan reads. */
   weight: { lines: string[]; latestKg: number | null; rateKgWeek: number | null; targetKgWeek: number | null; behind: boolean } | null;
+  /** Workout reads only: drinks logged the day before this session, and how sleep looks after drinking (last 30 days). */
+  drinks?: { lastNight: number; sleepAfter: number | null; sleepOther: number | null; nights30: number } | null;
 };
+
+/** A day with this many calories logged counts as fully logged (same bar as the Food page). */
+const FULL_DAY_KCAL = 1000;
+
+/** Drinks logged the day before a session, plus sleep on drinking nights vs other nights over the last 30 days. */
+async function drinkSignal(supabase: Supa, sessionDate: string): Promise<Signals["drinks"]> {
+  const since = daysAgo(sessionDate, 30);
+  const [{ data: d }, { data: nights }] = await Promise.all([
+    supabase.from("food_logs").select("day, drinks").eq("source", "drink").gte("day", since).lte("day", sessionDate),
+    supabase.from("sleep_logs").select("night_of, hours").gte("night_of", since).lte("night_of", sessionDate),
+  ]);
+  const perDay = new Map<string, number>();
+  for (const r of (d ?? []) as { day: string; drinks: number | null }[]) perDay.set(r.day, (perDay.get(r.day) ?? 0) + (r.drinks ?? 1));
+  const lastNight = perDay.get(daysAgo(sessionDate, 1)) ?? 0;
+  if (!lastNight) return null;
+  const after: number[] = [], other: number[] = [];
+  for (const n of (nights ?? []) as { night_of: string; hours: Num }[]) (perDay.has(n.night_of) ? after : other).push(Number(n.hours));
+  const avg = (xs: number[]) => (xs.length ? r1(xs.reduce((a, b) => a + b, 0) / xs.length) : null);
+  return { lastNight, sleepAfter: after.length >= 2 ? avg(after) : null, sleepOther: other.length >= 3 ? avg(other) : null, nights30: perDay.size };
+}
 
 export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: string): Promise<Signals> {
   const user = await currentUser(supabase);
@@ -109,13 +164,15 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   let skipped: { lift: string; reason: string }[] = [];
   let checkIn: Signals["checkIn"] = null;
   let easeWhy: "sleep" | "sick" = "sleep";
+  let drinks: Signals["drinks"] = null;
   if (kind === "session" && sourceId) {
     const { data: s } = await supabase
       .from("sessions")
-      .select("title, feel, pain_areas, notes, session_exercises(exercise_id, position, rep_range, skipped_reason, skill, exercises(name))")
+      .select("title, session_date, feel, pain_areas, notes, session_exercises(exercise_id, position, rep_range, skipped_reason, skill, exercises(name))")
       .eq("id", sourceId)
       .single();
     sessionTitle = s?.title ?? null;
+    if (s?.session_date) drinks = await drinkSignal(supabase, s.session_date as string);
     const pains = ((s?.pain_areas ?? []) as string[]);
     if (s?.feel || pains.length || s?.notes) {
       // Same niggle flagged again in the last 30 days (this session included)?
@@ -148,15 +205,16 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   // Weight: only on weigh-in and scan reads.
   let weight: Signals["weight"] = null;
   if (kind !== "session") {
-    const [{ data: wis }, stepRows, { data: scans }] = await Promise.all([
-      supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(6),
+    const [pts, stepRows, { data: scans }, { data: food }] = await Promise.all([
+      trendPoints(supabase, today),
       getSteps(supabase, today, 14),
       supabase.from("scans").select("scanned_on, weight_kg, body_fat_pct, muscle_mass_kg").order("scanned_on", { ascending: false }).limit(2),
+      supabase.from("food_logs").select("day, kcal, source, drinks").gte("day", daysAgo(today, 7)).lt("day", today),
     ]);
-    const pts = ((wis ?? []) as WeighRow[]).map((r) => ({ measured_on: r.measured_on, weight_kg: Number(r.weight_kg) }));
-    const rate = weeklyRate(pts.slice(0, 4));
+    pts.sort((x, y) => (x.measured_on < y.measured_on ? 1 : -1));
+    const rate = trendRate(pts, today);
     const target = prof?.target_rate_kg_week == null ? null : Number(prof.target_rate_kg_week);
-    const behind = rate != null && target != null && (target < 0 ? rate > target * 0.75 : rate < target * 0.75);
+    const behind = onPace(rate, target) === false;
     const lines: string[] = [];
     if (kind === "scan" && scans?.length) {
       const [a, b] = scans as { scanned_on: string; weight_kg: Num | null; body_fat_pct: Num | null; muscle_mass_kg: Num | null }[];
@@ -165,16 +223,37 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       const bits = [part(a.body_fat_pct, b?.body_fat_pct, "Body fat", "%"), part(a.muscle_mass_kg, b?.muscle_mass_kg, "muscle", " kg")].filter(Boolean);
       if (bits.length) lines.push(`Scan: ${bits.join(", ")}.`);
     }
+    // Last 7 full days of food (today excluded): days over the calorie target, and what drinks added.
+    const tK = prof?.target_kcal == null ? null : Number(prof.target_kcal);
+    const byDay = new Map<string, number>();
+    let drinkKcal = 0;
+    for (const r of (food ?? []) as { day: string; kcal: Num; source: string }[]) {
+      byDay.set(r.day, (byDay.get(r.day) ?? 0) + Number(r.kcal));
+      if (r.source === "drink") drinkKcal += Number(r.kcal);
+    }
+    const full = [...byDay].filter(([, k]) => k >= FULL_DAY_KCAL).sort();
+    const over = tK ? full.filter(([, k]) => k > tK * 1.05) : [];
+    const dow = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
     if (rate != null && target != null) {
       const ss = stepSummary(stepRows, today);
       const stepsFell = ss.avg7 != null && ss.avgPrev7 != null && ss.avg7 < ss.avgPrev7 * 0.85;
-      lines.push(`Losing ${r1(Math.abs(rate))} kg a week against a ${r1(Math.abs(target))} kg target.` +
-        (!behind ? " On track." : stepsFell ? ` Steps fell from ${ss.avgPrev7!.toLocaleString("en-US")} to ${ss.avg7!.toLocaleString("en-US")} a day; get those back first.` : " Sleep and training come first; change calories only after 2 more flat weeks."));
+      lines.push(`${rate <= 0 ? "Losing" : "Gaining"} ${r1(Math.abs(rate))} kg a week over six weeks, against a ${r1(Math.abs(target))} kg target.` +
+        (!behind ? " On track."
+          : over.length >= 2 ? ` You were over your calories on ${over.length} of the last ${full.length} full days. Hold the target every day before changing anything.`
+          : stepsFell ? ` Steps fell from ${ss.avgPrev7!.toLocaleString("en-US")} to ${ss.avg7!.toLocaleString("en-US")} a day; get those back first.`
+          : full.length >= 4 ? " Your logged calories look on target, so keep going: give it 2 more weeks before cutting calories."
+          : " Log your food every day this week so I can see what's holding it up."));
     } else if (pts.length) lines.push(`Latest weigh-in ${kg(pts[0].weight_kg)}.`);
+    if (tK && full.length >= 3) {
+      lines.push(over.length
+        ? `Over ${tK.toLocaleString("en-US")} kcal on ${over.length} of ${full.length} full days (${over.map(([d]) => dow(d)).join(", ")}).`
+        : `On or under ${tK.toLocaleString("en-US")} kcal on all ${full.length} full days. Good.`);
+    }
+    if (drinkKcal >= 100) lines.push(`Drinks added about ${Math.round(drinkKcal / 10) * 10} kcal this week.`);
     weight = { lines, latestKg: pts[0]?.weight_kg ?? null, rateKgWeek: rate == null ? null : r1(rate), targetKgWeek: target, behind };
   }
 
-  return { kind, today, sessionTitle, liftsFor, lifts, skipped, checkIn, splitDue: due.slice(0, 4), sleep, weight };
+  return { kind, today, sessionTitle, liftsFor, lifts, skipped, checkIn, splitDue: due.slice(0, 4), sleep, weight, drinks };
 }
 
 export type Read = { headline: string; next_session: string | null; recovery: string | null; weight: string | null };
@@ -212,6 +291,7 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   const first: string[] = [];
   const ci = s.checkIn;
   const offDay = ci?.feel === "sick" || ci?.feel === "low";
+  const dr = s.drinks;
   if (ci?.feel === "sick") first.push("Good job showing up while sick. Rest up, and don't chase weights until you're over it.");
   else if (ci?.feel === "low") first.push("Low-energy day, and you still got it done. That counts.");
   const pain = painLine(ci);
@@ -219,7 +299,8 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   if (first.length >= 2) return first.slice(0, 2).join(" ");
   if (heavier.length) first.push(`Great work. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
   else if (up.length) first.push(`Solid session. You're ready to go up on ${up[0].name}.`);
-  if (lighter.length && !offDay) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
+  if (dr && !offDay) first.unshift(`You showed up after ${dr.lastNight} drink${dr.lastNight === 1 ? "" : "s"} last night. Good.${lighter.length ? ` It showed on ${lighter[0].lift}.` : ""}`);
+  else if (lighter.length && !offDay) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
   else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Come on, let's break through it.`);
   const sk = s.skipped ?? [];
   if (first.length < 2 && sk.length) first.push(sk.length === 1
@@ -250,6 +331,8 @@ export function ruleRead(s: Signals): Read {
     next_session: next || null,
     recovery: s.checkIn?.feel === "sick"
       ? "Ease off next session until you're better: keep the same weights, drop one set per lift, no PR attempts. Skip it entirely if it's in your chest."
+      : s.drinks && s.drinks.sleepAfter != null && s.drinks.sleepOther != null && s.drinks.sleepAfter < s.drinks.sleepOther - 0.3
+      ? `Your sleep after drinking averages ${s.drinks.sleepAfter} h, against ${s.drinks.sleepOther} h without. If you're drinking, put it before a rest day.`
       : s.sleep.line,
     weight: s.kind !== "session" && s.weight?.lines.length ? s.weight.lines.join(" ") : null,
   };
@@ -276,6 +359,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
     checkIn: s.checkIn ? { feel: s.checkIn.feel ? FEEL_LABEL[s.checkIn.feel] : null, pains: s.checkIn.pains, note: s.checkIn.note, painRepeats: s.checkIn.repeats } : null,
     nextUp: nextUpLine(s),
     sleep: { call: s.sleep.call, reasons: s.sleep.reasons, advice: s.sleep.line },
+    drinksLastNight: s.drinks?.lastNight ?? null,
     weight: s.kind === "session" ? null : s.weight?.lines ?? null,
     draftHeadline: base.headline,
     draftRecovery: base.recovery,
@@ -287,6 +371,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
       "You are the coach in a personal training app, talking to one person you train. Warm, direct and human, like a good personal trainer: praise real wins (\"Great work\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
       "If `skipped` has lifts, say briefly that you'll remind them to come back to it (if sore, tell them to let it recover first). " +
       "`checkIn` is what they told you at the end of this workout (how they felt, any pain, a note). If they were sick or low on energy, acknowledge it warmly, praise them for showing up, and do NOT ask why a lift was lighter: you already know. If they flagged pain, name the area and tell them to go easy on it; if painRepeats shows 3 or more times in 30 days, suggest a physio or doctor. Never diagnose. Respond to anything specific in the note. " +
+      "If `drinksLastNight` is set, mention once, without lecturing, that they trained after drinking, and if a lift is in `lighter` that the drinks likely explain it (so don't ask why). " +
       "If a lift is in `lighter` and they didn't explain it in checkIn, ask about it kindly, e.g. \"I noticed you went lighter on Seated Row today. Everything okay?\". If lifts are in `heavier`, call out the best one. " +
       "You are given conclusions that are already worked out. Never compare numbers yourself, never add numbers that are not in the facts, never change a call (up, hold, back_off, ease, push). " +
       "Priorities: training first, then sleep and recovery, then body weight. " +
@@ -327,7 +412,7 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
   if (!key) return "Coach can't answer questions yet: the Anthropic API key hasn't been added to the app's settings on Vercel.";
   const signals = await gatherSignals(supabase, "weigh_in");
   const { data: recent } = await supabase.from("sessions").select("title, session_date, status, feel, pain_areas, notes").order("started_at", { ascending: false }).limit(8);
-  const { data: food } = await supabase.from("food_logs").select("day, kcal, protein_g").gte("day", daysAgo(signals.today, 7));
+  const { data: food } = await supabase.from("food_logs").select("day, kcal, protein_g, source, drinks").gte("day", daysAgo(signals.today, 7));
   const me = await currentUser(supabase);
   const { data: prof } = await supabase.from("profiles").select("target_kcal, protein_g, tdee_kcal").eq("id", me?.id ?? "").maybeSingle();
   const byDay = new Map<string, { kcal: number; protein_g: number }>();
@@ -336,7 +421,8 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
     t.kcal += Number(r.kcal); t.protein_g += Math.round(Number(r.protein_g));
     byDay.set(r.day, t);
   }
-  const foodLast7 = { targets: prof ?? null, days: [...byDay].sort().map(([day, t]) => ({ day, ...t })) };
+  const drinksLast7 = ((food ?? []) as { day: string; source?: string; drinks?: number | null }[]).filter((r) => r.source === "drink").map((r) => ({ day: r.day, drinks: r.drinks ?? 1 }));
+  const foodLast7 = { targets: prof ?? null, days: [...byDay].sort().map(([day, t]) => ({ day, ...t })), drinks: drinksLast7 };
   const text = await callClaude({
     max_tokens: 500,
     system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",

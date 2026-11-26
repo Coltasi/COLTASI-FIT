@@ -2,8 +2,9 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { CoachMark } from "@/components/ui";
-import { IconBarcode, IconCamera, IconPen } from "@/components/icons";
+import { IconBarcode, IconGlass, IconCamera, IconPen } from "@/components/icons";
 import { deleteSaved, estimateFood, logFood, logSaved, lookupBarcode } from "../actions";
 import { Portion, type Draft, draftLabel, draftAmount } from "./portion";
 import { macroLine, portionText, scale, type Label } from "@/lib/portion";
@@ -136,13 +137,16 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h2 className="sec">Something new</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
-          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates it</span>
+          <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates</span>
         </button>
         <button type="button" className="card" disabled={!!busy} onClick={() => codeRef.current?.click()} style={tile}>
-          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap">Packaged food</span>
+          <IconBarcode /><span style={{ fontWeight: 700 }}>Barcode</span><span className="cap">Packaged</span>
         </button>
+        <Link prefetch={false} href={`/food/add/drink${day ? `?day=${day}` : ""}`} className="card" style={{ ...tile, textDecoration: "none" }}>
+          <IconGlass /><span style={{ fontWeight: 700 }}>Drink</span><span className="cap">Beer, wine…</span>
+        </Link>
       </div>
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ""; }} />
       <input ref={codeRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onBarcodePhoto(e.target.files?.[0]); e.target.value = ""; }} />

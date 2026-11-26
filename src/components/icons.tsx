@@ -78,6 +78,9 @@ export const IconFood = ({ size, ...p }: P) => (
 export const IconCamera = ({ size = 22, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" /><circle cx="12" cy="13.5" r="3.5" /></svg>
 );
+export const IconGlass = ({ size = 22, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M7 3h10l-1 8a4 4 0 0 1-8 0z" /><path d="M12 15v6M8 21h8" /></svg>
+);
 export const IconBarcode = ({ size = 22, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M4 6v12" /><path d="M7 6v12" /><path d="M11 6v12" /><path d="M14 6v12" /><path d="M17 6v12" /><path d="M20 6v12" /></svg>
 );
