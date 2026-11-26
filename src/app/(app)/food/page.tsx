@@ -192,7 +192,7 @@ const fmtShortDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString
 /** Sunday that starts the week containing `iso` (week strips are Sunday-first). */
 const RANGES = ["week", "1m", "3m", "6m", "ytd", "1y"] as const;
 type Range = (typeof RANGES)[number];
-const RANGE_LABEL: Record<Range, string> = { week: "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", ytd: "YTD", "1y": "1 year" };
+const RANGE_LABEL: Record<Range, string> = { week: "1W", "1m": "1M", "3m": "3M", "6m": "6M", ytd: "YTD", "1y": "1Y" };
 /** 1 and 3 months chart one bar per week; longer ranges one bar per month. */
 const WEEKLY = new Set<Range>(["1m", "3m"]);
 
@@ -317,10 +317,10 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
 
   return (
     <>
-      <div role="group" aria-label="Time range" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8, marginTop: -4 }}>
+      <div role="group" aria-label="Time range" style={{ display: "grid", gridTemplateColumns: `repeat(${RANGES.length}, minmax(0,1fr))`, gap: 6, marginTop: -4 }}>
         {RANGES.map((r) => (
           <Link key={r} prefetch={false} replace scroll={false} href={`/food?view=week${r === "week" ? "" : `&range=${r}`}`} aria-current={range === r ? "true" : undefined}
-            className="pill" style={range === r ? { background: "#fff", color: "var(--navy)", fontWeight: 700 } : undefined}>
+            className="pill" style={{ padding: 0, minWidth: 0, ...(range === r ? { background: "#fff", color: "var(--navy)", fontWeight: 700 } : {}) }}>
             {RANGE_LABEL[r]}
           </Link>
         ))}
