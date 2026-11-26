@@ -320,7 +320,7 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
       <div role="group" aria-label="Time range" style={{ display: "grid", gridTemplateColumns: `repeat(${RANGES.length}, minmax(0,1fr))`, gap: 6, marginTop: -4 }}>
         {RANGES.map((r) => (
           <Link key={r} prefetch={false} replace scroll={false} href={`/food?view=week${r === "week" ? "" : `&range=${r}`}`} aria-current={range === r ? "true" : undefined}
-            className="pill" style={{ padding: 0, minWidth: 0, ...(range === r ? { background: "#fff", color: "var(--navy)", fontWeight: 700 } : {}) }}>
+            className="pill" style={{ padding: 0, minWidth: 0, ...(range === r ? { background: "var(--rust)", borderColor: "var(--rust)", color: "#fff", fontWeight: 800 } : {}) }}>
             {RANGE_LABEL[r]}
           </Link>
         ))}
