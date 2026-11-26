@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CoachMark } from "@/components/ui";
-import { IconBarcode, IconCamera } from "@/components/icons";
+import { IconBarcode, IconCamera, IconPen } from "@/components/icons";
 import { deleteSaved, estimateFood, logFood, logSaved, lookupBarcode } from "../actions";
 import { Portion, type Draft, draftLabel, draftAmount } from "./portion";
 import { macroLine, portionText, scale, type Label } from "@/lib/portion";
@@ -158,8 +158,8 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
           <input className="fld" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Barcode number" style={{ flexGrow: 1 }} />
           <button type="button" className="btn2" disabled={!!busy || !code} onClick={() => findCode(code)} style={{ height: 50, whiteSpace: "nowrap" }}>Look up</button>
         </div>
-        <button type="button" onClick={() => { setErr(null); setSaveIt(false); setDraft(blank); }} style={{ ...linkBtn, alignSelf: "flex-start", fontSize: 15, minHeight: 44 }}>
-          Enter it yourself
+        <button type="button" className="btn2" disabled={!!busy} onClick={() => { setErr(null); setSaveIt(false); setDraft(blank); }} style={{ height: 50, width: "100%", gap: 8 }}>
+          <IconPen size={16} />Enter it yourself
         </button>
       </div>
 
