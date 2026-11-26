@@ -468,6 +468,31 @@ export async function discardSession(sessionId: string) {
   redirect("/train");
 }
 
+/** Wipes every logged set, skip and tick in an in-progress workout, keeping the lifts and plan. Never touches a finished one. */
+export async function restartSession(sessionId: string) {
+  const { supabase } = await ctx();
+  const { data: s } = await supabase.from("sessions").select("id, finisher_moves").eq("id", sessionId).eq("status", "in_progress").is("edit_snapshot", null).maybeSingle();
+  if (!s) redirect(`/train/session/${sessionId}`);
+  const { data: exs } = await supabase.from("session_exercises").select("id").eq("session_id", sessionId);
+  const ids = (exs ?? []).map((e: { id: string }) => e.id);
+  if (ids.length) {
+    await supabase.from("session_sets").update({ weight_kg: null, reps: null, done: false, done_at: null, effort: null }).in("session_exercise_id", ids);
+    await supabase.from("session_exercises").update({ skipped_reason: null }).in("id", ids);
+  }
+  const moves = Array.isArray(s.finisher_moves) ? (s.finisher_moves as { name: string; dose: string }[]).map((m) => ({ ...m, done: false })) : s.finisher_moves;
+  await supabase.from("sessions").update({ warmup_done: false, finisher_done: false, cooldown_done: false, finisher_moves: moves }).eq("id", sessionId);
+  revalidatePath("/", "layout");
+  redirect(`/train/session/${sessionId}`);
+}
+
+/** Throws away an in-progress workout and goes to the workout picker to start a different one. */
+export async function switchWorkout(sessionId: string) {
+  const { supabase } = await ctx();
+  await supabase.from("sessions").delete().eq("id", sessionId).eq("status", "in_progress").is("edit_snapshot", null);
+  revalidatePath("/", "layout");
+  redirect("/train/choose");
+}
+
 /** Reopens a finished workout so you can fix it. Cancel puts it back exactly as it was. */
 export async function reopenSession(sessionId: string) {
   const { supabase } = await ctx();

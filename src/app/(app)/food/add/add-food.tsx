@@ -148,9 +148,8 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
       <input ref={codeRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { onBarcodePhoto(e.target.files?.[0]); e.target.value = ""; }} />
 
       <div style={{ display: "grid", gap: 8 }}>
-        <label className="flab" htmlFor="desc">Or describe it</label>
         <div style={{ display: "flex", gap: 8 }}>
-          <input id="desc" className="fld" value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Chicken shawarma, half the rice" style={{ flexGrow: 1 }}
+          <input id="desc" className="fld" value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Describe it" placeholder="Describe it" style={{ flexGrow: 1 }}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onDescribe(); } }} />
           <button type="button" className="btn2" disabled={!!busy} onClick={onDescribe} style={{ height: 50, whiteSpace: "nowrap" }}>Estimate</button>
         </div>

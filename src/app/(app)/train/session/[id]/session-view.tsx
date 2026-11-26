@@ -14,6 +14,7 @@ import { lastLine, searchCandidates } from "@/components/exercise-search";
 import { addLifts, addOwed, addSet, cancelEdit, dropOwed, finishSession, moveExerciseAfter, saveSet, saveSetEffort, setExtra, setWarmup, setWarmupMin, skipLift, swapLift } from "../../actions";
 import { WarmupLength } from "@/components/warmup-length";
 import { CheckInCard } from "./check-in-card";
+import { WorkoutOptions } from "./workout-options";
 import { GRIND_CUE, SET_EFFORT_LABEL, isHardSet, type SetEffort } from "@/lib/set-effort";
 import { FINISHER_CUE, PRIMER_CUE, balanceRoles, type Role } from "@/lib/placement";
 import { SKIP_LABEL, owedLine, type Owed, type SkipReason } from "@/lib/owed";
@@ -241,7 +242,10 @@ export function SessionView({ session, exercises: initial, candidates, owed: ini
           <h1 className="disp" style={{ fontSize: 30, marginTop: 2 }}>{session.title}</h1>
           {session.kind === "custom" ? <p className="cap" style={{ marginTop: 4 }}>No plan. Build it as you go.</p> : null}
         </div>
-        <Link prefetch={false} href={`/train/session/${session.id}/edit`} className="btn2" style={{ marginTop: 6 }}>Edit</Link>
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {editing ? null : <WorkoutOptions sessionId={session.id} />}
+          <Link prefetch={false} href={`/train/session/${session.id}/edit`} className="btn2" style={{ marginTop: 6 }}>Edit</Link>
+        </div>
       </div>
 
       {editing ? (
