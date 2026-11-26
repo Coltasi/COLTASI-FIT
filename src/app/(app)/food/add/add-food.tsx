@@ -135,41 +135,7 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-          <h2 className="sec">Saved foods</h2>
-          {saved.length ? <button type="button" onClick={() => setManage((m) => !m)} style={linkBtn}>{manage ? "Done" : "Edit"}</button> : null}
-        </div>
-        {saved.length ? (
-          <div className="list">
-            {saved.map((s) => {
-              const m = scale(s.label, s.lastAmount ?? (s.label.baseG ?? 1));
-              const amt = portionText(s.label, s.lastAmount ?? (s.label.baseG ?? 1));
-              return (
-                <div key={s.id} className="li" style={{ gap: 10 }}>
-                  <button type="button" disabled={!!busy} onClick={() => tapSaved(s)}
-                    aria-label={manage ? `Remove ${s.name} from saved foods` : `Choose how much ${s.name}`}
-                    style={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}>
-                    <span style={{ flexGrow: 1, minWidth: 0 }}>
-                      <span className="t" style={{ display: "block", fontSize: 16, lineHeight: 1.3 }}>{s.name}</span>
-                      <span className="s" style={{ display: "block" }}>{busy === `saved-${s.id}` ? "Logging…" : `${amt ? `${amt} · ` : ""}${macroLine(m)}`}</span>
-                    </span>
-                    <span className="v">{m.kcal} kcal</span>
-                  </button>
-                  <button type="button" disabled={!!busy} onClick={() => (manage ? tapSaved(s) : quickSaved(s))}
-                    aria-label={manage ? `Remove ${s.name} from saved foods` : `Log ${amt ?? "one"} ${s.name} now`}
-                    style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, border: 0, cursor: "pointer",
-                      background: manage ? "var(--tint-crimson)" : "var(--tint-ember)", color: manage ? "var(--crimson)" : "var(--rust)" }}>{manage ? "×" : "+"}</button>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="cap">Your shake and repeat foods go here. Log one below and tick &ldquo;Save for next time&rdquo;.</p>
-        )}
-      </div>
-
-      <h2 className="sec" style={{ marginTop: 8 }}>Something new</h2>
+      <h2 className="sec">Something new</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
           <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates it</span>
@@ -196,6 +162,50 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
           Enter it yourself
         </button>
       </div>
+
+      <details className="card saved-foods">
+        <summary style={{ listStyle: "none", padding: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, cursor: "pointer" }}>
+          <span>
+            <span className="sec" style={{ display: "block" }}>Saved foods</span>
+            <span className="cap">{saved.length ? `${saved.length} saved` : "None yet"}</span>
+          </span>
+          <svg className="chev" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ember-text)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </summary>
+        <div style={{ padding: "0 16px 12px", borderTop: "1px solid var(--line-soft)" }}>
+          {saved.length ? (
+            <div className="list">
+              {saved.map((s) => {
+                const m = scale(s.label, s.lastAmount ?? (s.label.baseG ?? 1));
+                const amt = portionText(s.label, s.lastAmount ?? (s.label.baseG ?? 1));
+                return (
+                  <div key={s.id} className="li" style={{ gap: 10 }}>
+                    <button type="button" disabled={!!busy} onClick={() => tapSaved(s)}
+                      aria-label={manage ? `Remove ${s.name} from saved foods` : `Choose how much ${s.name}`}
+                      style={{ flexGrow: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: "none", border: 0, padding: 0, textAlign: "left", cursor: "pointer", font: "inherit", color: "inherit" }}>
+                      <span style={{ flexGrow: 1, minWidth: 0 }}>
+                        <span className="t" style={{ display: "block", fontSize: 16, lineHeight: 1.3 }}>{s.name}</span>
+                        <span className="s" style={{ display: "block" }}>{busy === `saved-${s.id}` ? "Logging…" : `${amt ? `${amt} · ` : ""}${macroLine(m)}`}</span>
+                      </span>
+                      <span className="v">{m.kcal} kcal</span>
+                    </button>
+                    <button type="button" disabled={!!busy} onClick={() => (manage ? tapSaved(s) : quickSaved(s))}
+                      aria-label={manage ? `Remove ${s.name} from saved foods` : `Log ${amt ?? "one"} ${s.name} now`}
+                      style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, border: 0, cursor: "pointer",
+                        background: manage ? "var(--tint-crimson)" : "var(--tint-ember)", color: manage ? "var(--crimson)" : "var(--rust)" }}>{manage ? "×" : "+"}</button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="cap" style={{ paddingTop: 12 }}>Your shake and repeat foods go here. Log a food and tick &ldquo;Save for next time&rdquo;.</p>
+          )}
+          {saved.length ? (
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 4 }}>
+              <button type="button" onClick={() => setManage((m) => !m)} style={{ ...linkBtn, minHeight: 44 }}>{manage ? "Done removing" : "Remove saved foods"}</button>
+            </div>
+          ) : null}
+        </div>
+      </details>
 
       {busy === "estimate" || busy === "barcode" ? (
         <div className="card cream" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }} role="status">
