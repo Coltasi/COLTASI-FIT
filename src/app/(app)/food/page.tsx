@@ -8,6 +8,7 @@ import { applySuggestedTarget } from "./actions";
 import { DayNav } from "./day-nav";
 import { EditFoods } from "./edit-foods";
 import { macroLine } from "@/lib/portion";
+import type { FoodRow } from "@/lib/rows";
 
 export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string }> }) {
   const { supabase, today, profile } = await getContext();
@@ -26,7 +27,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   // Entries from before carbs and fat were tracked (or estimates without them) don't count toward those totals.
   const missing = items.filter((r) => r.carbs_g == null || r.fat_g == null).length;
   const tK = profile.target_kcal ?? null, tP = profile.protein_g ?? null;
-  const totals = new Map(dayTotals((week ?? []) as any[]).map((d) => [d.day, d]));
+  const totals = new Map(dayTotals((week ?? []) as FoodRow[]).map((d) => [d.day, d]));
   const maxK = Math.max(tK ?? 2500, ...[...totals.values()].map((d) => d.kcal));
 
   const yesterday = addDays(today, -1);

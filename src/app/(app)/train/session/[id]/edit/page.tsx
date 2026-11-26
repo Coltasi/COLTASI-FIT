@@ -17,7 +17,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
     getCandidates(supabase),
   ]);
   if (!s) notFound();
-  const ses = ((s.session_exercises ?? []) as any[]).sort((a, b) => a.position - b.position);
+  const ses = ((s.session_exercises ?? []) as unknown as { id: string; position: number; target_sets: number; rep_range: string | null; exercises: { name: string } | null; session_sets: { done: boolean }[] | null }[]).sort((a, b) => a.position - b.position);
 
   return (
     <main className="screen">
@@ -32,7 +32,7 @@ export default async function EditSessionPage({ params }: PageProps<"/train/sess
 
       <div className="card clip">
         {ses.map((x, i) => {
-          const logged = (x.session_sets ?? []).some((z: any) => z.done);
+          const logged = (x.session_sets ?? []).some((z) => z.done);
           return (
             <div key={x.id} className="row" style={{ padding: "4px 4px 4px 4px", gap: 4 }}>
               {logged ? (

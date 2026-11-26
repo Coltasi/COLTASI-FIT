@@ -12,6 +12,7 @@ import { parseCheckIn } from "@/lib/check-in";
 import { currentUser } from "@/lib/supabase/user";
 import { getLastTimes } from "@/lib/data";
 import { exerciseKey, groupExercises, type ExerciseRow } from "@/lib/exercise-match";
+import type { SessionLiftRow } from "@/lib/rows";
 
 async function ctx() {
   const supabase = await createClient();
@@ -36,13 +37,13 @@ async function insertLifts(supabase: Supa, sessionId: string, lifts: NewLift[], 
     })))
     .select("id, target_sets, position");
   if (error) throw new Error(error.message);
-  const rows = ((ses ?? []) as any[]).sort((a, b) => a.position - b.position);
+  const rows = ((ses ?? []) as { id: string; target_sets: number; position: number }[]).sort((a, b) => a.position - b.position);
   const sets = rows.flatMap((se) => Array.from({ length: se.target_sets }, (_, k) => ({ session_exercise_id: se.id, set_no: k + 1 })));
   if (sets.length) {
     const { error: e2 } = await supabase.from("session_sets").insert(sets);
     if (e2) throw new Error(e2.message);
   }
-  return rows.map((r) => r.id as string);
+  return rows.map((r) => r.id);
 }
 
 /** Sends you to the workout that's already in progress, if there is one. */
@@ -56,7 +57,7 @@ function parseMoves(raw: FormDataEntryValue | null): { name: string; dose: strin
     const j = JSON.parse(String(raw ?? ""));
     if (!Array.isArray(j)) return null;
     return j
-      .map((m: any) => ({ name: String(m?.name ?? "").trim().slice(0, 80), dose: String(m?.dose ?? "").trim().slice(0, 40), done: false }))
+      .map((m: { name?: unknown; dose?: unknown } | null) => ({ name: String(m?.name ?? "").trim().slice(0, 80), dose: String(m?.dose ?? "").trim().slice(0, 40), done: false }))
       .filter((m) => m.name);
   } catch {
     return null;
@@ -91,8 +92,9 @@ export async function startSession(formData: FormData) {
   if (quick) {
     warmup = "treadmill";
     cooldown = true;
-    const f = ((fins ?? []) as any[]).find((x) => x.is_default) ?? (fins ?? [])[0];
-    if (f) { finisher = f.name; moves = ((f.moves ?? []) as any[]).map((m) => ({ name: m.name, dose: m.dose, done: false })); }
+    const list = (fins ?? []) as { name: string; moves: { name: string; dose: string }[] | null; is_default: boolean }[];
+    const f = list.find((x) => x.is_default) ?? list[0];
+    if (f) { finisher = f.name; moves = (f.moves ?? []).map((m) => ({ name: m.name, dose: m.dose, done: false })); }
   } else {
     finisher = String(formData.get("finisher") ?? "").trim() || null;
     moves = finisher ? parseMoves(formData.get("finisher_moves")) : null;
@@ -117,8 +119,8 @@ export async function startSession(formData: FormData) {
   if (error || !session) throw new Error(error?.message ?? "Could not start the session.");
 
   const plan: NewLift[] = over?.length
-    ? (over as any[]).map((o) => ({ exercise_id: o.exercise_id, target_sets: o.target_sets, rep_range: o.rep_range, sub_for: o.sub_for, added: o.added }))
-    : ((day.program_exercises ?? []) as any[]).sort((a, b) => a.position - b.position)
+    ? (over as unknown as Pick<SessionLiftRow, "exercise_id" | "target_sets" | "rep_range" | "sub_for" | "added">[]).map((o) => ({ exercise_id: o.exercise_id, target_sets: o.target_sets, rep_range: o.rep_range, sub_for: o.sub_for, added: o.added }))
+    : ((day.program_exercises ?? []) as { exercise_id: string; position: number; target_sets: number; rep_range: string }[]).sort((a, b) => a.position - b.position)
         .map((pe) => ({ exercise_id: pe.exercise_id, target_sets: pe.target_sets, rep_range: pe.rep_range }));
   await insertLifts(supabase, session.id, plan, 1);
   revalidatePath("/", "layout");
@@ -147,7 +149,7 @@ export async function addOwed(sessionId: string, owedId: string): Promise<string
     supabase.from("session_exercises").select("id, exercises(name)").eq("id", owedId).single(),
     supabase.from("session_exercises").select("position").eq("session_id", sessionId).order("position", { ascending: false }).limit(1),
   ]);
-  const name = (o as any)?.exercises?.name as string | undefined;
+  const name = (o as unknown as { exercises: { name: string } | null } | null)?.exercises?.name;
   if (!name) return null;
   const picks = await liftsFromNames(supabase, user.id, [name]);
   const ids = await insertLifts(supabase, sessionId, picks.map((p) => ({ ...p, one_off: true })), (last?.[0]?.position ?? 0) + 1);
@@ -345,7 +347,7 @@ export async function finishSession(sessionId: string, fd?: FormData) {
   // Carry-over: a Split day's final lift list becomes that day's plan for next time.
   if (s?.kind === "split" && s.day_id) {
     try {
-      await savePlanOverride(supabase, user.id, s.day_id, ((s.session_exercises ?? []) as any[])
+      await savePlanOverride(supabase, user.id, s.day_id, ((s.session_exercises ?? []) as unknown as (Pick<SessionLiftRow, "exercise_id" | "position" | "target_sets" | "rep_range" | "sub_for" | "added" | "one_off"> & { session_sets: { id: string }[] | null })[])
         .filter((x) => !x.one_off)
         .sort((a, b) => a.position - b.position)
         .map((x) => ({ exercise_id: x.exercise_id, target_sets: Math.min(10, Math.max(1, (x.session_sets ?? []).length || x.target_sets)), rep_range: x.rep_range, sub_for: x.sub_for, added: x.added })));
@@ -409,11 +411,11 @@ export async function swapLift(sessionId: string, sessionExerciseId: string, nam
   const { supabase, user } = await ctx();
   const { data: rows } = await supabase
     .from("session_exercises").select("id, exercise_id, position, sub_for, session_sets(done)").eq("session_id", sessionId).order("position");
-  const list = (rows ?? []) as any[];
+  const list = (rows ?? []) as unknown as (Pick<SessionLiftRow, "id" | "exercise_id" | "position" | "sub_for"> & { session_sets: { done: boolean }[] | null })[];
   const i = list.findIndex((r) => r.id === sessionExerciseId);
   if (i < 0) return null;
   const orig = list[i];
-  if ((orig.session_sets ?? []).some((z: any) => z.done)) return null; // logged lifts are locked
+  if ((orig.session_sets ?? []).some((z) => z.done)) return null; // logged lifts are locked
   const picks = await liftsFromNames(supabase, user.id, names);
   if (!picks.length) return null;
   const from = orig.sub_for ?? orig.exercise_id;

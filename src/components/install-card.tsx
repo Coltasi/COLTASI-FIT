@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
@@ -9,18 +9,30 @@ type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ out
  * Uses Chrome's real install flow (beforeinstallprompt), which installs it as an app
  * that opens full-screen, instead of a home-screen shortcut that opens a tab.
  */
+const STANDALONE = "(display-mode: standalone)";
+const HIDE_KEY = "install-card-hidden";
+const subscribeStandalone = (cb: () => void) => {
+  const mq = window.matchMedia(STANDALONE);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const isStandalone = () => window.matchMedia(STANDALONE).matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+const wasHidden = () => { try { return localStorage.getItem(HIDE_KEY) === "1"; } catch { return false; } };
+const noSubscribe = () => () => {};
+
 export function InstallCard() {
-  const [standalone, setStandalone] = useState(true);
+  // Read straight from the browser; on the server the card stays hidden (as if installed).
+  const opensAsApp = useSyncExternalStore(subscribeStandalone, isStandalone, () => true);
+  const hiddenBefore = useSyncExternalStore(noSubscribe, wasHidden, () => false);
+  const [installed, setInstalled] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const [prompt, setPrompt] = useState<BIPEvent | null>(null);
-  const [hidden, setHidden] = useState(false);
+  const standalone = opensAsApp || installed;
+  const hidden = hiddenBefore || dismissed;
 
   useEffect(() => {
-    const mq = window.matchMedia("(display-mode: standalone)");
-    const isStandalone = mq.matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
-    setStandalone(isStandalone);
-    try { setHidden(localStorage.getItem("install-card-hidden") === "1"); } catch {}
     const onPrompt = (e: Event) => { e.preventDefault(); setPrompt(e as BIPEvent); };
-    const onInstalled = () => { setPrompt(null); setStandalone(true); };
+    const onInstalled = () => { setPrompt(null); setInstalled(true); };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
@@ -31,7 +43,7 @@ export function InstallCard() {
 
   if (standalone || hidden) return null;
 
-  const dismiss = () => { setHidden(true); try { localStorage.setItem("install-card-hidden", "1"); } catch {} };
+  const dismiss = () => { setDismissed(true); try { localStorage.setItem(HIDE_KEY, "1"); } catch {} };
 
   return (
     <div className="card" style={{ padding: "14px 16px", border: "2px solid var(--ember)", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -47,7 +59,7 @@ export function InstallCard() {
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className="ghost" style={{ height: 44 }} onClick={dismiss}>Not now</button>
           <button type="button" className="btn" style={{ height: 44 }}
-            onClick={async () => { await prompt.prompt(); const r = await prompt.userChoice; if (r.outcome === "accepted") setStandalone(true); setPrompt(null); }}>
+            onClick={async () => { await prompt.prompt(); const r = await prompt.userChoice; if (r.outcome === "accepted") setInstalled(true); setPrompt(null); }}>
             Install
           </button>
         </div>

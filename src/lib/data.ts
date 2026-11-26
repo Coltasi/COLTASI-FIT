@@ -6,6 +6,7 @@ import { mondayOf, todayIn } from "@/lib/dates";
 import { getTz } from "@/lib/tz";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 import { fetchAll } from "@/lib/fetch-all";
+import type { HistoryRow } from "@/lib/rows";
 
 export type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -67,17 +68,17 @@ export async function getProgram(supabase: Supa): Promise<ProgramDay[]> {
       .order("position"),
   ]);
   const overrides = new Map<string, PlanLift[]>();
-  for (const r of (ov ?? []) as any[]) {
+  for (const r of (ov ?? []) as unknown as { day_id: string; exercise_id: string; position: number; target_sets: number; rep_range: string | null; added: boolean; exercises: { name: string } | null; sub: { id: string; name: string } | null }[]) {
     if (!overrides.has(r.day_id)) overrides.set(r.day_id, []);
     overrides.get(r.day_id)!.push({
       exercise_id: r.exercise_id, name: r.exercises?.name ?? "", position: r.position, target_sets: r.target_sets,
       rep_range: r.rep_range ?? "", sub_for: r.sub ? { id: r.sub.id, name: r.sub.name } : null, added: r.added,
     });
   }
-  return ((data ?? []) as any[])
+  return ((data ?? []) as unknown as { id: string; program: ProgramDay["program"]; name: string; day_order: number; program_exercises: { exercise_id: string; position: number; target_sets: number; rep_range: string; exercises: { name: string } | null }[] | null }[])
     .map((d) => {
       const template: PlanLift[] = (d.program_exercises ?? [])
-        .map((pe: any) => ({ exercise_id: pe.exercise_id, name: pe.exercises?.name ?? "", position: pe.position, target_sets: pe.target_sets, rep_range: pe.rep_range }))
+        .map((pe) => ({ exercise_id: pe.exercise_id, name: pe.exercises?.name ?? "", position: pe.position, target_sets: pe.target_sets, rep_range: pe.rep_range }))
         .sort((a: PlanLift, b: PlanLift) => a.position - b.position);
       const over = overrides.get(d.id);
       return { id: d.id, program: d.program, name: d.name, day_order: d.day_order, template, exercises: over?.length ? over : template, overridden: !!over?.length };
@@ -90,7 +91,7 @@ export type Finisher = { id: string; name: string; moves: FinisherMove[]; is_def
 
 export async function getFinishers(supabase: Supa): Promise<Finisher[]> {
   const { data } = await supabase.from("finishers").select("id, name, moves, is_default").order("position");
-  return ((data ?? []) as any[]).map((f) => ({ id: f.id, name: f.name, moves: (f.moves ?? []) as FinisherMove[], is_default: f.is_default }));
+  return ((data ?? []) as { id: string; name: string; moves: FinisherMove[] | null; is_default: boolean }[]).map((f) => ({ id: f.id, name: f.name, moves: f.moves ?? [], is_default: f.is_default }));
 }
 
 export type LastTime = { date: string; top: number | null; sets: { weight_kg: number | null; reps: number | null }[] };
@@ -108,13 +109,14 @@ export async function getLastTimes(supabase: Supa, exerciseIds: string[], exclud
   const keyOf = (id: string) => keyById.get(id) ?? id;
   const wanted = new Set<string>();
   for (const id of exerciseIds) for (const sib of byKey.get(keyOf(id))?.ids ?? [id]) wanted.add(sib);
-  const data = await fetchAll<any>((a, b) => supabase
+  const data = await fetchAll((a, b) => supabase
     .from("session_exercises")
     .select("id, exercise_id, session_id, sessions!inner(session_date, status, started_at), session_sets(set_no, weight_kg, reps, done)")
     .in("exercise_id", [...wanted])
     .eq("sessions.status", "done")
     .order("id")
-    .range(a, b));
+    .range(a, b)
+    .overrideTypes<HistoryRow[], { merge: false }>());
   const rows = data
     .filter((r) => r.session_id !== excludeSessionId)
     .sort((a, b) => (a.sessions.started_at < b.sessions.started_at ? 1 : -1));
@@ -122,14 +124,14 @@ export async function getLastTimes(supabase: Supa, exerciseIds: string[], exclud
   for (const r of rows) {
     const k = keyOf(r.exercise_id);
     if (byGroup.has(k)) continue;
-    const sets = (r.session_sets ?? []).filter((s: any) => s.done).sort((a: any, b: any) => a.set_no - b.set_no);
+    const sets = (r.session_sets ?? []).filter((s) => s.done).sort((a, b) => a.set_no - b.set_no);
     if (!sets.length) continue;
     // 0 kg means no added weight: it never counts as a top set.
-    const weights = sets.map((s: any) => Number(s.weight_kg)).filter((x: number) => x > 0);
+    const weights = sets.map((s) => Number(s.weight_kg)).filter((x) => x > 0);
     byGroup.set(k, {
       date: r.sessions.session_date,
       top: weights.length ? Math.max(...weights) : null,
-      sets: sets.map((s: any) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps })),
+      sets: sets.map((s) => ({ weight_kg: s.weight_kg == null ? null : Number(s.weight_kg), reps: s.reps })),
     });
   }
   for (const id of exerciseIds) {
@@ -161,6 +163,8 @@ export type WeekState = {
 };
 
 /** Which split days are done this week, and which one is up next. */
+type WeekRow = { id: string; title: string; day_id: string | null; session_date: string; status: string; kind: string };
+
 export async function getWeekState(supabase: Supa, today: string, program: ProgramDay[] | Promise<ProgramDay[]>): Promise<WeekState> {
   const monday = mondayOf(today);
   const [{ data }, { data: open }, prog] = await Promise.all([
@@ -169,11 +173,11 @@ export async function getWeekState(supabase: Supa, today: string, program: Progr
     Promise.resolve(program),
   ]);
   const done = new Map<string, string>();
-  for (const s of ((data ?? []) as any[]).sort((a, b) => (a.session_date < b.session_date ? 1 : -1))) {
+  for (const s of ((data ?? []) as WeekRow[]).sort((a, b) => (a.session_date < b.session_date ? 1 : -1))) {
     if (s.kind === "split" && s.day_id && !done.has(s.day_id)) done.set(s.day_id, s.session_date);
   }
   const inProgress = open?.length ? { id: open[0].id as string, title: open[0].title as string } : null;
-  const doneToday = ((data ?? []) as any[])
+  const doneToday = ((data ?? []) as WeekRow[])
     .filter((s) => s.session_date === today)
     .map((s) => ({ id: s.id as string, title: s.title as string, kind: s.kind as string }));
   const split = prog.filter((d) => d.program === "split");

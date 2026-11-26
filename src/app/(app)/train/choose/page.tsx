@@ -14,7 +14,7 @@ export default async function ChoosePage() {
     supabase.from("sessions").select("day_id, session_date").eq("status", "done").not("day_id", "is", null).order("session_date", { ascending: false }).limit(60),
   ]);
   const lastByDay = new Map<string, string>();
-  for (const r of (lastDone ?? []) as any[]) if (!lastByDay.has(r.day_id)) lastByDay.set(r.day_id, r.session_date);
+  for (const r of (lastDone ?? []) as { day_id: string; session_date: string }[]) if (!lastByDay.has(r.day_id)) lastByDay.set(r.day_id, r.session_date);
 
   const Row = ({ d }: { d: (typeof program)[number] }) => {
     const doneOn = week.done.get(d.id);

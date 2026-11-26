@@ -6,7 +6,7 @@ import { LibraryList } from "./library-list";
 export default async function LibraryPage() {
   const { supabase } = await getContext();
   const { data } = await supabase.from("exercises").select("id, name").is("created_by", null);
-  const idByName = new Map(((data ?? []) as any[]).map((e) => [e.name as string, e.id as string]));
+  const idByName = new Map(((data ?? []) as { id: string; name: string }[]).map((e) => [e.name, e.id]));
   const groups = LIBRARY_GROUPS
     .map(([g, names]) => ({ name: g, items: names.filter((n) => idByName.has(n)).map((n) => ({ id: idByName.get(n)!, name: n })) }))
     .filter((g) => g.items.length);

@@ -13,7 +13,8 @@ import { WorkoutCalendar, type CalSession } from "./workout-calendar";
 import { getSteps, stepSummary } from "@/lib/steps";
 import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 import { EffortTag } from "@/components/effort";
-import { effortCallout, gradeSession } from "@/lib/effort";
+import { effortCallout, gradeSession, type Effort, type LiftLike } from "@/lib/effort";
+import type { Num, NightRow, SignalsJson } from "@/lib/rows";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -33,19 +34,21 @@ export default async function OverviewPage() {
     supabase.from("sessions").select("id, session_date, kind, title").eq("status", "done").gte("session_date", addDays(today, -400)).order("session_date"),
     supabase.from("food_logs").select("kcal, protein_g").eq("day", today),
   ]);
-  const foodKcal = ((foodRows ?? []) as any[]).reduce((s, r) => s + Number(r.kcal), 0);
-  const foodProtein = ((foodRows ?? []) as any[]).reduce((s, r) => s + Number(r.protein_g), 0);
+  const food = (foodRows ?? []) as { kcal: number; protein_g: Num }[];
+  const foodKcal = food.reduce((s, r) => s + Number(r.kcal), 0);
+  const foodProtein = food.reduce((s, r) => s + Number(r.protein_g), 0);
   const calSessions: CalSession[] = ((calRows ?? []) as { id: string; session_date: string; kind: string; title: string }[])
     .map((r) => ({ id: r.id, date: r.session_date, kind: r.kind, title: r.title }));
   const stepByDay = new Map(stepRows.map((r) => [r.day, r.steps]));
   const stepAvg = stepSummary(stepRows, today).avg7;
   const night = addDays(today, -1);
-  const lastNight = ((sleeps ?? []) as any[]).find((s) => s.night_of === night);
-  const byNight = new Map(((sleeps ?? []) as any[]).map((s) => [s.night_of, Number(s.hours)]));
+  const nights = (sleeps ?? []) as NightRow[];
+  const lastNight = nights.find((s) => s.night_of === night);
+  const byNight = new Map(nights.map((s) => [s.night_of, Number(s.hours)]));
   const latest = read?.[0];
   const day = week.nextDay;
   const weekCount = (weekSessions ?? []).length;
-  const trainedOn = new Set(((weekSessions ?? []) as any[]).map((s) => s.session_date as string));
+  const trainedOn = new Set(((weekSessions ?? []) as { session_date: string }[]).map((s) => s.session_date));
 
   // A finished session today (custom or kettlebell included) counts as today's workout.
   const doneToday = !week.inProgress && week.doneToday.length ? week.doneToday : null;
@@ -55,10 +58,10 @@ export default async function OverviewPage() {
   let lead: ReactNode = null;
   if (latest?.kind === "session" && latest.source_id) {
     const { data: src } = await supabase.from("sessions").select("effort, feel, session_exercises(skipped_reason, skill)").eq("id", latest.source_id).maybeSingle();
-    const skipped = ((src?.session_exercises ?? []) as any[]).filter((x) => x.skipped_reason && !x.skill).length;
-    const v = gradeSession((latest.signals as any)?.lifts, skipped);
+    const skipped = ((src?.session_exercises ?? []) as { skipped_reason: string | null; skill: boolean }[]).filter((x) => x.skipped_reason && !x.skill).length;
+    const v = gradeSession((latest.signals as SignalsJson<LiftLike>)?.lifts, skipped);
     if (v) {
-      const callout = effortCallout((src?.effort as any) ?? null, v, src?.feel ?? null);
+      const callout = effortCallout((src?.effort as Effort | null) ?? null, v, src?.feel ?? null);
       lead = (
         <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -160,7 +163,7 @@ export default async function OverviewPage() {
           <SleepCard
             key={lastNight ? `${lastNight.hours}-${lastNight.wake_feeling}` : "none"}
             night={night}
-            logged={lastNight ? { hours: Number(lastNight.hours), wake_feeling: lastNight.wake_feeling, flags: lastNight.flags ?? [], note: lastNight.note } : null}
+            logged={lastNight ? { hours: Number(lastNight.hours), wake_feeling: lastNight.wake_feeling, flags: lastNight.flags ?? [], note: lastNight.note ?? null } : null}
             bars={Array.from({ length: 7 }, (_, i) => { const n = addDays(today, i - 7); return { night: n, hours: byNight.get(n) ?? null }; })}
           />
           <StepsCard

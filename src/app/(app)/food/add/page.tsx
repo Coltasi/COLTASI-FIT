@@ -15,7 +15,7 @@ export default async function AddFoodPage({ searchParams }: { searchParams: Prom
     <main className="screen">
       <BackHeader href={day === today ? "/food" : `/food?day=${day}`} label="Food" eyebrow={day === today ? "Today" : day} title="Add food" />
       <AddFood day={day} back={day === today ? "/food" : `/food?day=${day}`}
-        saved={((saved ?? []) as any[]).map((s) => ({
+        saved={((saved ?? []) as { id: string; name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null; base_g: number | null; pack_g: number | null; last_amount: number | null }[]).map((s) => ({
           id: s.id, name: s.name, lastAmount: s.last_amount == null ? null : Number(s.last_amount),
           label: { kcal: Number(s.kcal), protein_g: Number(s.protein_g), carbs_g: opt(s.carbs_g), fat_g: opt(s.fat_g), baseG: opt(s.base_g), packG: opt(s.pack_g) },
         }))} />

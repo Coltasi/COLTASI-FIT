@@ -25,6 +25,11 @@ const OWED_DAYS = 7;
  * Skipped lifts still owed: skipped in the last 7 days, not dropped, not done since, and the
  * same workout day hasn't come round again (then it's just part of that day as usual).
  */
+type SkipRow = {
+  id: string; exercise_id: string; skipped_reason: SkipReason; owed_cleared: boolean; skill: boolean; exercises: { name: string } | null;
+  sessions: { id: string; day_id: string | null; title: string; session_date: string; status: string; started_at: string };
+};
+
 export async function getOwed(supabase: Supa, today: string): Promise<Owed[]> {
   const since30 = addDays(today, -30);
   const [{ data: skipped }, { data: exRows }] = await Promise.all([
@@ -36,7 +41,7 @@ export async function getOwed(supabase: Supa, today: string): Promise<Owed[]> {
       .gte("sessions.session_date", since30),
     supabase.from("exercises").select("id, name, created_by, created_at"),
   ]);
-  const rows = ((skipped ?? []) as any[]).filter((r) => !r.skill);
+  const rows = ((skipped ?? []) as unknown as SkipRow[]).filter((r) => !r.skill);
   if (!rows.length) return [];
   const { keyById, byKey } = groupExercises((exRows ?? []) as ExerciseRow[]);
   const keyOf = (id: string) => keyById.get(id) ?? id;
@@ -68,8 +73,8 @@ export async function getOwed(supabase: Supa, today: string): Promise<Owed[]> {
     const k = keyOf(r.exercise_id);
     if (seen.has(k)) continue;
     const at = r.sessions.started_at as string;
-    const redone = ((doneSince ?? []) as any[]).some((d) => keyOf(d.exercise_id) === k && d.sessions.started_at > at);
-    const dayAgain = r.sessions.day_id && ((laterDays ?? []) as any[]).some((d) => d.day_id === r.sessions.day_id && d.started_at > at);
+    const redone = ((doneSince ?? []) as unknown as { exercise_id: string; sessions: { started_at: string } }[]).some((d) => keyOf(d.exercise_id) === k && d.sessions.started_at > at);
+    const dayAgain = r.sessions.day_id && ((laterDays ?? []) as { day_id: string; started_at: string }[]).some((d) => d.day_id === r.sessions.day_id && d.started_at > at);
     if (redone || dayAgain) continue;
     seen.add(k);
     out.push({
