@@ -21,7 +21,8 @@ const METRICS: { key: MetricKey; label: string; pctLabel: string; color: string;
 ];
 const STORE_KEY = "coltasi.bodycomp.selected";
 const MODE_KEY = "coltasi.bodycomp.mode";
-const RANGES = [{ k: "1m", l: "1M", days: 31 }, { k: "3m", l: "3M", days: 91 }, { k: "6m", l: "6M", days: 183 }, { k: "all", l: "All", days: null }] as const;
+// Same ranges and look as the Food deficit card. YTD runs from 1 January of the latest point's year.
+const RANGES = [{ k: "1w", l: "1W", days: 7 }, { k: "1m", l: "1M", days: 31 }, { k: "3m", l: "3M", days: 91 }, { k: "6m", l: "6M", days: 183 }, { k: "ytd", l: "YTD", days: null }, { k: "1y", l: "1Y", days: 365 }] as const;
 type RangeKey = (typeof RANGES)[number]["k"];
 
 const goodColor = (d: number, goodDown: boolean | null) =>
@@ -38,7 +39,7 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
   const [, startUnits] = useTransition();
   const [units, setUnits] = useState<Units>(initialUnits);
   const [mode, setMode] = useState<Mode>("mass");
-  const [range, setRange] = useState<RangeKey>("all");
+  const [range, setRange] = useState<RangeKey>("1y");
   const [selKey, setSelKey] = useState<MetricKey>("weight");
   const [pick, setPick] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -76,9 +77,9 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
 
   const lastDate = useMemo(() => METRICS.flatMap((m) => full[m.key].map((p) => p.d)).sort().at(-1), [full]);
   const series = useMemo(() => {
+    if (!lastDate) return full;
     const days = RANGES.find((r) => r.k === range)?.days;
-    if (!days || !lastDate) return full;
-    const cut = addDays(lastDate, -days);
+    const cut = range === "ytd" ? `${lastDate.slice(0, 4)}-01-01` : addDays(lastDate, -(days ?? 365));
     // A metric with fewer than two points in the window keeps its full history rather than showing a single dot.
     return Object.fromEntries(METRICS.map((m) => {
       const inRange = full[m.key].filter((p) => p.d >= cut);
@@ -124,16 +125,12 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
 
   return (
     <div className="card" style={{ padding: "16px 16px 12px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
-        <p className="sec">Trend</p>
-        <div role="group" aria-label="Time range" style={{ display: "flex", gap: 2, background: "var(--tint-neutral)", borderRadius: 12, padding: 3 }}>
-          {RANGES.map((r) => (
-            <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setPick(null); }}
-              style={{ height: 40, minWidth: 44, borderRadius: 9, border: 0, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
-                background: range === r.k ? "#fff" : "transparent", color: range === r.k ? "var(--navy)" : "var(--muted)",
-                boxShadow: range === r.k ? "0 1px 2px rgba(0,0,0,.08)" : "none" }}>{r.l}</button>
-          ))}
-        </div>
+      <p className="sec" style={{ marginBottom: 12 }}>Trend</p>
+      <div role="group" aria-label="Time range" style={{ display: "grid", gridTemplateColumns: `repeat(${RANGES.length}, minmax(0,1fr))`, gap: 6, marginBottom: 12 }}>
+        {RANGES.map((r) => (
+          <button key={r.k} type="button" aria-pressed={range === r.k} onClick={() => { setRange(r.k); setPick(null); }}
+            className="pill" style={{ padding: 0, minWidth: 0, ...(range === r.k ? { background: "var(--rust)", borderColor: "var(--rust)", color: "#fff", fontWeight: 800 } : {}) }}>{r.l}</button>
+        ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 8, marginBottom: 12 }}>
