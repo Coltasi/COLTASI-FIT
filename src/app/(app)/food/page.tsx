@@ -11,15 +11,17 @@ import { EditFoods } from "./edit-foods";
 import { macroLine } from "@/lib/portion";
 import type { FoodRow } from "@/lib/rows";
 
-export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string; view?: string }> }) {
+export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string; view?: string; range?: string }> }) {
   const { supabase, today, profile, units } = await getContext();
   const sp = await searchParams;
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -FOOD_DAYS_BACK) ? sp.day : today;
   const view = sp.view === "week" ? "week" : "day";
+  const range: Range = sp.range === "1m" || sp.range === "3m" ? sp.range : "week";
+  const rangeStart = addDays(sundayOf(today), -7 * (RANGE_WEEKS[range] - 1));
   const [{ data: rows }, energy, { data: week }, { data: lastWeigh }, { data: lastScan }] = await Promise.all([
     supabase.from("food_logs").select("id, name, kcal, protein_g, carbs_g, fat_g, portion, source").eq("day", day).order("created_at"),
     getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week)),
-    supabase.from("food_logs").select("day, kcal, protein_g").gte("day", sundayOf(today)).lte("day", today),
+    supabase.from("food_logs").select("day, kcal, protein_g").gte("day", rangeStart).lte("day", today),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     supabase.from("scans").select("scanned_on, weight_kg").not("weight_kg", "is", null).order("scanned_on", { ascending: false }).limit(1),
   ]);
@@ -82,8 +84,8 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
 
       <section className="feature" aria-label="Nutrition summary" style={{ padding: 20, gap: 20, borderRadius: 20 }}>
         <div role="tablist" aria-label="Summary view" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 4, background: "var(--navy-2)", borderRadius: 12, padding: 4 }}>
-          {([["day", "Today"], ["week", "This week"]] as const).map(([v, label]) => (
-            <Link key={v} prefetch={false} href={q(v === "week" ? { view: "week" } : {})} role="tab" aria-selected={view === v} replace scroll={false}
+          {([["day", "Today"], ["week", "Deficit"]] as const).map(([v, label]) => (
+            <Link key={v} prefetch={false} href={q(v === "week" ? { view: "week", ...(range !== "week" ? { range } : {}) } : {})} role="tab" aria-selected={view === v} replace scroll={false}
               style={{ minHeight: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 700, textDecoration: "none",
                 background: view === v ? "#fff" : "transparent", color: view === v ? "var(--navy)" : "var(--on-navy-muted)" }}>
               {v === "day" && day !== today ? "Day" : label}
@@ -105,7 +107,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
             <TdeeBlock energy={energy} sub={tK ? `Your target: ${tK.toLocaleString("en-US")} kcal` : null} />
           </>
         ) : (
-          <WeekView today={today} day={day} totals={totals} energy={energy} proteinTarget={tP} currentKg={currentKg} goalKg={profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg)} units={units} />
+          <WeekView today={today} day={day} range={range} totals={totals} energy={energy} proteinTarget={tP} currentKg={currentKg} goalKg={profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg)} units={units} />
         )}
       </section>
 
@@ -188,6 +190,10 @@ const sw = { display: "inline-block", width: 14, height: 14, borderRadius: 4 } a
 const fmtShortDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 /** Sunday that starts the week containing `iso` (week strips are Sunday-first). */
+type Range = "week" | "1m" | "3m";
+/** Weeks shown per range (Sunday-start weeks, the current one included). */
+const RANGE_WEEKS: Record<Range, number> = { week: 1, "1m": 5, "3m": 13 };
+
 function sundayOf(iso: string): string {
   return addDays(iso, -new Date(iso + "T12:00:00Z").getUTCDay());
 }
@@ -218,12 +224,13 @@ function TdeeBlock({ energy, sub }: { energy: Energy; sub: string | null }) {
 const fmtDM = (iso: string) => new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 /** This week (Sun to Sat): deficit vs TDEE, the chart, then weight, protein and goal rows. */
-function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg, units }: {
-  today: string; day: string; totals: Map<string, DayTotal>; energy: Energy; proteinTarget: number | null; currentKg: number | null; goalKg: number | null; units: Units;
+function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg, goalKg, units }: {
+  today: string; day: string; range: Range; totals: Map<string, DayTotal>; energy: Energy; proteinTarget: number | null; currentKg: number | null; goalKg: number | null; units: Units;
 }) {
   const tdee = energy.tdee;
-  const start = sundayOf(today);
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const nWeeks = RANGE_WEEKS[range];
+  const start = addDays(sundayOf(today), -7 * (nWeeks - 1));
+  const days = Array.from({ length: 7 * nWeeks }, (_, i) => {
     const d = addDays(start, i);
     const t = totals.get(d);
     const kcal = t?.kcal ?? 0;
@@ -236,7 +243,24 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
   const under = total >= 0;
   const kg = Math.abs(total) / KCAL_PER_KG;
   const H = 140;
-  const top = Math.max((tdee ?? 2500) * 1.06, ...days.map((x) => x.kcal));
+  // One bar per day for a week; one bar per week (average of its full days) for 1 and 3 months.
+  type Bar = { key: string; label: string; strong: boolean; kcal: number; full: boolean; partial: boolean; future: boolean; isToday: boolean; href: string | null; aria: string };
+  const bars: Bar[] = range === "week"
+    ? days.map((x) => ({
+        key: x.d, label: new Date(x.d + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "narrow", timeZone: "UTC" }), strong: x.isToday || x.d === day,
+        kcal: x.kcal, full: x.full, partial: !x.full && x.kcal > 0, future: x.future, isToday: x.isToday,
+        href: x.isToday ? "/food?view=week" : `/food?day=${x.d}&view=week`,
+        aria: `${x.d}: ${x.kcal ? `${Math.round(x.kcal)} kcal${x.full ? "" : ", not a full day"}` : "nothing logged"}`,
+      }))
+    : Array.from({ length: nWeeks }, (_, wk) => {
+        const wd = days.slice(wk * 7, wk * 7 + 7), f = wd.filter((x) => x.full);
+        const avg = f.length ? f.reduce((a, x) => a + x.kcal, 0) / f.length : 0;
+        const first = wd[0].d, month = first.slice(5, 7), prevMonth = wk ? days[(wk - 1) * 7].d.slice(5, 7) : "";
+        const label = range === "1m" ? fmtDM(first) : month !== prevMonth ? new Date(first + "T12:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }) : "";
+        return { key: first, label, strong: wk === nWeeks - 1, kcal: avg, full: f.length > 0, partial: false, future: false, isToday: false, href: null,
+          aria: `Week of ${fmtDM(first)}: ${f.length ? `average ${Math.round(avg)} kcal over ${f.length} full day${f.length === 1 ? "" : "s"}` : "no full days"}` };
+      });
+  const top = Math.max((tdee ?? 2500) * 1.06, ...bars.map((x) => x.kcal));
   const px = (k: number) => Math.round((k / top) * H);
   const rate = energy.rateKgWeek;
   const hits = proteinTarget ? fullDays.map((x) => x.protein >= proteinTarget) : [];
@@ -263,6 +287,14 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
 
   return (
     <>
+      <div role="group" aria-label="Time range" style={{ display: "flex", gap: 8, marginTop: -4 }}>
+        {(["week", "1m", "3m"] as const).map((r) => (
+          <Link key={r} prefetch={false} replace scroll={false} href={`/food?view=week${r === "week" ? "" : `&range=${r}`}`} aria-current={range === r ? "true" : undefined}
+            className="pill" style={range === r ? { background: "#fff", color: "var(--navy)", fontWeight: 700 } : undefined}>
+            {r === "week" ? "This week" : r === "1m" ? "1 month" : "3 months"}
+          </Link>
+        ))}
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
           <p className="num" style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1 }}>
@@ -270,8 +302,8 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
           </p>
           <p style={{ fontSize: 17, color: "var(--on-navy-muted)", marginTop: 8, lineHeight: 1.4 }}>
             {!tdee ? "Log a Tanita scan so your TDEE can be worked out."
-              : !has ? "No full days yet this week. Today counts once it's over."
-              : `${under ? "under" : "over"} your TDEE${kg >= 0.05 ? `, about ${kg.toFixed(1)} kg of fat` : ""}`}
+              : !has ? (range === "week" ? "No full days yet this week. Today counts once it's over." : "No full days logged in this period yet.")
+              : `${under ? "under" : "over"} your TDEE${kg >= 0.05 ? `, about ${kg.toFixed(1)} kg of fat` : ""}${range === "week" ? "" : ` over ${counted.length} full day${counted.length === 1 ? "" : "s"}`}`}
           </p>
         </div>
         {has ? (
@@ -285,37 +317,35 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
 
       {tdee ? (
         <div>
-          <div role="img" aria-label="Calories eaten each day this week against your TDEE"
-            style={{ position: "relative", height: H, display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 8, alignItems: "end" }}>
+          <div role="img" aria-label={range === "week" ? "Calories eaten each day this week against your TDEE" : "Average calories eaten each week against your TDEE"}
+            style={{ position: "relative", height: H, display: "grid", gridTemplateColumns: `repeat(${bars.length}, minmax(0,1fr))`, gap: bars.length > 8 ? 4 : 8, alignItems: "end" }}>
             <div aria-hidden style={{ position: "absolute", left: 0, right: 0, bottom: px(tdee), borderTop: "3px dashed #f08a5d" }} />
-            {days.map((x) => {
+            {bars.map((x) => {
               const eat = px(Math.min(x.kcal, tdee));
               const gap = x.full ? px(Math.max(0, tdee - x.kcal)) : 0;
               const over = x.full || x.isToday ? px(Math.max(0, x.kcal - tdee)) : 0;
-              const partial = !x.full && x.kcal > 0;
+              const bw = bars.length > 8 ? "80%" : 26;
               const inner = (
                 <>
-                  {over ? <span style={{ width: 26, height: over, background: C_OVER, borderRadius: "6px 6px 0 0" }} /> : null}
-                  {gap ? <span style={{ width: 26, height: gap, background: C_DEFICIT, opacity: 0.85, borderRadius: "6px 6px 0 0" }} /> : null}
-                  {eat ? <span style={{ width: 26, height: eat, boxSizing: "border-box", background: partial ? "transparent" : C_EATEN, border: partial ? `2px dashed ${C_EATEN}` : undefined, borderRadius: over || gap ? 0 : "6px 6px 0 0" }} /> : null}
+                  {over ? <span style={{ width: bw, height: over, background: C_OVER, borderRadius: "6px 6px 0 0" }} /> : null}
+                  {gap ? <span style={{ width: bw, height: gap, background: C_DEFICIT, opacity: 0.85, borderRadius: "6px 6px 0 0" }} /> : null}
+                  {eat ? <span style={{ width: bw, height: eat, boxSizing: "border-box", background: x.partial ? "transparent" : C_EATEN, border: x.partial ? `2px dashed ${C_EATEN}` : undefined, borderRadius: over || gap ? 0 : "6px 6px 0 0" }} /> : null}
                 </>
               );
               const col = { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: H } as const;
-              return x.future ? <div key={x.d} style={col} /> : (
-                <Link prefetch={false} key={x.d} href={x.isToday ? "/food?view=week" : `/food?day=${x.d}&view=week`}
-                  aria-label={`${x.d}: ${x.kcal ? `${Math.round(x.kcal)} kcal${x.full ? "" : ", not a full day"}` : "nothing logged"}`} style={col}>
-                  {inner}
-                </Link>
-              );
+              return x.future ? <div key={x.key} style={col} />
+                : x.href ? <Link prefetch={false} key={x.key} href={x.href} aria-label={x.aria} style={col}>{inner}</Link>
+                : <div key={x.key} aria-label={x.aria} style={col}>{inner}</div>;
             })}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0,1fr))", gap: 8, marginTop: 8 }}>
-            {days.map((x) => (
-              <p key={x.d} style={{ textAlign: "center", fontSize: 15, fontWeight: x.isToday || x.d === day ? 800 : 500, color: x.isToday || x.d === day ? "#fff" : "var(--on-navy-muted)" }}>
-                {new Date(x.d + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "narrow", timeZone: "UTC" })}
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${bars.length}, minmax(0,1fr))`, gap: bars.length > 8 ? 4 : 8, marginTop: 8 }}>
+            {bars.map((x) => (
+              <p key={x.key} style={{ textAlign: range === "3m" ? "left" : "center", whiteSpace: "nowrap", overflow: "visible", fontSize: 15, fontWeight: x.strong ? 800 : 500, color: x.strong ? "#fff" : "var(--on-navy-muted)" }}>
+                {x.label}
               </p>
             ))}
           </div>
+          {range !== "week" ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)", marginTop: 10 }}>Each bar is one week: your average on fully logged days.</p> : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 16, fontSize: 15, color: "var(--on-navy-muted)" }}>
             <span style={legend}><i style={{ ...sw, background: C_EATEN }} />Eaten</span>
             <span style={legend}><i style={{ ...sw, background: C_DEFICIT }} />Deficit</span>
@@ -332,11 +362,11 @@ function WeekView({ today, day, totals, energy, proteinTarget, currentKg, goalKg
           <div style={rowStyle}>
             <span>
               <span style={{ display: "block", fontSize: 17, fontWeight: 600 }}>Protein</span>
-              <span style={rowSub}>Days you hit {proteinTarget} g</span>
+              <span style={rowSub}>Full days you hit {proteinTarget} g</span>
             </span>
             <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
               <span className="num" style={{ fontSize: 22, fontWeight: 800, color: C_PROTEIN, whiteSpace: "nowrap" }}>{hits.length ? `${hits.filter(Boolean).length} of ${hits.length}` : "–"}</span>
-              {hits.length ? (
+              {hits.length && range === "week" ? (
                 <span style={{ display: "flex", gap: 6 }} aria-hidden>
                   {hits.map((h, i) => <i key={i} style={{ width: 12, height: 12, borderRadius: 999, boxSizing: "border-box", display: "inline-block", background: h ? C_PROTEIN : "transparent", border: h ? undefined : `2px solid ${C_PROTEIN}` }} />)}
                 </span>
