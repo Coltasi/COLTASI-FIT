@@ -38,20 +38,26 @@ export default async function ProgressBodyPage() {
   const due = WEIGH_DAYS.includes(dowToday) && !loggedToday;
   const nextLabelDay = loggedToday || !WEIGH_DAYS.includes(dowToday) ? nextWeigh : today;
 
-  // Overlay series, all as mass in kg so they share one axis.
-  const num = (v: unknown) => (v == null ? null : Number(v));
+  // Body comp series: each scan point as a mass (kg) and as a % of that scan's body weight,
+  // whichever the Tanita stored, with the other worked out from the weight.
+  const num = (v: unknown) => (v == null || Number.isNaN(Number(v)) ? null : Number(v));
   const asc = [...scans].reverse();
   const scanSet = new Set(scans.map((s) => s.scanned_on as string));
-  const scanSeries = (pick: (s: (typeof scans)[number]) => number | null): CompPoint[] =>
-    asc.map((s) => ({ d: s.scanned_on as string, kg: pick(s), src: "scan" as CompPoint["src"] }))
-      .filter((p): p is CompPoint => p.kg != null && !Number.isNaN(p.kg));
+  type Scan = (typeof scans)[number];
+  const ofWeight = (s: Scan, kg: number | null, pct: number | null) => ({
+    kg: kg ?? (pct != null && s.weight_kg != null ? (pct * s.weight_kg) / 100 : null),
+    pct: pct ?? (kg != null && s.weight_kg ? (kg / s.weight_kg) * 100 : null),
+  });
+  const scanSeries = (pick: (s: Scan) => { kg: number | null; pct: number | null }): CompPoint[] =>
+    asc.map((s) => ({ d: s.scanned_on as string, ...pick(s), src: "scan" as const }))
+      .filter((p) => p.kg != null || p.pct != null);
   const compSeries: Record<MetricKey, CompPoint[]> = {
     weight: series
       .filter((p) => p.src === "scan" || !scanSet.has(p.d))
-      .map((p) => ({ d: p.d, kg: p.kg, src: p.src as CompPoint["src"] })),
-    muscle: scanSeries((s) => num(s.muscle_mass_kg)),
-    water: scanSeries((s) => (s.water_pct != null && s.weight_kg != null ? (Number(s.water_pct) * s.weight_kg) / 100 : null)),
-    fat: scanSeries((s) => num(s.fat_mass_kg) ?? (s.body_fat_pct != null && s.weight_kg != null ? (Number(s.body_fat_pct) * s.weight_kg) / 100 : null)),
+      .map((p) => ({ d: p.d, kg: p.kg, pct: null, src: p.src as CompPoint["src"] })),
+    muscle: scanSeries((s) => ofWeight(s, num(s.muscle_mass_kg), null)),
+    water: scanSeries((s) => ofWeight(s, null, num(s.water_pct))),
+    fat: scanSeries((s) => ofWeight(s, num(s.fat_mass_kg), num(s.body_fat_pct))),
   };
 
   // Hero: where weight is, how far it has come, and the recent rate against the target rate.
