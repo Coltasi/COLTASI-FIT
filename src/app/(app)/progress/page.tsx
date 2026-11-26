@@ -75,6 +75,11 @@ export default async function ProgressBodyPage() {
   const phase = profile.phase ? profile.phase[0].toUpperCase() + profile.phase.slice(1) : null;
   const conv = (kg: number) => (units === "imperial" ? kg * 2.20462 : kg);
   const total = latest && firstPt && latest.d !== firstPt.d ? conv(latest.kg) - conv(firstPt.kg) : null;
+  // Binary progress colour: green when moving the right way at (or above) roughly target pace, red otherwise.
+  const goingRight = (v: number | null) => (v == null || target == null || target === 0 ? null : Math.sign(v) === Math.sign(target));
+  const onPace = rate != null && target != null && target !== 0 ? goingRight(rate) && Math.abs(rate) >= Math.abs(target) * 0.7 : null;
+  const GOOD = "#4fc59f", BAD = "#f08a7a";
+  const totalGood = goingRight(total);
 
   return (
     <main className="screen" style={{ gap: 22 }}>
@@ -85,10 +90,10 @@ export default async function ProgressBodyPage() {
         <section className="feature" aria-label="Weight">
           <p className="eyebrow">Current weight</p>
           <p className="feature-title" style={{ fontSize: 40 }}>{w(latest.kg, units)} {unit(units)}</p>
-          {total != null ? <p style={{ fontSize: 17 }}>{signed(total)} {unit(units)} since {fmtDay(firstPt.d)}</p> : null}
+          {total != null ? <p style={{ fontSize: 17 }}><b style={{ color: totalGood == null ? undefined : totalGood ? GOOD : BAD }}>{signed(total)} {unit(units)}</b> since {fmtDay(firstPt.d)}</p> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 6 }}>
-            <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
-              <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>Recent rate</p>
+            <div style={{ background: onPace == null ? "var(--navy-2)" : onPace ? "var(--jade)" : "var(--crimson)", borderRadius: 14, padding: "12px 14px" }}>
+              <p style={{ fontSize: 15, color: onPace == null ? "var(--on-navy-muted)" : "#fff" }}>Recent rate</p>
               <p className="num" style={{ fontSize: 20 }}>{rate != null ? `${signed(conv(rate))} ${unit(units)}/wk` : "Need more weigh-ins"}</p>
             </div>
             <div style={{ background: "var(--navy-2)", borderRadius: 14, padding: "12px 14px" }}>
@@ -96,12 +101,14 @@ export default async function ProgressBodyPage() {
               <p className="num" style={{ fontSize: 20 }}>{target != null ? `${signed(conv(target))} ${unit(units)}/wk` : "Not set"}</p>
             </div>
           </div>
-          {rate != null && target != null && target !== 0 ? (
-            <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
-              {Math.sign(rate) !== Math.sign(target) ? "Moving the other way from your target over the last six weeks."
-                : Math.abs(rate) < Math.abs(target) * 0.7 ? "Slower than your target over the last six weeks."
-                : Math.abs(rate) > Math.abs(target) * 1.3 ? "Faster than your target over the last six weeks."
-                : "On pace with your target over the last six weeks."}
+          {onPace != null ? (
+            <p style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 600, color: onPace ? GOOD : BAD }}>
+              <span aria-hidden="true" style={{ width: 24, height: 24, borderRadius: "50%", background: onPace ? GOOD : BAD, color: "var(--navy)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">{onPace ? <path d="m5 12 5 5 9-10" /> : <path d="M12 7v6M12 17h.01" />}</svg>
+              </span>
+              {!onPace
+                ? (Math.sign(rate!) !== Math.sign(target!) ? "Moving the wrong way over the last six weeks." : "Behind your target over the last six weeks.")
+                : Math.abs(rate!) > Math.abs(target!) * 1.3 ? "Ahead of your target over the last six weeks." : "On pace with your target over the last six weeks."}
             </p>
           ) : null}
         </section>

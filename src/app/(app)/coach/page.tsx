@@ -88,7 +88,7 @@ export default async function CoachPage() {
         <p className="feature-title" style={{ fontSize: 22 }}>{head ?? "Your briefing builds as you log workouts, sleep and weigh-ins."}</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 4 }}>
           {ind("Workouts", String(week.doneThisWeek), "this week")}
-          {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need more weigh-ins", behind ? "#f2b89c" : undefined)}
+          {ind("Weight trend", rate != null ? `${signed(conv(rate))}` : "–", rate != null ? `${unit(units)}/wk${target != null ? ` · target ${signed(conv(target), 2)}` : ""}` : "need more weigh-ins", rate == null || target == null ? undefined : behind ? "#f08a7a" : "#4fc59f")}
           {ind("Avg sleep", avgSleep != null ? `${avgSleep.toFixed(1)} h` : "–", avgSleep != null ? "last 7 nights" : "log sleep on Today")}
           {ind("Avg steps", stepAvg != null ? fmtK(stepAvg) : "–", stepAvg != null ? "last 7 days" : "log steps on Today")}
         </div>
