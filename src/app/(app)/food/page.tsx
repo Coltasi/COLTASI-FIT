@@ -16,8 +16,8 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const day = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) && sp.day <= today && sp.day >= addDays(today, -FOOD_DAYS_BACK) ? sp.day : today;
   const view = sp.view === "week" ? "week" : "day";
-  const range: Range = sp.range === "1m" || sp.range === "3m" ? sp.range : "week";
-  const rangeStart = addDays(sundayOf(today), -7 * (RANGE_WEEKS[range] - 1));
+  const range: Range = (RANGES as readonly string[]).includes(sp.range ?? "") ? (sp.range as Range) : "week";
+  const rangeStart = startOfRange(range, today);
   const [{ data: rows }, energy, { data: week }, { data: lastWeigh }, { data: lastScan }] = await Promise.all([
     supabase.from("food_logs").select("id, name, kcal, protein_g, carbs_g, fat_g, portion, source").eq("day", day).order("created_at"),
     getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week)),
@@ -190,9 +190,35 @@ const sw = { display: "inline-block", width: 14, height: 14, borderRadius: 4 } a
 const fmtShortDay = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
 /** Sunday that starts the week containing `iso` (week strips are Sunday-first). */
-type Range = "week" | "1m" | "3m";
-/** Weeks shown per range (Sunday-start weeks, the current one included). */
-const RANGE_WEEKS: Record<Range, number> = { week: 1, "1m": 5, "3m": 13 };
+const RANGES = ["week", "1m", "3m", "6m", "ytd", "1y"] as const;
+type Range = (typeof RANGES)[number];
+const RANGE_LABEL: Record<Range, string> = { week: "1 week", "1m": "1 month", "3m": "3 months", "6m": "6 months", ytd: "YTD", "1y": "1 year" };
+/** 1 and 3 months chart one bar per week; longer ranges one bar per month. */
+const WEEKLY = new Set<Range>(["1m", "3m"]);
+
+const daysBetweenIso = (a: string, b: string) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
+const monthStart = (iso: string, back: number) => { const d = new Date(iso.slice(0, 7) + "-01T12:00:00Z"); d.setUTCMonth(d.getUTCMonth() - back); return d.toISOString().slice(0, 10); };
+
+/** First day shown: this Sunday for a week, whole Sunday-start weeks for 1 and 3 months, whole months for the rest. */
+function startOfRange(r: Range, today: string): string {
+  if (r === "week") return sundayOf(today);
+  if (r === "1m") return addDays(sundayOf(today), -7 * 4);
+  if (r === "3m") return addDays(sundayOf(today), -7 * 12);
+  if (r === "6m") return monthStart(today, 5);
+  if (r === "ytd") return today.slice(0, 4) + "-01-01";
+  return monthStart(today, 11);
+}
+
+/** Splits days into Sunday-start weeks (1 and 3 months) or calendar months (longer ranges). */
+function groupDays<T extends { d: string }>(days: T[], r: Range): { days: T[] }[] {
+  const out: { key: string; days: T[] }[] = [];
+  for (const x of days) {
+    const key = WEEKLY.has(r) ? sundayOf(x.d) : x.d.slice(0, 7);
+    if (out.at(-1)?.key !== key) out.push({ key, days: [] });
+    out.at(-1)!.days.push(x);
+  }
+  return out;
+}
 
 function sundayOf(iso: string): string {
   return addDays(iso, -new Date(iso + "T12:00:00Z").getUTCDay());
@@ -228,9 +254,9 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
   today: string; day: string; range: Range; totals: Map<string, DayTotal>; energy: Energy; proteinTarget: number | null; currentKg: number | null; goalKg: number | null; units: Units;
 }) {
   const tdee = energy.tdee;
-  const nWeeks = RANGE_WEEKS[range];
-  const start = addDays(sundayOf(today), -7 * (nWeeks - 1));
-  const days = Array.from({ length: 7 * nWeeks }, (_, i) => {
+  const start = startOfRange(range, today);
+  const nDays = daysBetweenIso(start, today) + 1 + (range === "week" ? 6 - daysBetweenIso(start, today) : 0);
+  const days = Array.from({ length: nDays }, (_, i) => {
     const d = addDays(start, i);
     const t = totals.get(d);
     const kcal = t?.kcal ?? 0;
@@ -252,13 +278,17 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
         href: x.isToday ? "/food?view=week" : `/food?day=${x.d}&view=week`,
         aria: `${x.d}: ${x.kcal ? `${Math.round(x.kcal)} kcal${x.full ? "" : ", not a full day"}` : "nothing logged"}`,
       }))
-    : Array.from({ length: nWeeks }, (_, wk) => {
-        const wd = days.slice(wk * 7, wk * 7 + 7), f = wd.filter((x) => x.full);
+    : groupDays(days, range).map((g, gi, all) => {
+        const f = g.days.filter((x) => x.full);
         const avg = f.length ? f.reduce((a, x) => a + x.kcal, 0) / f.length : 0;
-        const first = wd[0].d, month = first.slice(5, 7), prevMonth = wk ? days[(wk - 1) * 7].d.slice(5, 7) : "";
-        const label = range === "1m" ? fmtDM(first) : month !== prevMonth ? new Date(first + "T12:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }) : "";
-        return { key: first, label, strong: wk === nWeeks - 1, kcal: avg, full: f.length > 0, partial: false, future: false, isToday: false, href: null,
-          aria: `Week of ${fmtDM(first)}: ${f.length ? `average ${Math.round(avg)} kcal over ${f.length} full day${f.length === 1 ? "" : "s"}` : "no full days"}` };
+        const first = g.days[0].d;
+        const monthName = (iso: string, style: "short" | "narrow") => new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { month: style, timeZone: "UTC" });
+        const label = range === "1m" ? fmtDM(first)
+          : range === "3m" ? (gi === 0 || first.slice(5, 7) !== all[gi - 1].days[0].d.slice(5, 7) ? monthName(first, "short") : "")
+          : monthName(first, all.length > 7 ? "narrow" : "short");
+        const what = WEEKLY.has(range) ? `Week of ${fmtDM(first)}` : monthName(first, "short");
+        return { key: first, label, strong: gi === all.length - 1, kcal: avg, full: f.length > 0, partial: false, future: false, isToday: false, href: null,
+          aria: `${what}: ${f.length ? `average ${Math.round(avg)} kcal over ${f.length} full day${f.length === 1 ? "" : "s"}` : "no full days"}` };
       });
   const top = Math.max((tdee ?? 2500) * 1.06, ...bars.map((x) => x.kcal));
   const px = (k: number) => Math.round((k / top) * H);
@@ -287,11 +317,11 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
 
   return (
     <>
-      <div role="group" aria-label="Time range" style={{ display: "flex", gap: 8, marginTop: -4 }}>
-        {(["week", "1m", "3m"] as const).map((r) => (
+      <div role="group" aria-label="Time range" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 8, marginTop: -4 }}>
+        {RANGES.map((r) => (
           <Link key={r} prefetch={false} replace scroll={false} href={`/food?view=week${r === "week" ? "" : `&range=${r}`}`} aria-current={range === r ? "true" : undefined}
             className="pill" style={range === r ? { background: "#fff", color: "var(--navy)", fontWeight: 700 } : undefined}>
-            {r === "week" ? "This week" : r === "1m" ? "1 month" : "3 months"}
+            {RANGE_LABEL[r]}
           </Link>
         ))}
       </div>
@@ -345,7 +375,7 @@ function WeekView({ today, day, range, totals, energy, proteinTarget, currentKg,
               </p>
             ))}
           </div>
-          {range !== "week" ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)", marginTop: 10 }}>Each bar is one week: your average on fully logged days.</p> : null}
+          {range !== "week" ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)", marginTop: 10 }}>Each bar is one {WEEKLY.has(range) ? "week" : "month"}: your average on fully logged days.</p> : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px", marginTop: 16, fontSize: 15, color: "var(--on-navy-muted)" }}>
             <span style={legend}><i style={{ ...sw, background: C_EATEN }} />Eaten</span>
             <span style={legend}><i style={{ ...sw, background: C_DEFICIT }} />Deficit</span>
