@@ -39,7 +39,7 @@ export function BodyCompChart({ series: raw, units: initialUnits }: { series: Re
   const [, startUnits] = useTransition();
   const [units, setUnits] = useState<Units>(initialUnits);
   const [mode, setMode] = useState<Mode>("mass");
-  const [range, setRange] = useState<RangeKey>("1y");
+  const [range, setRange] = useState<RangeKey>("1w");
   const [selKey, setSelKey] = useState<MetricKey>("weight");
   const [pick, setPick] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
