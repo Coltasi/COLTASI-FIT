@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { Profile } from "@/lib/data";
 import { saveProfile } from "../actions";
+import { w, unit } from "@/lib/units";
 
 function Field({ label, name, value, hint, inputMode = "decimal", placeholder }: {
   label: string; name: string; value: string | number | null | undefined; hint?: string; inputMode?: "decimal" | "numeric" | "text"; placeholder?: string;
@@ -43,6 +44,9 @@ export function ProfileForm({ profile: p }: { profile: Profile }) {
             <option value="cut">Cut</option><option value="maintain">Maintain</option><option value="bulk">Bulk</option>
           </select>
         </label>
+        <input type="hidden" name="units" value={p.units ?? "metric"} />
+        <input type="hidden" name="had_goal" value={p.goal_weight_kg == null ? "0" : "1"} />
+        <Field label={`Goal weight (${unit(p.units ?? "metric")})`} name="goal_weight" value={p.goal_weight_kg == null ? "" : w(p.goal_weight_kg, p.units ?? "metric")} hint="Where you want to end up. Nutrition shows when you'll get there at your current pace." placeholder={p.units === "imperial" ? "200" : "90"} />
         <Field label="Target rate (kg per week)" name="target_rate_kg_week" value={p.target_rate_kg_week == null ? "" : Math.abs(Number(p.target_rate_kg_week))} hint="How fast you aim to lose (cut) or gain (bulk). Coach compares your weigh-ins to this." placeholder="0.5" />
       </div>
 

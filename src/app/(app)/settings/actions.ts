@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { currentUser } from "@/lib/supabase/user";
+import { toKg } from "@/lib/units";
 
 async function ctx() {
   const supabase = await createClient();
@@ -35,12 +36,18 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
   const phase = String(fd.get("phase") ?? "cut");
   const sex = String(fd.get("sex") ?? "");
   const rate = n(fd.get("target_rate_kg_week"));
+  const goal = n(fd.get("goal_weight"));
+  const units = String(fd.get("units") ?? "metric") === "imperial" ? "imperial" : "metric";
+  const goalKg = goal == null ? null : toKg(goal, units);
+  if (goalKg != null && (goalKg < 30 || goalKg > 300)) return { error: "Goal weight looks off. Check the number and units." };
   const { error } = await supabase.from("profiles").update({
     display_name: String(fd.get("display_name") ?? "").trim() || null,
     height_cm: n(fd.get("height_cm")),
     sex: sex === "male" || sex === "female" ? sex : null,
     birth_year: n(fd.get("birth_year")),
     phase: ["cut", "maintain", "bulk"].includes(phase) ? phase : "cut",
+    // Only touch the goal column when there's a goal to save or clear.
+    ...(goalKg != null || fd.get("had_goal") === "1" ? { goal_weight_kg: goalKg == null ? null : Math.round(goalKg * 10) / 10 } : {}),
     target_rate_kg_week: rate == null ? null : phase === "cut" ? -Math.abs(rate) : phase === "bulk" ? Math.abs(rate) : 0,
     tdee_kcal: n(fd.get("tdee_kcal")),
     target_kcal: n(fd.get("target_kcal")),
@@ -49,7 +56,7 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
     fat_g: n(fd.get("fat_g")),
     kettlebells_kg: kbs.length ? kbs : [8, 12, 16, 20, 24, 30],
   }).eq("id", user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: /goal_weight_kg/.test(error.message) ? "Goal weight can't be saved yet: the database needs a quick update first." : error.message };
   revalidatePath("/", "layout");
   redirect("/settings");
 }

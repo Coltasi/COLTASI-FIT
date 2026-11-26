@@ -189,3 +189,7 @@ details.scans[open] .chev { transform: rotate(180deg); }
 details.saved-foods > summary::-webkit-details-marker { display: none; }
 details.saved-foods .chev { transition: transform .15s; flex-shrink: 0; }
 details.saved-foods[open] .chev { transform: rotate(180deg); }
+
+/* Native disclosure dropdowns (Nutrition page): no default marker, chevron flips when open. */
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary .chev { transform: rotate(180deg); }
