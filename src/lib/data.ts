@@ -13,7 +13,7 @@ export type Supa = Awaited<ReturnType<typeof createClient>>;
 export type Profile = {
   id: string; display_name: string | null; household_id: string | null; units: Units;
   height_cm: number | null; sex: string | null; birth_year: number | null;
-  phase: string; target_rate_kg_week: number | null; goal_weight_kg: number | null; tdee_kcal: number | null; target_kcal: number | null;
+  phase: string; target_rate_kg_week: number | null; goal_weight_kg: number | null; goal_body_fat_pct?: number | null; tdee_kcal: number | null; target_kcal: number | null;
   protein_g: number | null; carbs_g: number | null; fat_g: number | null; kettlebells_kg: number[];
   notify_weigh_in: boolean; weigh_in_time: string; notify_workout: boolean; workout_time: string;
   notify_sleep: boolean; sleep_time: string;

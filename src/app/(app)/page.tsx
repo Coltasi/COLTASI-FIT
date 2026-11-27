@@ -15,6 +15,8 @@ import { getOwed, owedFor, SKIP_LABEL } from "@/lib/owed";
 import { EffortTag } from "@/components/effort";
 import { effortCallout, gradeSession, type Effort, type LiftLike } from "@/lib/effort";
 import type { Num, NightRow, SignalsJson } from "@/lib/rows";
+import { daysBetween } from "@/lib/dates";
+import { pepTalk } from "@/lib/pep";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -33,6 +35,14 @@ export default async function OverviewPage() {
     getOwed(supabase, today),
     supabase.from("sessions").select("id, session_date, kind, title").eq("status", "done").gte("session_date", addDays(today, -400)).order("session_date"),
     supabase.from("food_logs").select("kcal, protein_g").eq("day", today),
+  ]);
+  // For the Coach's pep talk: yesterday's food, drink-free days, and where the goals stand.
+  const [{ data: recentFood }, { data: lastDrink }, { data: firstFood }, { data: lastScan }, { data: lastWeigh }] = await Promise.all([
+    supabase.from("food_logs").select("day, kcal, protein_g").gte("day", addDays(today, -7)).lt("day", today),
+    supabase.from("food_logs").select("day").eq("source", "drink").order("day", { ascending: false }).limit(1),
+    supabase.from("food_logs").select("day").order("day").limit(1),
+    supabase.from("scans").select("scanned_on, weight_kg, body_fat_pct").order("scanned_on", { ascending: false }).limit(1),
+    supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
   ]);
   const food = (foodRows ?? []) as { kcal: number; protein_g: Num }[];
   const foodKcal = food.reduce((s, r) => s + Number(r.kcal), 0);
@@ -108,6 +118,37 @@ export default async function OverviewPage() {
     </div>
   ) : null;
 
+  const yest = addDays(today, -1);
+  const kcalByDay = new Map<string, { kcal: number; protein: number }>();
+  for (const r of (recentFood ?? []) as { day: string; kcal: Num; protein_g: Num }[]) {
+    const t = kcalByDay.get(r.day) ?? { kcal: 0, protein: 0 };
+    t.kcal += Number(r.kcal); t.protein += Number(r.protein_g ?? 0);
+    kcalByDay.set(r.day, t);
+  }
+  const loggedDays = [...kcalByDay.values()].filter((t) => t.kcal >= 1000).length;
+  const y = kcalByDay.get(yest) ?? { kcal: 0, protein: 0 };
+  const drinkDay = (lastDrink?.[0] as { day: string } | undefined)?.day ?? null;
+  const foodStart = (firstFood?.[0] as { day: string } | undefined)?.day ?? null;
+  const dryFrom = drinkDay ? addDays(drinkDay, 1) : foodStart;
+  const before = calSessions.filter((x) => x.date < today).at(-1)?.date ?? null;
+  const scan = lastScan?.[0] as { scanned_on: string; weight_kg: Num | null; body_fat_pct: Num | null } | undefined;
+  const wi = lastWeigh?.[0] as { measured_on: string; weight_kg: Num } | undefined;
+  const nowKg = wi && (!scan?.weight_kg || wi.measured_on >= scan.scanned_on) ? Number(wi.weight_kg) : scan?.weight_kg != null ? Number(scan.weight_kg) : null;
+  const pep = pepTalk({
+    today, units,
+    inProgressTitle: week.inProgress?.title ?? null,
+    doneTodayTitle: doneToday ? doneToday[doneToday.length - 1].title : null,
+    nextDayName: day?.name ?? null,
+    workoutsThisWeek: weekCount,
+    daysSinceWorkout: before ? daysBetween(before, today) : null,
+    roughNight: !!lastNight && (Number(lastNight.hours) < 6 || ["groggy", "tired", "exhausted"].includes(lastNight.wake_feeling ?? "")),
+    yesterday: { ...y, logged: y.kcal >= 1000 },
+    targets: { kcal: profile.target_kcal ?? null, protein: profile.protein_g ?? null },
+    dryDays: dryFrom && loggedDays >= 4 ? daysBetween(dryFrom, today) : null,
+    bodyFat: { now: scan?.body_fat_pct == null ? null : Number(scan.body_fat_pct), goal: profile.goal_body_fat_pct == null ? null : Number(profile.goal_body_fat_pct) },
+    weight: { now: nowKg, goal: profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg) },
+  });
+
   // Contextual headline from today's actual training state, never a generic slogan.
   const headline = week.inProgress ? `${week.inProgress.title} in progress.`
     : doneToday ? `${doneToday[doneToday.length - 1].title} complete.`
@@ -137,11 +178,12 @@ export default async function OverviewPage() {
       <InstallCard />
 
       {latest ? (
-        <CoachRead feature read={latest} units={units} label={label} lead={lead} footer={footer} />
+        <CoachRead feature read={latest} units={units} label={label} lead={lead} footer={footer} pep={pep} />
       ) : (
         <section className="feature">
           {label}
-          <p className="feature-title" style={{ fontSize: 22 }}>Your first briefing arrives after your first session.</p>
+          <p className="feature-title" style={{ fontSize: 22 }}>{pep[0]}</p>
+          {pep[1] ? <p style={{ fontSize: 17, lineHeight: 1.45, color: "var(--on-navy)" }}>{pep[1]}</p> : null}
           {footer}
         </section>
       )}

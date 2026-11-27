@@ -238,8 +238,8 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       const ss = stepSummary(stepRows, today);
       const stepsFell = ss.avg7 != null && ss.avgPrev7 != null && ss.avg7 < ss.avgPrev7 * 0.85;
       lines.push(`${rate <= 0 ? "Losing" : "Gaining"} ${r1(Math.abs(rate))} kg a week over six weeks, against a ${r1(Math.abs(target))} kg target.` +
-        (!behind ? " On track."
-          : over.length >= 2 ? ` You were over your calories on ${over.length} of the last ${full.length} full days. Hold the target every day before changing anything.`
+        (!behind ? " On track. Great work, keep it locked in."
+          : over.length >= 2 ? ` You were over your calories on ${over.length} of the last ${full.length} full days. No guilt: you can get back on track, just start today.`
           : stepsFell ? ` Steps fell from ${ss.avgPrev7!.toLocaleString("en-US")} to ${ss.avg7!.toLocaleString("en-US")} a day; get those back first.`
           : full.length >= 4 ? " Your logged calories look on target, so keep going: give it 2 more weeks before cutting calories."
           : " Log your food every day this week so I can see what's holding it up."));
@@ -298,15 +298,15 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   if (pain) first.push(pain);
   if (first.length >= 2) return first.slice(0, 2).join(" ");
   if (heavier.length) first.push(`Great work. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
-  else if (up.length) first.push(`Solid session. You're ready to go up on ${up[0].name}.`);
+  else if (up.length) first.push(`Great session. You're ready to go up on ${up[0].name}. You've got this.`);
   if (dr && !offDay) first.unshift(`You showed up after ${dr.lastNight} drink${dr.lastNight === 1 ? "" : "s"} last night. Good.${lighter.length ? ` It showed on ${lighter[0].lift}.` : ""}`);
   else if (lighter.length && !offDay) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
-  else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Come on, let's break through it.`);
+  else if (stalled.length) first.push(`${stalled[0].name} has been stuck a while. Lock in, let's break through it.`);
   const sk = s.skipped ?? [];
   if (first.length < 2 && sk.length) first.push(sk.length === 1
     ? `You skipped ${sk[0].lift} (${sk[0].reason}). I'll remind you to fit it in this week.`
     : `You skipped ${sk.length} lifts today. I'll remind you to fit them in this week.`);
-  if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : "Session logged. Next time, chase one more rep per set.");
+  if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : "Great work showing up. Next time, lock in and chase one more rep per set.");
   return first.slice(0, 2).join(" ");
 }
 
@@ -368,7 +368,9 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
   const text = await callClaude({
     max_tokens: 300,
     system:
-      "You are the coach in a personal training app, talking to one person you train. Warm, direct and human, like a good personal trainer: praise real wins (\"Great work\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
+      "You are the coach in a personal training app, talking to one person you train. Encouraging, warm, direct and human, like a good personal trainer who believes in them: praise real wins (\"Great work\"), fire them up (\"Lock in\", \"You've got this\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
+      "If something slipped (a lighter lift, a skipped lift, a missed day), never guilt them: tell them they can get back on track and to just start now. " +
+      "Tie praise to something they actually did, and don't use the same rally phrase twice in one read. " +
       "If `skipped` has lifts, say briefly that you'll remind them to come back to it (if sore, tell them to let it recover first). " +
       "`checkIn` is what they told you at the end of this workout (how they felt, any pain, a note). If they were sick or low on energy, acknowledge it warmly, praise them for showing up, and do NOT ask why a lift was lighter: you already know. If they flagged pain, name the area and tell them to go easy on it; if painRepeats shows 3 or more times in 30 days, suggest a physio or doctor. Never diagnose. Respond to anything specific in the note. " +
       "If `drinksLastNight` is set, mention once, without lecturing, that they trained after drinking, and if a lift is in `lighter` that the drinks likely explain it (so don't ask why). " +
@@ -378,7 +380,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
       (s.kind === "session"
         ? "This read is after a workout: the headline must be about this workout or recovery and must not mention body weight, calories or the scale. Do not list every lift; pick the one or two things that matter most. "
         : "This read is after a weigh-in or body scan: the headline may mention weight, in one short sentence. ") +
-      "Plain words, full exercise names, no gym shorthand, no hype, no emoji, no em dashes. " +
+      "Plain words, full exercise names, no gym shorthand, no emoji, no em dashes. " +
       'Reply with JSON only: {"headline": the coach talking, two or three short sentences, each under 14 words, under 35 words in total, each sentence one separate point (they are shown as bullet points), "recovery": one or two sentences saying whether to push or ease off next session and why, keeping the same call as draftRecovery}.',
     messages: [{ role: "user", content: factsText }],
   });
@@ -425,7 +427,7 @@ export async function askCoach(supabase: Supa, question: string): Promise<string
   const foodLast7 = { targets: prof ?? null, days: [...byDay].sort().map(([day, t]) => ({ day, ...t })), drinks: drinksLast7 };
   const text = await callClaude({
     max_tokens: 500,
-    system: "You are the coach in a personal training app. Answer in under 120 words, plainly, using the user's data. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
+    system: "You are the coach in a personal training app. Answer in under 120 words, plainly and encouragingly, using the user's data. Be on their side: their goal is to lose fat and build muscle; if they slipped, tell them they can get back on track and to just start now. The lift calls, sleep call and weight trend are already worked out: use them as given and never redo the math or invent numbers. Training and sleep come before body weight. No emoji, no em dashes. You are not a doctor; for pain or injury, say to see one.",
     messages: [{ role: "user", content: `My data: ${JSON.stringify({ ...signals, recentSessions: recent, foodLast7 })}\n\nQuestion: ${question}` }],
   });
   return text ?? "Coach couldn't answer just now. Try again in a minute.";

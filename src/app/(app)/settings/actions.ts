@@ -39,6 +39,8 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
   const goal = n(fd.get("goal_weight"));
   const units = String(fd.get("units") ?? "metric") === "imperial" ? "imperial" : "metric";
   const goalKg = goal == null ? null : toKg(goal, units);
+  const goalBf = n(fd.get("goal_body_fat_pct"));
+  if (goalBf != null && (goalBf < 3 || goalBf > 50)) return { error: "Goal body fat looks off. Use a % between 3 and 50." };
   if (goalKg != null && (goalKg < 30 || goalKg > 300)) return { error: "Goal weight looks off. Check the number and units." };
   const { error } = await supabase.from("profiles").update({
     display_name: String(fd.get("display_name") ?? "").trim() || null,
@@ -48,6 +50,8 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
     phase: ["cut", "maintain", "bulk"].includes(phase) ? phase : "cut",
     // Only touch the goal column when there's a goal to save or clear.
     ...(goalKg != null || fd.get("had_goal") === "1" ? { goal_weight_kg: goalKg == null ? null : Math.round(goalKg * 10) / 10 } : {}),
+    // Only touch the column when there's a value to save or clear (it may not exist on older databases).
+    ...(goalBf != null || fd.get("had_goal_bf") === "1" ? { goal_body_fat_pct: goalBf } : {}),
     target_rate_kg_week: rate == null ? null : phase === "cut" ? -Math.abs(rate) : phase === "bulk" ? Math.abs(rate) : 0,
     tdee_kcal: n(fd.get("tdee_kcal")),
     target_kcal: n(fd.get("target_kcal")),
@@ -56,7 +60,7 @@ export async function saveProfile(_prev: { error: string | null }, fd: FormData)
     fat_g: n(fd.get("fat_g")),
     kettlebells_kg: kbs.length ? kbs : [8, 12, 16, 20, 24, 30],
   }).eq("id", user.id);
-  if (error) return { error: /goal_weight_kg/.test(error.message) ? "Goal weight can't be saved yet: the database needs a quick update first." : error.message };
+  if (error) return { error: /goal_weight_kg|goal_body_fat_pct/.test(error.message) ? "Goal weight can't be saved yet: the database needs a quick update first." : error.message };
   revalidatePath("/", "layout");
   redirect("/settings");
 }

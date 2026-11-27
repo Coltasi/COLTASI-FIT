@@ -15,11 +15,13 @@ export { PARTS, ReadText, type ReadParts };
  * Coach card. The default is the cream card; `feature` renders the navy daily briefing:
  * the first point is always visible as the headline, the rest of the notes sit behind a tap.
  */
-export function CoachRead({ label, read, footer, lead, units = "metric", defaultOpen = false, padding = "16px 16px 6px", collapsible = false, feature = false }: {
+export function CoachRead({ label, read, footer, lead, pep, units = "metric", defaultOpen = false, padding = "16px 16px 6px", collapsible = false, feature = false }: {
   label: ReactNode; read: ReadParts & { signals?: PlanSignals | null }; footer?: ReactNode; lead?: ReactNode; units?: Units; defaultOpen?: boolean; padding?: string;
   /** When set, the Coach's notes sit behind a tap on the label; the footer stays visible. */
   collapsible?: boolean;
   feature?: boolean;
+  /** Today screen: the Coach's pep talk leads the card; the read's own headline moves into the notes. */
+  pep?: string[];
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -28,12 +30,15 @@ export function CoachRead({ label, read, footer, lead, units = "metric", default
   const pts = points(read.headline);
 
   if (feature) {
-    const { head, rest } = headline(read.headline);
+    const h = headline(read.headline);
+    const head = pep?.length ? pep[0] : h.head;
+    const rest = pep?.length ? [h.head, ...h.rest].filter((x): x is string => !!x) : h.rest;
     const more = rest.length > 0 || !!lead || parts.length > 0 || !!plan;
     return (
       <section className="feature" aria-label="Coach briefing">
         {label}
         {head ? <p className="feature-title" style={{ fontSize: 22 }}>{head}</p> : null}
+        {pep?.[1] ? <p style={{ fontSize: 17, lineHeight: 1.45, color: "var(--on-navy)" }}>{pep[1]}</p> : null}
         {more ? (
           <button type="button" onClick={() => setNotesOpen(!notesOpen)} aria-expanded={notesOpen}
             className="pill" style={{ alignSelf: "flex-start" }}>

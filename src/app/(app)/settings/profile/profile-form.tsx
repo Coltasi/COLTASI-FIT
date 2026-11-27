@@ -111,6 +111,8 @@ export function ProfileForm({ profile: p, scan }: { profile: Profile; scan: Late
         <input type="hidden" name="units" value={p.units ?? "metric"} />
         <input type="hidden" name="had_goal" value={p.goal_weight_kg == null ? "0" : "1"} />
         <GoalPicker units={p.units ?? "metric"} scan={scan} sex={p.sex} phase={phase} initialKg={p.goal_weight_kg == null ? null : Number(p.goal_weight_kg)} />
+        <input type="hidden" name="had_goal_bf" value={p.goal_body_fat_pct == null ? "0" : "1"} />
+        <Field label="Goal body fat (%)" name="goal_body_fat_pct" value={p.goal_body_fat_pct ?? ""} inputMode="decimal" hint="Coach cheers you on toward this." placeholder="15" />
         <Field label="Target rate (kg per week)" name="target_rate_kg_week" value={p.target_rate_kg_week == null ? "" : Math.abs(Number(p.target_rate_kg_week))} hint="How fast you aim to lose (cut) or gain (bulk). Coach compares your weigh-ins to this." placeholder="0.5" />
       </div>
 
