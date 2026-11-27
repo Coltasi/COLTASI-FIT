@@ -6,6 +6,7 @@ import { fetchAll } from "@/lib/fetch-all";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 import { SKIP_LABEL, type SkipReason } from "@/lib/owed";
 import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in";
+import { praise } from "@/lib/praise";
 import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
 import type { FoodRow, HistoryRow, Num, NightRow, WeighRow } from "@/lib/rows";
 
@@ -238,7 +239,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       const ss = stepSummary(stepRows, today);
       const stepsFell = ss.avg7 != null && ss.avgPrev7 != null && ss.avg7 < ss.avgPrev7 * 0.85;
       lines.push(`${rate <= 0 ? "Losing" : "Gaining"} ${r1(Math.abs(rate))} kg a week over six weeks, against a ${r1(Math.abs(target))} kg target.` +
-        (!behind ? " On track. Great work, keep it locked in."
+        (!behind ? ` On track. ${praise(today + kind)}, keep it locked in.`
           : over.length >= 2 ? ` You were over your calories on ${over.length} of the last ${full.length} full days. No guilt: you can get back on track, just start today.`
           : stepsFell ? ` Steps fell from ${ss.avgPrev7!.toLocaleString("en-US")} to ${ss.avg7!.toLocaleString("en-US")} a day; get those back first.`
           : full.length >= 4 ? " Your logged calories look on target, so keep going: give it 2 more weeks before cutting calories."
@@ -297,7 +298,7 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   const pain = painLine(ci);
   if (pain) first.push(pain);
   if (first.length >= 2) return first.slice(0, 2).join(" ");
-  if (heavier.length) first.push(`Great work. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
+  if (heavier.length) first.push(`${praise(s.today + (s.sessionTitle ?? ""))}. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
   else if (up.length) first.push(`Great session. You're ready to go up on ${up[0].name}. You've got this.`);
   if (dr && !offDay) first.unshift(`You showed up after ${dr.lastNight} drink${dr.lastNight === 1 ? "" : "s"} last night. Good.${lighter.length ? ` It showed on ${lighter[0].lift}.` : ""}`);
   else if (lighter.length && !offDay) first.push(`I noticed you went lighter on ${lighter[0].lift} today. Everything okay?`);
@@ -306,7 +307,7 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   if (first.length < 2 && sk.length) first.push(sk.length === 1
     ? `You skipped ${sk[0].lift} (${sk[0].reason}). I'll remind you to fit it in this week.`
     : `You skipped ${sk.length} lifts today. I'll remind you to fit them in this week.`);
-  if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : "Great work showing up. Next time, lock in and chase one more rep per set.");
+  if (!first.length) first.push(s.sleep.call === "ease" ? "Good job showing up on a rough night. Take it easy next time." : `${praise(s.today + "show")}. You showed up. Next time, lock in and chase one more rep per set.`);
   return first.slice(0, 2).join(" ");
 }
 
@@ -368,7 +369,7 @@ async function polish(s: Signals, base: Read): Promise<{ read: Read; model: stri
   const text = await callClaude({
     max_tokens: 300,
     system:
-      "You are the coach in a personal training app, talking to one person you train. Encouraging, warm, direct and human, like a good personal trainer who believes in them: praise real wins (\"Great work\"), fire them up (\"Lock in\", \"You've got this\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
+      "You are the coach in a personal training app, talking to one person you train. Encouraging, warm, direct and human, like a good personal trainer who believes in them: praise real wins, varying the wording every time (\"Nice work\", \"Well done\", \"Strong work\", \"Big win\", \"Nailed it\", \"That's how it's done\"; say \"Great work\" rarely, at most once in a read), fire them up (\"Lock in\", \"You've got this\"), push when it's earned (\"Come on, you can do better\"), and check in when something looks off. " +
       "If something slipped (a lighter lift, a skipped lift, a missed day), never guilt them: tell them they can get back on track and to just start now. " +
       "Tie praise to something they actually did, and don't use the same rally phrase twice in one read. " +
       "If `skipped` has lifts, say briefly that you'll remind them to come back to it (if sore, tell them to let it recover first). " +

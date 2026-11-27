@@ -6,6 +6,7 @@
  * Pure function, no database access.
  */
 import { w, unit, type Units } from "./units";
+import { praise } from "./praise";
 
 export type PepInput = {
   today: string;
@@ -38,8 +39,8 @@ function mainLine(p: PepInput): string {
   if (p.inProgressTitle) return pick(p.today, [`Lock in. Finish ${p.inProgressTitle} strong.`, `You're in it. Finish ${p.inProgressTitle} strong.`]);
 
   if (p.doneTodayTitle) {
-    if (p.workoutsThisWeek >= 3) return `That's ${p.workoutsThisWeek} workouts this week. Great work.`;
-    return pick(p.today, ["Workout done. Great work today.", `${p.doneTodayTitle} done. That's how you get there.`]);
+    if (p.workoutsThisWeek >= 3) return `That's ${p.workoutsThisWeek} workouts this week. ${praise(p.today + "week")}.`;
+    return pick(p.today, [`Workout done. ${praise(p.today + "done")}.`, `${p.doneTodayTitle} done. That's how you get there.`]);
   }
 
   const gap = p.daysSinceWorkout;
@@ -52,10 +53,10 @@ function mainLine(p: PepInput): string {
 
   if (p.dryDays != null && p.dryDays >= 7 && p.dryDays % 7 === 0) {
     const weeks = p.dryDays / 7;
-    return weeks === 1 ? "A full week without alcohol. Great work." : `${weeks} weeks without alcohol. Great work, keep it going.`;
+    return weeks === 1 ? `A full week without alcohol. ${praise(p.today + "dry")}.` : `${weeks} weeks without alcohol. ${praise(p.today + "dry")}. Keep it going.`;
   }
 
-  if (y.logged && tK && tP && y.kcal <= tK * 1.05 && y.protein >= tP * 0.95) return "Calories and protein on target yesterday. Great work. Do it again today.";
+  if (y.logged && tK && tP && y.kcal <= tK * 1.05 && y.protein >= tP * 0.95) return `Calories and protein on target yesterday. ${praise(p.today + "food")}. Do it again today.`;
 
   if (p.roughNight) return "Rough night. Show up anyway and go easy today. That still counts.";
 
@@ -66,11 +67,11 @@ function mainLine(p: PepInput): string {
 function goalLine(p: PepInput): string | null {
   const bf = p.bodyFat, wt = p.weight;
   const bfLine = bf.now != null && bf.goal != null
-    ? bf.now <= bf.goal ? `You hit ${r1(bf.goal)}% body fat. Incredible work.` : `${r1(bf.now)}% body fat now, ${r1(bf.goal)}% is the goal. Every session gets you closer.`
+    ? bf.now <= bf.goal ? `You hit ${r1(bf.goal)}% body fat. ${praise(p.today + "goal")}.` : `${r1(bf.now)}% body fat now, ${r1(bf.goal)}% is the goal. Every session gets you closer.`
     : null;
   const toGo = wt.now != null && wt.goal != null ? wt.now - wt.goal : null;
   const wtLine = toGo == null ? null
-    : toGo <= 0.3 ? "You're at your goal weight. Incredible work."
+    : toGo <= 0.3 ? `You're at your goal weight. ${praise(p.today + "goal")}.`
     : `${w(toGo, p.units)} ${unit(p.units)} to your goal weight. Keep going.`;
   // Alternate the two goals day by day when both are set.
   if (bfLine && wtLine) return new Date(p.today + "T12:00:00Z").getUTCDate() % 2 ? bfLine : wtLine;
