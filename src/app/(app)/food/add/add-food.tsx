@@ -35,8 +35,16 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
   const [manage, setManage] = useState(false);
   const [, startTransition] = useTransition();
   const photoRef = useRef<HTMLInputElement>(null);
+  // Everything logged while on this screen. You stay here to add more; Done goes back to Food.
+  const [added, setAdded] = useState<{ name: string; kcal: number; protein: number }[]>([]);
 
-  const done = () => { router.push(back); router.refresh(); };
+  const logged = (name: string, kcal: number, protein: number) => {
+    setAdded((a) => [...a, { name, kcal, protein }]);
+    setDraft(null); setDesc(""); setPhoto(null); setSaveIt(false); setErr(null);
+    router.refresh();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const finish = () => { router.push(back); router.refresh(); };
 
   async function tapSaved(s: Saved) {
     if (manage) {
@@ -55,7 +63,8 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
     setBusy(`saved-${s.id}`); setErr(null);
     const r = await logSaved(s.id, day);
     setBusy(null);
-    if (r.error) setErr(r.error); else done();
+    const m = scale(s.label, s.lastAmount ?? (s.label.baseG ?? 1));
+    if (r.error) setErr(r.error); else logged(s.name, m.kcal, m.protein_g);
   }
 
   async function onPhoto(f: File | undefined) {
@@ -97,12 +106,26 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
       ? await logSaved(draft.savedId, day, amount)
       : await logFood({ day, name: draft.name, ...m, portion: portionText(label, amount), source: draft.source === "saved" ? "manual" : draft.source, save: saveIt ? { label, amount } : null });
     setBusy(null);
-    if (r.error) setErr(r.error); else done();
+    if (r.error) setErr(r.error); else logged(draft.name.trim(), m.kcal, m.protein_g);
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <h2 className="sec">Something new</h2>
+      {added.length ? (
+        <section className="card" role="status" aria-live="polite" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10, border: "2px solid var(--jade)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+            <p className="sec">Added {added.length === 1 ? "1 item" : `${added.length} items`}</p>
+            <p className="num" style={{ fontSize: 17 }}>{Math.round(added.reduce((t, a) => t + a.kcal, 0)).toLocaleString("en-US")} kcal · {Math.round(added.reduce((t, a) => t + a.protein, 0))} g protein</p>
+          </div>
+          {added.map((a, i) => (
+            <p key={i} style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 16 }}>
+              <span style={{ fontWeight: 600 }}>✓ {a.name}</span><span className="num">{Math.round(a.kcal)} kcal</span>
+            </p>
+          ))}
+          <p className="cap">Keep adding, or tap Done when you&apos;re finished.</p>
+        </section>
+      ) : null}
+      <h2 className="sec">{added.length ? "Add another" : "Something new"}</h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10 }}>
         <button type="button" className="card" disabled={!!busy} onClick={() => photoRef.current?.click()} style={tile}>
           <IconCamera /><span style={{ fontWeight: 700 }}>Photo</span><span className="cap">Coach estimates it</span>
@@ -177,6 +200,12 @@ export function AddFood({ day, back, saved }: { day: string; back: string; saved
 
       {draft ? (
         <Portion draft={draft} onChange={setDraft} saveIt={saveIt} onSaveIt={setSaveIt} busy={busy === "log"} onSubmit={submit} />
+      ) : null}
+
+      {added.length && !draft ? (
+        <div className="dock">
+          <button type="button" className="btn" onClick={finish}>Done · {added.length} added</button>
+        </div>
       ) : null}
     </div>
   );
