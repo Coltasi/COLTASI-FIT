@@ -7,6 +7,7 @@ import { getTz } from "@/lib/tz";
 import { groupExercises, type ExerciseRow } from "@/lib/exercise-match";
 import { fetchAll } from "@/lib/fetch-all";
 import type { HistoryRow } from "@/lib/rows";
+import { getActiveBreak, nextHolidayDay, weekStart, type Break } from "@/lib/breaks";
 
 export type Supa = Awaited<ReturnType<typeof createClient>>;
 
@@ -47,7 +48,7 @@ export type PlanLift = {
   sub_for?: { id: string; name: string } | null; added?: boolean;
 };
 export type ProgramDay = {
-  id: string; program: "split" | "kettlebell"; name: string; day_order: number;
+  id: string; program: "split" | "kettlebell" | "holiday"; name: string; day_order: number;
   /** What the next session builds from: the user's plan override when one exists, else the template. */
   exercises: PlanLift[];
   template: PlanLift[];
@@ -160,6 +161,9 @@ export type WeekState = {
   doneToday: { id: string; title: string; kind: string }[];
   /** Every workout finished since Monday, any kind. */
   doneThisWeek: number;
+  /** Holiday mode: the break you're on today, and workouts done toward its weekly target. */
+  brk: Break | null;
+  breakDone: number;
 };
 
 /** Which split days are done this week, and which one is up next. */
@@ -167,10 +171,11 @@ type WeekRow = { id: string; title: string; day_id: string | null; session_date:
 
 export async function getWeekState(supabase: Supa, today: string, program: ProgramDay[] | Promise<ProgramDay[]>): Promise<WeekState> {
   const monday = mondayOf(today);
-  const [{ data }, { data: open }, prog] = await Promise.all([
+  const [{ data }, { data: open }, prog, brk] = await Promise.all([
     supabase.from("sessions").select("id, title, day_id, session_date, status, kind").gte("session_date", monday).eq("status", "done"),
     supabase.from("sessions").select("id, title").eq("status", "in_progress").order("started_at", { ascending: false }).limit(1),
     Promise.resolve(program),
+    getActiveBreak(supabase, today),
   ]);
   const done = new Map<string, string>();
   for (const s of ((data ?? []) as WeekRow[]).sort((a, b) => (a.session_date < b.session_date ? 1 : -1))) {
@@ -181,8 +186,22 @@ export async function getWeekState(supabase: Supa, today: string, program: Progr
     .filter((s) => s.session_date === today)
     .map((s) => ({ id: s.id as string, title: s.title as string, kind: s.kind as string }));
   const split = prog.filter((d) => d.program === "split");
-  const nextDay = split.find((d) => !done.has(d.id)) ?? split[0] ?? null;
-  return { monday, done, nextDay, inProgress, doneToday, doneThisWeek: (data ?? []).length };
+  let nextDay = split.find((d) => !done.has(d.id)) ?? split[0] ?? null;
+  let breakDone = 0;
+  if (brk) {
+    // On a break: alternate the holiday workouts, and count every workout this week (Sunday-first) since the break began.
+    const from = weekStart(today) > brk.start_date ? weekStart(today) : brk.start_date;
+    const holidayIds = prog.filter((d) => d.program === "holiday").map((d) => d.id);
+    const [{ data: lastH }, { count }] = await Promise.all([
+      holidayIds.length
+        ? supabase.from("sessions").select("day_id").eq("status", "done").in("day_id", holidayIds).order("started_at", { ascending: false }).limit(1)
+        : Promise.resolve({ data: [] as { day_id: string }[] }),
+      supabase.from("sessions").select("id", { count: "exact", head: true }).eq("status", "done").gte("session_date", from).lte("session_date", today),
+    ]);
+    nextDay = nextHolidayDay(prog, ((lastH ?? [])[0] as { day_id: string } | undefined)?.day_id ?? null) ?? nextDay;
+    breakDone = count ?? 0;
+  }
+  return { monday, done, nextDay, inProgress, doneToday, doneThisWeek: (data ?? []).length, brk, breakDone };
 }
 
 export function displayName(p: Profile, email?: string | null) {

@@ -45,6 +45,13 @@ export default async function ChoosePage() {
         <div style={{ padding: "14px 16px 10px" }}><p className="ln" style={{ fontSize: 17 }}>Kettlebell</p></div>
         {program.filter((d) => d.program === "kettlebell").map((d) => <Row key={d.id} d={d} />)}
       </div>
+      <div className="card clip">
+        <div style={{ padding: "14px 16px 10px" }}>
+          <p className="ln" style={{ fontSize: 17 }}>Holiday</p>
+          <p className="cap">Short workouts for your 8 kg and 12 kg bells</p>
+        </div>
+        {program.filter((d) => d.program === "holiday").map((d) => <Row key={d.id} d={d} />)}
+      </div>
       <form action={startCustom}>
         <CustomButton />
       </form>

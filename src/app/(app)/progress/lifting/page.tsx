@@ -12,7 +12,7 @@ export default async function LiftingPage({ searchParams }: PageProps<"/progress
   const { supabase, units, today } = await getContext();
   const [program, hist] = await Promise.all([getProgram(supabase), getLiftHistory(supabase)]);
   const dayOf = new Map<string, string>();
-  for (const d of program) for (const e of d.exercises) if (!dayOf.has(e.exercise_id)) dayOf.set(e.exercise_id, d.program === "kettlebell" ? "Kettlebell" : d.name);
+  for (const d of program) for (const e of d.exercises) if (!dayOf.has(e.exercise_id)) dayOf.set(e.exercise_id, d.program === "split" ? d.name : "Kettlebell");
   const groupsOrder = [...program.filter((d) => d.program === "split").map((d) => d.name), "Kettlebell", "Other"];
   const filter = typeof sp.day === "string" && groupsOrder.includes(sp.day) ? sp.day : "All";
 

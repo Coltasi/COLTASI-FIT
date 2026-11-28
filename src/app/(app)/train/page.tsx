@@ -40,8 +40,9 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
 
   // "This week" follows the workout picked with Change. A picked Kettlebell day, or a Split day already
   // done this week, has no to-do tile of its own, so it gets one.
-  const todo = split.filter((d) => !week.done.has(d.id));
-  const todoTiles = day && !suggested && !todo.some((d) => d.id === day.id) ? [day, ...todo] : todo;
+  // On a break the Split waits: the only to-do tile is the next holiday workout.
+  const todo = week.brk ? [] : split.filter((d) => !week.done.has(d.id));
+  const todoTiles = day && (week.brk || !suggested) && !todo.some((d) => d.id === day.id) ? [day, ...todo] : todo;
 
   const lastAgo = lastOfDay?.[0] ? ago(daysBetween(lastOfDay[0].session_date, today)) : null;
 
@@ -49,7 +50,9 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
     <main className="screen" style={{ gap: 26 }}>
       <PageHeader
         title="Train"
-        sub={week.doneToday.length ? `${week.doneToday.map((x) => x.title).join(" + ")} completed today` : `${week.doneThisWeek} ${week.doneThisWeek === 1 ? "workout" : "workouts"} this week`}
+        sub={week.doneToday.length ? `${week.doneToday.map((x) => x.title).join(" + ")} completed today`
+          : week.brk ? `Holiday mode: ${week.breakDone} of ${week.brk.workouts_per_week} this week`
+          : `${week.doneThisWeek} ${week.doneThisWeek === 1 ? "workout" : "workouts"} this week`}
         right={
           <div style={{ display: "flex", gap: 8 }}>
             <Link prefetch={false} href="/train/library" className="iconbtn" aria-label="Exercise library"><IconBook /></Link>
@@ -78,7 +81,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
       {day ? (
         <section className="feature">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <p className="eyebrow">{suggested ? (week.doneToday.length ? "Next session" : "Today's session") : "Picked session"}</p>
+            <p className="eyebrow">{suggested ? (week.brk ? "Holiday mode" : week.doneToday.length ? "Next session" : "Today's session") : "Picked session"}</p>
             <Link prefetch={false} href="/train/choose" className="btn2" style={{ flexShrink: 0 }}>Change</Link>
           </div>
           <h2 className="feature-title" style={{ fontSize: 32 }}>{day.name}</h2>
@@ -86,7 +89,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
           <p style={{ fontSize: 16, color: "var(--on-navy-muted)" }}>{lastAgo ? `Last trained ${lastAgo}` : "First time on this day"}</p>
           {!suggested && week.nextDay ? (
             <p style={{ fontSize: 15, color: "var(--on-navy-muted)" }}>
-              Next in The Split is {week.nextDay.name}. <Link prefetch={false} href="/train" className="pill" style={{ marginLeft: 6 }}>Switch back</Link>
+              {week.brk ? `Suggested holiday workout is ${week.nextDay.name}.` : `Next in The Split is ${week.nextDay.name}.`} <Link prefetch={false} href="/train" className="pill" style={{ marginLeft: 6 }}>Switch back</Link>
             </p>
           ) : null}
         </section>
@@ -112,7 +115,7 @@ export default async function TrainPage({ searchParams }: PageProps<"/train">) {
               <Link prefetch={false} key={d.id} href={`/train?day=${d.id}`} className="card flat"
                 style={{ ...tileBase, ...(isNext ? { border: "2px solid var(--ember)", color: "var(--rust)", background: "var(--tint-ember-soft)" } : {}) }}>
                 <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.8 }}>{isNext ? (week.doneToday.length ? "Next" : "Today") : "To do"}</span>
-                <span style={{ fontSize: 15, fontWeight: 700 }}>{d.program === "kettlebell" ? "KB" : d.name}</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{d.program === "kettlebell" ? "KB" : d.program === "holiday" ? (d.day_order === 1 ? "Hol A" : "Hol B") : d.name}</span>
                 <span style={{ width: 6, height: 6, borderRadius: "50%", margin: "4px 0", background: isNext ? "var(--ember)" : "var(--line-strong)" }} />
               </Link>
             );

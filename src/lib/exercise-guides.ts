@@ -227,6 +227,36 @@ export const GUIDES: Record<string, Guide> = {
     steps: ["Swing the bell back and pull it into the rack on your chest.","Brace and press it overhead.","Lower to the rack, then back between your legs."],
     mistake: "Letting the bell crash onto your forearm.",
   },
+  "Kettlebell Floor Press": {
+    primary: ["Chest"],
+    secondary: ["Triceps","Front delts"],
+    steps: ["Lie on the floor, knees bent, bell in one hand with your upper arm on the floor.","Press straight up until your arm is locked over your shoulder.","Lower slowly until your elbow touches the floor, pause, press again."],
+    mistake: "Letting the wrist bend back so the bell flops behind your hand.",
+  },
+  "Half-Kneeling Kettlebell Press": {
+    primary: ["Shoulders"],
+    secondary: ["Triceps","Core","Glutes"],
+    steps: ["Kneel on one knee, bell racked on the same side as the down knee.","Squeeze the glute of the down leg and brace your stomach.","Press overhead to lockout, biceps by your ear, then lower under control."],
+    mistake: "Arching your lower back to get the bell up.",
+  },
+  "Kettlebell Curl": {
+    primary: ["Biceps"],
+    secondary: ["Forearms"],
+    steps: ["Stand tall holding the bell by the handle, arm straight.","Curl it up without moving your elbow forward.","Lower slowly over two to three seconds."],
+    mistake: "Swinging your body to start the rep.",
+  },
+  "Suitcase Carry": {
+    primary: ["Obliques","Grip"],
+    secondary: ["Traps","Glutes"],
+    steps: ["Pick up one bell at your side like a suitcase.","Stand tall, shoulders level, and walk with short, steady steps.","Switch hands and repeat on the other side."],
+    mistake: "Leaning toward or away from the bell.",
+  },
+  "Plank": {
+    primary: ["Core"],
+    secondary: ["Shoulders","Glutes"],
+    steps: ["Forearms on the floor under your shoulders, legs straight.","Squeeze your glutes and pull your belly button in.","Hold a straight line from head to heels and breathe."],
+    mistake: "Letting your hips sag or pike up.",
+  },
   "Kettlebell Halo": {
     primary: ["Shoulders"],
     secondary: ["Core","Upper back"],
@@ -368,7 +398,7 @@ export const GUIDES: Record<string, Guide> = {
 };
 
 /** Library sections: one per program day, plus Kettlebell. */
-export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers","Seated Overhead Press","Shoulder Press + Overhead Superset"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL","Hamstring Machine Curl","45-Degree Hip Hinge","Single-Leg Press","Single-Leg Lunge"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press","Zanetti Press","Chest Flies","Skull Crushers","Triceps Dips"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls","Standing Iso Dumbbell Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL","Clean Front Squat","Round the World","Kettlebell Side Lifts","Kettlebell Overhead March"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat","Bosu Round the World"]],["Core",["Kettlebell Dead Bug","Kneeling Woodchopper","Cable Oblique Extensions","Seated Linear Leg Lift"]]];
+export const LIBRARY_GROUPS: [string, string[]][] = [["Upper",["Bench Press","Chest-Supported Row","Standing Overhead Press","Lat Pulldown","High to Low Cable Flies","Lying Face Pulls / Skull Crushers","Seated Overhead Press","Shoulder Press + Overhead Superset"]],["Lower",["Front Squat","Deadlift","Barbell Hip Thrust","Single Leg Weighted Calf Raise","Leg Press Calf Raise","RDL","Hamstring Machine Curl","45-Degree Hip Hinge","Single-Leg Press","Single-Leg Lunge"]],["Push",["Incline Dumbbell Press","Flat Dumbbell Press","Lateral Raises","Banded Push-Ups","Overhead Rope Extensions","Bar Triceps Pushdowns","Single-Arm Iso DB Press","Zanetti Press","Chest Flies","Skull Crushers","Triceps Dips"]],["Pull",["Weighted Pull-Ups","Seated Row","Reverse Pec Deck","Kneeling Face Pulls","Incline Dumbbell Curls","Hammer Curls","Scapular Pull-Ups","Hanging Bicep Curls","Standing Iso Dumbbell Curls"]],["Legs",["Back Squat","Bulgarian Split Squat","Glute Ham Raise","Smith Machine Calf Raises","Seated Weighted Calf Raise"]],["Kettlebell",["Kettlebell Swing","Goblet Squat","Kettlebell Clean and Press","Single-Arm Kettlebell Row","Turkish Get-Up","Kettlebell Halo","Farmer Carry","Kettlebell Front Squat","Single-Leg Kettlebell RDL","Clean Front Squat","Round the World","Kettlebell Side Lifts","Kettlebell Overhead March","Kettlebell Floor Press","Half-Kneeling Kettlebell Press","Kettlebell Curl","Suitcase Carry"]],["Bodyweight & Bosu",["Push-Ups","Bosu Ski Jumps","Bosu Single Leg Squat","Bosu Round the World"]],["Core",["Plank","Kettlebell Dead Bug","Kneeling Woodchopper","Cable Oblique Extensions","Seated Linear Leg Lift"]]];
 
 export const guideFor = (name: string): Guide | null => GUIDES[name] ?? null;
 

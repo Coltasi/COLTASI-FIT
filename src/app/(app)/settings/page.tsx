@@ -5,13 +5,20 @@ import { displayName, getContext } from "@/lib/data";
 import { signOut } from "@/app/actions/auth";
 import { PrefToggle, UnitsToggle } from "./toggles";
 import { PushSettings } from "./push-settings";
+import { breakLabel, getBreaks } from "@/lib/breaks";
+import { fmtShort } from "@/lib/dates";
 
 export default async function SettingsPage() {
-  const { supabase, user, profile, units } = await getContext();
-  const [{ data: hh }, { data: members }] = await Promise.all([
+  const { supabase, user, profile, units, today } = await getContext();
+  const [{ data: hh }, { data: members }, breaks] = await Promise.all([
     profile.household_id ? supabase.from("households").select("name, invite_code").eq("id", profile.household_id).single() : Promise.resolve({ data: null }),
     supabase.from("profiles").select("id, display_name").neq("id", user.id),
+    getBreaks(supabase),
   ]);
+  const upcoming = breaks.filter((b) => b.end_date >= today);
+  const breakLine = upcoming.length
+    ? `${breakLabel(upcoming[0])}: ${fmtShort(upcoming[0].start_date)} to ${fmtShort(upcoming[0].end_date)}${upcoming.length > 1 ? ` (+${upcoming.length - 1} more)` : ""}`
+    : "Set dates you'll be away";
   const name = displayName(profile, user.email);
   const others = (members ?? []) as { id: string; display_name: string | null }[];
   const rate = profile.target_rate_kg_week;
@@ -75,6 +82,16 @@ export default async function SettingsPage() {
               <span style={{ fontSize: 15, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>{v} <IconChevron /></span>
             </Link>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <SectionLabel>Holiday mode</SectionLabel>
+        <div className="card clip">
+          <Link prefetch={false} href="/settings/breaks" className="row" style={{ minHeight: 56, justifyContent: "space-between" }}>
+            <div><p style={{ fontSize: 16, fontWeight: 600 }}>Breaks</p><p className="cap">{breakLine}</p></div>
+            <IconChevron />
+          </Link>
         </div>
       </div>
 

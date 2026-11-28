@@ -89,7 +89,11 @@ export async function startSession(formData: FormData) {
   let cooldown = formData.get("cooldown") === "on";
   let finisher: string | null = null;
   let moves: { name: string; dose: string; done: boolean }[] | null = null;
-  if (quick) {
+  if (quick && day.program === "holiday") {
+    // Away from the gym: no machine warm-up, no cool-down. The holiday workouts carry their own finisher.
+    warmup = "";
+    cooldown = false;
+  } else if (quick) {
     warmup = "treadmill";
     cooldown = true;
     const list = (fins ?? []) as { name: string; moves: { name: string; dose: string }[] | null; is_default: boolean }[];
@@ -103,7 +107,7 @@ export async function startSession(formData: FormData) {
   const { data: session, error } = await supabase
     .from("sessions")
     .insert({
-      kind: day.program === "kettlebell" ? "kettlebell" : "split",
+      kind: day.program === "split" ? "split" : "kettlebell",
       day_id: day.id,
       title: day.name,
       session_date: today,

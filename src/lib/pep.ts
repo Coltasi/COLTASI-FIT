@@ -25,6 +25,8 @@ export type PepInput = {
   dryDays: number | null;
   bodyFat: { now: number | null; goal: number | null };
   weight: { now: number | null; goal: number | null };
+  /** Holiday mode: workouts done this week toward your break target, and whether today is its last day. */
+  holiday?: { target: number; done: number; lastDay: boolean } | null;
 };
 
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -35,7 +37,19 @@ function pick(today: string, options: string[]): string {
   return options[n % options.length];
 }
 
+function holidayLine(p: PepInput, h: NonNullable<PepInput["holiday"]>): string {
+  const left = Math.max(0, h.target - h.done);
+  if (p.doneTodayTitle) return left === 0
+    ? `${h.done} of ${h.target} done this week. Target hit on holiday. ${praise(p.today + "hol")}.`
+    : `Done. ${h.done} of ${h.target} this week, ${left} to go. Showing up is the win right now.`;
+  if (h.lastDay) return "Last day of your break. Book your first Split session back now, and a Tanita scan.";
+  if (left === 0) return `Weekly target hit (${h.done} of ${h.target}). Anything extra is a bonus. Enjoy the break.`;
+  if (h.done === 0) return pick(p.today, [`Holiday mode. ${h.target} short workouts this week. 25 minutes, you've got this.`, `Holiday mode. Grab the bells: ${h.target} workouts this week keeps the habit alive.`]);
+  return pick(p.today, [`${h.done} of ${h.target} this week. ${left} to go. Lock it in.`, `${h.done} down, ${left} to go this week. 25 minutes keeps the streak alive.`]);
+}
+
 function mainLine(p: PepInput): string {
+  if (p.holiday && !p.inProgressTitle) return holidayLine(p, p.holiday);
   if (p.inProgressTitle) return pick(p.today, [`Lock in. Finish ${p.inProgressTitle} strong.`, `You're in it. Finish ${p.inProgressTitle} strong.`]);
 
   if (p.doneTodayTitle) {

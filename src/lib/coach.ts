@@ -9,6 +9,7 @@ import { FEEL_LABEL, PAIN_LABEL, type Feel, type PainArea } from "@/lib/check-in
 import { praise } from "@/lib/praise";
 import { kg, liftSignal, sleepSignal, splitDue, type DayDue, type LiftSignal, type Night, type Perf, type SleepSignal } from "@/lib/coach-signals";
 import type { FoodRow, HistoryRow, Num, NightRow, WeighRow } from "@/lib/rows";
+import { activeBreak, getActiveBreak, getBreaks, TRAVEL_BELLS } from "@/lib/breaks";
 
 export const COACH_MODEL = "claude-haiku-4-5-20251001";
 
@@ -90,6 +91,8 @@ export type Signals = {
   /** Lifts skipped in the session just finished, and why. */
   skipped?: { lift: string; reason: string }[];
   splitDue: DayDue[];
+  /** On a holiday break: the Split waits, and the Coach praises showing up over chasing numbers. */
+  holiday?: boolean;
   sleep: SleepSignal;
   /** Only on weigh-in and scan reads. */
   weight: { lines: string[]; latestKg: number | null; rateKgWeek: number | null; targetKgWeek: number | null; behind: boolean } | null;
@@ -121,7 +124,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
   const user = await currentUser(supabase);
   const { today } = await getContext();
   const [{ data: prof }, { data: exRows }, program, { data: nights }, { data: splitSessions }, history] = await Promise.all([
-    supabase.from("profiles").select("target_rate_kg_week, target_kcal, kettlebells_kg").eq("id", user?.id ?? "").single(),
+    supabase.from("profiles").select("target_rate_kg_week, target_kcal, tdee_kcal, kettlebells_kg").eq("id", user?.id ?? "").single(),
     supabase.from("exercises").select("id, name, modality, created_by, created_at"),
     getProgram(supabase),
     supabase.from("sleep_logs").select("night_of, hours, wake_feeling, flags").order("night_of", { ascending: false }).limit(14),
@@ -134,7 +137,9 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       .range(a, b)
       .overrideTypes<HistoryRow[], { merge: false }>()),
   ]);
-  const kettlebells = ((prof?.kettlebells_kg as number[] | null) ?? [8, 12, 16, 20, 24, 30]).map(Number);
+  // On a break you only have the travel bells, so the Coach never suggests going heavier than 12 kg.
+  const onBreak = await getActiveBreak(supabase, today);
+  const kettlebells = onBreak ? TRAVEL_BELLS : ((prof?.kettlebells_kg as number[] | null) ?? [8, 12, 16, 20, 24, 30]).map(Number);
 
   // History grouped by exercise (synonyms like "KB Swing" / "Kettlebell Swing" are one lift), oldest first.
   const { keyById } = groupExercises((exRows ?? []) as ExerciseRow[]);
@@ -233,7 +238,11 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
       if (r.source === "drink") drinkKcal += Number(r.kcal);
     }
     const full = [...byDay].filter(([, k]) => k >= FULL_DAY_KCAL).sort();
-    const over = tK ? full.filter(([, k]) => k > tK * 1.05) : [];
+    // Days on a break are judged against maintenance (TDEE), not the cut target.
+    const brks = await getBreaks(supabase);
+    const tdeeK = prof?.tdee_kcal == null ? null : Number(prof.tdee_kcal);
+    const limitFor = (d: string) => (activeBreak(brks, d) && tdeeK ? tdeeK : tK);
+    const over = tK ? full.filter(([d, k]) => k > (limitFor(d) ?? tK) * 1.05) : [];
     const dow = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "long", timeZone: "UTC" });
     if (rate != null && target != null) {
       const ss = stepSummary(stepRows, today);
@@ -254,7 +263,7 @@ export async function gatherSignals(supabase: Supa, kind: ReadKind, sourceId?: s
     weight = { lines, latestKg: pts[0]?.weight_kg ?? null, rateKgWeek: rate == null ? null : r1(rate), targetKgWeek: target, behind };
   }
 
-  return { kind, today, sessionTitle, liftsFor, lifts, skipped, checkIn, splitDue: due.slice(0, 4), sleep, weight, drinks };
+  return { kind, today, sessionTitle, liftsFor, lifts, skipped, checkIn, splitDue: onBreak ? [] : due.slice(0, 4), sleep, weight, drinks, holiday: !!onBreak };
 }
 
 export type Read = { headline: string; next_session: string | null; recovery: string | null; weight: string | null };
@@ -298,6 +307,7 @@ function ruleNote(s: Signals, up: LiftSignal[], stalled: LiftSignal[]): string |
   const pain = painLine(ci);
   if (pain) first.push(pain);
   if (first.length >= 2) return first.slice(0, 2).join(" ");
+  if (s.holiday && !offDay) first.push(`Holiday workout done. ${praise(s.today + "hol")}. Keeping the habit alive is the whole job right now.`);
   if (heavier.length) first.push(`${praise(s.today + (s.sessionTitle ?? ""))}. ${heavier[0].lift} went up to ${kg(heavier[0].to as number)}${heavier.length > 1 ? `, and ${heavier.length - 1} more lift${heavier.length > 2 ? "s" : ""} went heavier too` : ""}.`);
   else if (up.length) first.push(`Great session. You're ready to go up on ${up[0].name}. You've got this.`);
   if (dr && !offDay) first.unshift(`You showed up after ${dr.lastNight} drink${dr.lastNight === 1 ? "" : "s"} last night. Good.${lighter.length ? ` It showed on ${lighter[0].lift}.` : ""}`);

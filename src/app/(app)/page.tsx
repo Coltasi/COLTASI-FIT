@@ -17,6 +17,9 @@ import { effortCallout, gradeSession, type Effort, type LiftLike } from "@/lib/e
 import type { Num, NightRow, SignalsJson } from "@/lib/rows";
 import { daysBetween } from "@/lib/dates";
 import { pepTalk } from "@/lib/pep";
+import { breakLabel } from "@/lib/breaks";
+import { getEnergy } from "@/lib/energy";
+import { fmtShort } from "@/lib/dates";
 
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -57,6 +60,11 @@ export default async function OverviewPage() {
   const byNight = new Map(nights.map((s) => [s.night_of, Number(s.hours)]));
   const latest = read?.[0];
   const day = week.nextDay;
+  const brk = week.brk;
+  // Same TDEE the Food tab shows (measured from your logs when there's enough data).
+  const maintKcal = brk
+    ? ((await getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week))).tdee ?? profile.tdee_kcal ?? null)
+    : null;
   const weekCount = (weekSessions ?? []).length;
   const trainedOn = new Set(((weekSessions ?? []) as { session_date: string }[]).map((s) => s.session_date));
 
@@ -143,10 +151,11 @@ export default async function OverviewPage() {
     daysSinceWorkout: before ? daysBetween(before, today) : null,
     roughNight: !!lastNight && (Number(lastNight.hours) < 6 || ["groggy", "tired", "exhausted"].includes(lastNight.wake_feeling ?? "")),
     yesterday: { ...y, logged: y.kcal >= 1000 },
-    targets: { kcal: profile.target_kcal ?? null, protein: profile.protein_g ?? null },
+    targets: { kcal: maintKcal ?? profile.target_kcal ?? null, protein: profile.protein_g ?? null },
     dryDays: dryFrom && loggedDays >= 4 ? daysBetween(dryFrom, today) : null,
     bodyFat: { now: scan?.body_fat_pct == null ? null : Number(scan.body_fat_pct), goal: profile.goal_body_fat_pct == null ? null : Number(profile.goal_body_fat_pct) },
     weight: { now: nowKg, goal: profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg) },
+    holiday: brk ? { target: brk.workouts_per_week, done: week.breakDone, lastDay: brk.end_date === today } : null,
   });
 
   // Contextual headline from today's actual training state, never a generic slogan.
@@ -162,7 +171,8 @@ export default async function OverviewPage() {
   for (let wk = sunday; weeksTrained.has(wk); wk = addDays(wk, -7)) streak++;
   const monthDays = new Set(calSessions.filter((x) => x.date.startsWith(today.slice(0, 7))).map((x) => x.date)).size;
 
-  const tKcal = profile.target_kcal ?? null;
+  // On a break the calorie target is maintenance (TDEE). Protein stays the same.
+  const tKcal = maintKcal ?? profile.target_kcal ?? null;
   const tProt = profile.protein_g ?? null;
   const kcalLeft = tKcal ? Math.round(tKcal - foodKcal) : null;
   const protLeft = tProt ? Math.round(tProt - foodProtein) : null;
@@ -176,6 +186,27 @@ export default async function OverviewPage() {
       />
 
       <InstallCard />
+
+      {brk ? (
+        <section className="card cream" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <p className="lab" style={{ color: "var(--rust)", fontWeight: 700 }}>Holiday mode · {breakLabel(brk)}</p>
+            <p className="cap">{brk.end_date === today ? "Last day" : `Back ${fmtShort(addDays(brk.end_date, 1))}`}</p>
+          </div>
+          <p style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span className="disp" style={{ fontSize: 36, lineHeight: 1 }}>{Math.min(week.breakDone, brk.workouts_per_week)} of {brk.workouts_per_week}</span>
+            <span style={{ fontSize: 16, color: "var(--muted)" }}>workouts this week</span>
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${brk.workouts_per_week}, minmax(0,1fr))`, gap: 8 }} aria-hidden>
+            {Array.from({ length: brk.workouts_per_week }, (_, i) => (
+              <span key={i} style={{ height: 12, borderRadius: 999, background: i < week.breakDone ? "var(--ember)" : "#ead8cb" }} />
+            ))}
+          </div>
+          {brk.end_date === today ? (
+            <p style={{ fontSize: 16, lineHeight: 1.45 }}>Tomorrow you&apos;re back on The Split. Book a Tanita scan for this week so you can see where the break left you.</p>
+          ) : null}
+        </section>
+      ) : null}
 
       {latest ? (
         <CoachRead feature read={latest} units={units} label={label} lead={lead} footer={footer} pep={pep} />
@@ -193,7 +224,7 @@ export default async function OverviewPage() {
           <Link prefetch={false} href="/food" className="tile" aria-label="Calories today">
             <span className="lab">Calories</span>
             <span className="big">{Math.round(foodKcal).toLocaleString("en-US")}</span>
-            <span className="cap">{tKcal ? (kcalLeft! >= 0 ? `${kcalLeft!.toLocaleString("en-US")} left of ${tKcal.toLocaleString("en-US")}` : `${Math.abs(kcalLeft!).toLocaleString("en-US")} over ${tKcal.toLocaleString("en-US")}`) : "Set a target"}</span>
+            <span className="cap">{maintKcal ? "Maintenance · " : ""}{tKcal ? (kcalLeft! >= 0 ? `${kcalLeft!.toLocaleString("en-US")} left of ${tKcal.toLocaleString("en-US")}` : `${Math.abs(kcalLeft!).toLocaleString("en-US")} over ${tKcal.toLocaleString("en-US")}`) : "Set a target"}</span>
             <span className="meter"><i style={{ width: `${tKcal ? Math.min(100, (foodKcal / tKcal) * 100) : 0}%`, background: kcalLeft != null && kcalLeft < 0 ? "var(--crimson)" : "var(--kingfisher)" }} /></span>
           </Link>
           <Link prefetch={false} href="/food" className="tile" aria-label="Protein today">

@@ -10,6 +10,7 @@ import { DayNav } from "./day-nav";
 import { EditFoods } from "./edit-foods";
 import { macroLine } from "@/lib/portion";
 import type { FoodRow } from "@/lib/rows";
+import { activeBreak, getBreaks } from "@/lib/breaks";
 
 export default async function FoodPage({ searchParams }: { searchParams: Promise<{ day?: string; edit?: string; view?: string; range?: string }> }) {
   const { supabase, today, profile, units } = await getContext();
@@ -18,12 +19,13 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   const view = sp.view === "week" ? "week" : "day";
   const range: Range = (RANGES as readonly string[]).includes(sp.range ?? "") ? (sp.range as Range) : "week";
   const rangeStart = startOfRange(range, today);
-  const [{ data: rows }, energy, { data: week }, { data: lastWeigh }, { data: lastScan }] = await Promise.all([
+  const [{ data: rows }, energy, { data: week }, { data: lastWeigh }, { data: lastScan }, breaks] = await Promise.all([
     supabase.from("food_logs").select("id, name, kcal, protein_g, carbs_g, fat_g, portion, source").eq("day", day).order("created_at"),
     getEnergy(supabase, today, profile.sex, profile.target_rate_kg_week == null ? null : Number(profile.target_rate_kg_week)),
     supabase.from("food_logs").select("day, kcal, protein_g").gte("day", rangeStart).lte("day", today),
     supabase.from("weigh_ins").select("measured_on, weight_kg").order("measured_on", { ascending: false }).limit(1),
     supabase.from("scans").select("scanned_on, weight_kg").not("weight_kg", "is", null).order("scanned_on", { ascending: false }).limit(1),
+    getBreaks(supabase),
   ]);
   const items = (rows ?? []) as { id: string; name: string; kcal: number; protein_g: number; carbs_g: number | null; fat_g: number | null; portion: string | null; source: string }[];
   const kcal = items.reduce((s, r) => s + Number(r.kcal), 0);
@@ -32,7 +34,10 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   const fat = items.reduce((s, r) => s + Number(r.fat_g ?? 0), 0);
   // Entries from before carbs and fat were tracked (or estimates without them) don't count toward those totals.
   const missing = items.filter((r) => r.carbs_g == null || r.fat_g == null).length;
-  const tK = profile.target_kcal ?? null, tP = profile.protein_g ?? null;
+  // On a break day the calorie target is maintenance (TDEE, measured when available). Protein stays the same.
+  const brkDay = activeBreak(breaks, day);
+  const maintKcal = brkDay ? (energy.tdee ? Math.round(energy.tdee) : profile.tdee_kcal ?? null) : null;
+  const tK = maintKcal ?? profile.target_kcal ?? null, tP = profile.protein_g ?? null;
   const totals = new Map(dayTotals((week ?? []) as FoodRow[]).map((d) => [d.day, d]));
 
   // Latest known body weight: newest of the last weigh-in and the last scan.
@@ -49,7 +54,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
   };
   const viewHref = q(view === "week" ? { view: "week" } : {});
   const editHref = q({ edit: "1" });
-  const showSuggest = energy.source === "measured" && energy.suggestedTarget != null && tK != null && Math.abs(energy.suggestedTarget - tK) >= 100;
+  const showSuggest = !brkDay && energy.source === "measured" && energy.suggestedTarget != null && tK != null && Math.abs(energy.suggestedTarget - tK) >= 100;
 
   const kLeft = tK ? Math.round(tK - kcal) : null;
   const pLeft = tP ? Math.round(tP - protein) : null;
@@ -104,7 +109,7 @@ export default async function FoodPage({ searchParams }: { searchParams: Promise
               <MacroBar label="Fat" value={fat} target={profile.fat_g ?? null} color="#d9d0bd" />
             </div>
             {missing ? <p style={{ fontSize: 15, color: "var(--on-navy-muted)", marginTop: -8 }}>{missing} {missing === 1 ? "entry has" : "entries have"} no carbs or fat yet. Add them in Edit to count them.</p> : null}
-            <TdeeBlock energy={energy} sub={tK ? `Your target: ${tK.toLocaleString("en-US")} kcal` : null} />
+            <TdeeBlock energy={energy} sub={tK ? (maintKcal ? `Holiday mode: eat to maintenance, ${tK.toLocaleString("en-US")} kcal` : `Your target: ${tK.toLocaleString("en-US")} kcal`) : null} />
           </>
         ) : (
           <WeekView today={today} day={day} range={range} totals={totals} energy={energy} proteinTarget={tP} currentKg={currentKg} goalKg={profile.goal_weight_kg == null ? null : Number(profile.goal_weight_kg)} units={units} />
