@@ -9,6 +9,7 @@ import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
 import { FoodTrend } from "./food-trend";
 import { StepsTrend } from "./steps-trend";
+import { SleepTrend } from "./sleep-trend";
 import type { Num, WeighRow } from "@/lib/rows";
 import { onPace, trendRate } from "@/lib/coach";
 
@@ -122,6 +123,8 @@ export default async function ProgressBodyPage() {
       {series.length > 1 ? <BodyCompChart series={compSeries} units={units} /> : null}
 
       <SessionCounts supabase={supabase} today={today} />
+
+      <SleepTrend supabase={supabase} today={today} />
 
       <StepsTrend supabase={supabase} today={today} />
 
