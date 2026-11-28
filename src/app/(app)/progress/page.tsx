@@ -7,9 +7,7 @@ import { ProgressTabs } from "./parts";
 import { BodyCompChart, type CompPoint, type MetricKey } from "./body-comp-chart";
 import { WeighInForm } from "./weigh-in-form";
 import { SessionCounts } from "./session-counts";
-import { FoodTrend } from "./food-trend";
-import { StepsTrend } from "./steps-trend";
-import { SleepTrend } from "./sleep-trend";
+import { HabitsTrend } from "./habits-trend";
 import type { Num, WeighRow } from "@/lib/rows";
 import { onPace, trendRate } from "@/lib/coach";
 
@@ -124,11 +122,7 @@ export default async function ProgressBodyPage() {
 
       <SessionCounts supabase={supabase} today={today} />
 
-      <SleepTrend supabase={supabase} today={today} />
-
-      <StepsTrend supabase={supabase} today={today} />
-
-      <FoodTrend supabase={supabase} today={today} targetKcal={profile.target_kcal ?? null} targetProtein={profile.protein_g ?? null} />
+      <HabitsTrend supabase={supabase} today={today} kcalTarget={profile.target_kcal ?? null} tdee={profile.tdee_kcal ?? null} proteinTarget={profile.protein_g ?? null} />
 
       <details className="card clip scans" style={{ marginTop: 4 }}>
         <summary style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", cursor: "pointer", listStyle: "none" }}>
